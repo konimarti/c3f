@@ -207,7 +207,7 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 	{
 		if (s.key == Key.STYLE.name && !cfg.apply_preset(s.value.to_lower_tcopy(), s.origin))
 		{
-			*error = string::tformat("%s: c3f_style: unknown preset '%s'", s.origin, s.value);
+			*error = string::tformat("%s: c3f_style: unknown preset '%s' (use %s)", s.origin, s.value, allowed_values(STYLE));
 			return BAD_CONFIG~;
 		}
 	}
@@ -216,8 +216,17 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 		if (s.key == Key.STYLE.name) continue;
 		if (catch err = cfg.set(s.key, s.value, s.origin))
 		{
-			if (!s.key.starts_with("c3f_")) continue;   // another tool's key, or a value c3f does not use
-			*error = string::tformat("%s: %s: %s '%s'", s.origin, s.key, err == UNKNOWN_KEY ? "unknown option" : "invalid value", s.value);
+			// in an .editorconfig file, another tool's key or a value c3f does not use is no error
+			// (and is not applied); on the command line it is
+			if (!s.key.starts_with("c3f_") && s.origin != "--set") continue;
+			if (err == UNKNOWN_KEY)
+			{
+				*error = string::tformat("%s: unknown option '%s'", s.origin, s.key);
+			}
+			else
+			{
+				*error = string::tformat("%s: %s: invalid value '%s' (use %s)", s.origin, s.key, s.value, allowed_values(key_from_name(s.key)!!));
+			}
 			return BAD_CONFIG~;
 		}
 	}

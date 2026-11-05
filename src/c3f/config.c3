@@ -197,6 +197,14 @@ macro parse_enum($Type, String v)
 *>
 fn void? Config.set(&self, String key, String value, String origin = "--set")
 {
+	// on a copy: a value that is rejected must not stay in effect
+	Config c = *self;
+	c.set_value(key, value, origin)!;
+	*self = c;
+}
+
+fn void? Config.set_value(&self, String key, String value, String origin) @local
+{
 	Key k = key_from_name(key)!;
 	String v = value.trim().to_lower_tcopy();
 	switch (k)
@@ -214,7 +222,9 @@ fn void? Config.set(&self, String key, String value, String origin = "--set")
 			if (self.tab_width == 0 || self.tab_width > 16) return BAD_VALUE~;
 		case END_OF_LINE: self.end_of_line = parse_enum(Eol, v)!;
 		case INSERT_FINAL_NEWLINE: self.insert_final_newline = parse_bool(v)!;
-		case MAX_LINE_LENGTH: self.max_line_length = v == "off" ? 0 : parse_uint(v)!;
+		case MAX_LINE_LENGTH:
+			self.max_line_length = v == "off" ? 0 : parse_uint(v)!;
+			if ((self.max_line_length == 0 && v != "off") || self.max_line_length > MAX_COLUMNS) return BAD_VALUE~;
 		case BRACE_STYLE: self.brace_style = parse_enum(BraceStyle, v)!;
 		case ELSE_STYLE: self.else_style = parse_enum(ElseStyle, v)!;
 		case ONE_LINE_BLOCKS: self.one_line_blocks = parse_enum(OneLineBlocks, v)!;
@@ -225,7 +235,9 @@ fn void? Config.set(&self, String key, String value, String origin = "--set")
 		case SPACE_AFTER_CAST: self.space_after_cast = parse_bool(v)!;
 		case POINTER_STYLE: self.pointer_style = parse_enum(PointerStyle, v)!;
 		case BRACKET_PADDING: self.bracket_padding = parse_enum(BracketPadding, v)!;
-		case MAX_BLANK_LINES: self.max_blank_lines = parse_uint(v)!;
+		case MAX_BLANK_LINES:
+			self.max_blank_lines = parse_uint(v)!;
+			if (self.max_blank_lines > 100) return BAD_VALUE~;
 		case TRIM_BLOCK_BLANKS: self.trim_block_blanks = parse_bool(v)!;
 		case DECL_SPACING: self.decl_spacing = v == "1" ? ONE : parse_enum(DeclSpacing, v)!;
 		case ALIGN: self.align = parse_enum(AlignMode, v)!;
@@ -236,14 +248,68 @@ fn void? Config.set(&self, String key, String value, String origin = "--set")
 		case LINE_BREAKS: self.line_breaks = parse_enum(LineBreaks, v)!;
 		case WRAP_SOLVER: self.wrap_solver = parse_enum(WrapSolver, v)!;
 		case MAGIC_COMMA: self.magic_comma = parse_bool(v)!;
-		case SOFT_MAX_LINE_LENGTH: self.soft_max_line_length = parse_uint(v)!;
+		case SOFT_MAX_LINE_LENGTH:
+			self.soft_max_line_length = parse_uint(v)!;
+			if (self.soft_max_line_length > MAX_COLUMNS) return BAD_VALUE~;
 		case WRAP_COST_SOFT: self.wrap_cost_soft = parse_float(v)!;
 		case WRAP_COST_HARD: self.wrap_cost_hard = parse_float(v)!;
 		case WRAP_COST_BREAK: self.wrap_cost_break = parse_float(v)!;
-		case WRAP_BUDGET: self.wrap_budget = parse_uint(v)!;
+		case WRAP_BUDGET:
+			self.wrap_budget = parse_uint(v)!;
+			if (self.wrap_budget > MAX_WRAP_BUDGET) return BAD_VALUE~;
 		case SORT_IMPORTS: self.sort_imports = parse_enum(SortImports, v)!;
 	}
 	self.origin[k.ordinal] = origin;
+}
+
+const sz MAX_COLUMNS = 1000;
+const sz MAX_WRAP_BUDGET = 10000;
+
+<* The values an option takes, for error messages. *>
+fn String allowed_values(Key k)
+{
+	switch (k)
+	{
+		case STYLE: return "stdlib, knr, strict";
+		case INDENT_STYLE: return enum_names(IndentStyle);
+		case INDENT_SIZE: return "1 to 16, or tab";
+		case TAB_WIDTH: return "1 to 16";
+		case END_OF_LINE: return enum_names(Eol);
+		case INSERT_FINAL_NEWLINE: case SPACE_AFTER_CAST: case TRIM_BLOCK_BLANKS: case MAGIC_COMMA: return "true, false";
+		case MAX_LINE_LENGTH: return "off, or 1 to 1000";
+		case BRACE_STYLE: return enum_names(BraceStyle);
+		case ELSE_STYLE: return enum_names(ElseStyle);
+		case ONE_LINE_BLOCKS: return enum_names(OneLineBlocks);
+		case CASE_INDENT: return "indent, flush";
+		case CT_INDENT: return enum_names(CtIndent);
+		case CONTINUATION: return enum_names(Continuation);
+		case SPACING: return enum_names(SpacingMode);
+		case POINTER_STYLE: return enum_names(PointerStyle);
+		case BRACKET_PADDING: return enum_names(BracketPadding);
+		case MAX_BLANK_LINES: return "0 to 100";
+		case DECL_SPACING: return "keep, 1";
+		case ALIGN: return enum_names(AlignMode);
+		case ALIGN_COMMENTS: return enum_names(CommentAlign);
+		case TRAILING_COMMENT_SPACES: return "keep, or 1 to 16";
+		case LINE_BREAKS: return enum_names(LineBreaks);
+		case WRAP_SOLVER: return enum_names(WrapSolver);
+		case SOFT_MAX_LINE_LENGTH: return "0 (off) to 1000";
+		case WRAP_COST_SOFT: case WRAP_COST_HARD: case WRAP_COST_BREAK: return "a number, 0 or more";
+		case WRAP_BUDGET: return "0 to 10000";
+		case SORT_IMPORTS: return enum_names(SortImports);
+	}
+}
+
+macro String enum_names($Type)
+{
+	DString d;
+	d.tinit();
+	foreach (i, e : $Type::values)
+	{
+		if (i) d.append(", ");
+		d.append(string::tformat("%s", e).to_lower_tcopy());
+	}
+	return d.str_view();
 }
 
 macro bool? parse_indent(String v)
