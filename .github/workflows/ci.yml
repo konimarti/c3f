@@ -86,9 +86,61 @@ jobs:
           name: c3f-${{ matrix.target }}
           path: c3f-${{ matrix.target }}.*
 
+  # every style on the standard library and c3c's unit tests of the same release: formatted with
+  # nothing kept as written, a second run changes nothing, and the tests (slow ones included) pass
+  styles:
+    needs: build
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: stdlib, args: '' }
+          - { name: knr, args: '--set c3f_style=knr' }
+          - { name: strict, args: '--set c3f_style=strict' }
+          - { name: linux, args: '--set c3f_brace_style=linux' }
+          - { name: aligned, args: '--set c3f_align=decls --set c3f_align_comments=always' }
+          - { name: sorted-imports, args: '--set c3f_sort_imports=all' }
+          - { name: wrap-long-100, args: '--set max_line_length=100 --set c3f_line_breaks=long' }
+          - { name: strict-fit-80, args: '--set c3f_style=strict --set max_line_length=80 --set c3f_line_breaks=fit' }
+    name: style ${{ matrix.name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: c3f-linux-x64
+
+      - name: Install c3c
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tar xzf c3f-linux-x64.tar.gz
+          echo "$PWD/c3f-linux-x64" >> "$GITHUB_PATH"
+          cd "$RUNNER_TEMP"
+          gh release download "$C3C_RELEASE" -R c3lang/c3c -p c3-linux.tar.gz
+          tar xzf c3-linux.tar.gz
+          echo "$RUNNER_TEMP/c3" >> "$GITHUB_PATH"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: c3lang/c3c
+          ref: ${{ env.C3C_RELEASE }}
+          path: c3c
+          sparse-checkout: |
+            lib
+            test/unit
+
+      - name: Format
+        run: |
+          rm -f c3c/.editorconfig    # only the options under test
+          c3f -w ${{ matrix.args }} c3c/lib/std c3c/test/unit
+          c3f --check ${{ matrix.args }} c3c/lib/std c3c/test/unit
+
+      - name: c3c's unit tests on the formatted code
+        run: cd c3c/test && c3c compile-test unit -O1 -D SLOW_TESTS -D RUN_PROCESS_TESTS --stdlib ../lib/std
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build
+    needs: [build, styles]
     runs-on: ubuntu-latest
     permissions:
       contents: write
