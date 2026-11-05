@@ -1,5 +1,5 @@
 module c3f::cli;
-import std::io, std::io::path, libc;
+import std::io, std::io::path, std::os::process, std::os::env, libc;
 
 // the pre-commit hook, built into the binary
 const char[*] HOOK = $embed("../../contrib/pre-commit");
@@ -39,6 +39,19 @@ fn String? hooks_dir(String root)
 	return dir.tconcat("/hooks");
 }
 
+<* `core.hooksPath` of the repository at `root`, made absolute, or "" if it is not set (or git cannot be run). *>
+fn String configured_hooks(String root)
+{
+	char[4096] buf;
+	String? out = process::run_capture_stdout(&buf, {"git", "-C", root, "config", "--get", "core.hooksPath"}, INHERIT_ENV);
+	if (catch out) return "";
+	String dir = out.trim();
+	if (!dir.len) return "";
+	if (dir.starts_with("~/")) dir = c3f::join_path(env::get_home_dir(tmem) ?? "~", dir[2..]);
+	if (!c3f::path_root(dir.treplace("\\", "/")).len) dir = c3f::join_path(root, dir);
+	return c3f::absolute(dir.tcopy());
+}
+
 <* --git-hook: install the pre-commit hook in the current git repository; an existing hook is never replaced. *>
 fn Status install_git_hook()
 {
@@ -54,6 +67,9 @@ fn Status install_git_hook()
 		io::eprintfn("c3f: %s/.git: not a git directory", root);
 		return ERROR;
 	}
+	// git runs the hooks from core.hooksPath when it is set
+	String configured = configured_hooks(root);
+	if (configured.len) hooks = configured;
 	String dest = hooks.tconcat("/pre-commit");
 	if (file::exists(dest))
 	{
@@ -63,8 +79,9 @@ fn Status install_git_hook()
 			io::eprintfn("c3f: warning: the hook is already installed in %s", dest);
 			return OK;
 		}
-		io::eprintfn("c3f: warning: %s already exists and was left as it is", dest);
-		return ERROR;
+		io::eprintfn("c3f: warning: %s already exists and was left as it is; to add the check to it, see", dest);
+		io::eprintn("    https://github.com/konimarti/c3f/blob/main/contrib/pre-commit");
+		return OK;
 	}
 	if (!file::is_dir(hooks)) (void)path::mkdir(path::tnew(hooks)!!, true);
 	if (catch file::save(dest, &HOOK))

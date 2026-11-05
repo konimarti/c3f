@@ -3,13 +3,26 @@
 # It checks the staged version of each file, not the working copy.
 # Install it with `c3f --git-hook` inside the repository.
 command -v c3f > /dev/null || { echo "c3f: not found in PATH; skipping the format check" >&2; exit 0; }
+tmp=$(mktemp) || exit 1
+trap 'rm -f "$tmp"' EXIT
 status=0
-for f in $(git diff --cached --name-only --diff-filter=ACM -- '*.c3' '*.c3i'); do
-	git show ":$f" | c3f --check --stdin-filename "$f" - > /dev/null
+# one name per line, as written (no quoting, no splitting at spaces, no globbing)
+IFS='
+'
+set -f
+for f in $(git -c core.quotePath=false diff --cached --name-only --diff-filter=ACM -- '*.c3' '*.c3i' '*.c3t'); do
+	if ! git show ":$f" > "$tmp"; then
+		echo "c3f: $f: cannot read the staged version" >&2
+		status=1
+		continue
+	fi
+	c3f --check --stdin-filename "$f" - < "$tmp" > /dev/null
 	case $? in
 		0) ;;
+		1) echo "c3f: $f is not formatted (run: c3f -w \"$f\")" >&2; status=1 ;;
 		3) echo "c3f: $f could not be fully formatted (see above)" >&2; status=1 ;;
-		*) echo "c3f: $f is not formatted (run: c3f -w $f)" >&2; status=1 ;;
+		*) echo "c3f: $f could not be checked (see above)" >&2; status=1 ;;
 	esac
 done
+[ $status -eq 0 ] || echo "c3f: to commit anyway: git commit --no-verify" >&2
 exit $status
