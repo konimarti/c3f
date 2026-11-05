@@ -26,6 +26,7 @@ fn int main(String[] args)
 		io::printfn("c3f %s", VERSION);
 		return 0;
 	}
+	if (opt.git_hook) return install_git_hook().ordinal;
 	if (opt.stdin) return run_stdin(&opt).ordinal;
 	if (!opt.paths.len())
 	{

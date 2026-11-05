@@ -11,6 +11,7 @@ struct Options
 	bool         stdin;
 	bool         help;
 	bool         version;
+	bool         git_hook;
 	String       config;          // "" = search upward for .editorconfig
 	String       stdin_filename;  // with "-": the path for .editorconfig lookup and messages
 	List{String} sets;            // "key=value", applied after .editorconfig, in order
@@ -55,6 +56,7 @@ fn void? Options.parse(&self, String[] args)
 			case "--print-config": self.mode = PRINT_CONFIG;
 			case "-h": case "--help": self.help = true;
 			case "--version": self.version = true;
+			case "--git-hook": self.git_hook = true;
 			case "--config": case "--set": case "--stdin-filename": case "--exclude":
 				if (!has_value)
 				{
@@ -100,6 +102,8 @@ flags:
       --print-config       print the effective options and where they come from
       --stdin-filename <p> with '-': the path used for .editorconfig and messages
       --exclude <glob>     skip matching paths (repeatable)
+      --git-hook           install a pre-commit hook in this git repository that rejects
+                           commits with unformatted C3 files (an existing hook is kept)
   -h, --help               this help
       --version            print the version
 

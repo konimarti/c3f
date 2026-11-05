@@ -1,0 +1,13 @@
+#!/bin/sh
+# Git pre-commit hook: refuse to commit C3 files that c3f would change.
+# It checks the staged version of each file, not the working copy.
+# Install it with `c3f --git-hook` inside the repository.
+command -v c3f > /dev/null || { echo "c3f: not found in PATH; skipping the format check" >&2; exit 0; }
+status=0
+for f in $(git diff --cached --name-only --diff-filter=ACM -- '*.c3' '*.c3i'); do
+	if ! git show ":$f" | c3f --check --stdin-filename "$f" - > /dev/null; then
+		echo "c3f: $f is not formatted (run: c3f -w $f)" >&2
+		status=1
+	fi
+done
+exit $status
