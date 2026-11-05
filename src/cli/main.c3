@@ -34,12 +34,11 @@ fn int main(String[] args)
 		return Status.ERROR.ordinal;
 	}
 	List{String} files;
-	foreach (p : opt.paths)
-	{
-		if (catch c3f::cli::collect(&files, p, &opt.excludes)) return Status.ERROR.ordinal;
-	}
+	bool listed = true;   // false: a path could not be listed (reported; the others are still done)
+	foreach (p : opt.paths) listed &= c3f::cli::collect(&files, p, &opt.excludes);
 	if (!files.len())
 	{
+		if (!listed) return Status.ERROR.ordinal;
 		io::eprintn("c3f: no C3 files (*.c3, *.c3i, *.c3t) found");
 		return opt.mode == STDOUT ? Status.ERROR.ordinal : Status.OK.ordinal;
 	}
@@ -49,7 +48,7 @@ fn int main(String[] args)
 		io::eprintn("c3f: several files: use -w, --check or --diff");
 		return Status.ERROR.ordinal;
 	}
-	Status status = OK;
+	Status status = listed ? Status.OK : Status.ERROR;
 	foreach (f : files)
 	{
 		@pool()
@@ -89,7 +88,7 @@ fn Status run_stdin(Options* opt)
 		io::eprintn("c3f: cannot read stdin");
 		return ERROR;
 	}
-	return run(opt, name, d.str_view(), &cfg, false);
+	return run(opt, name, d.str_view(), &cfg);
 }
 
 fn Status run_file(Options* opt, String path)
@@ -107,15 +106,15 @@ fn Status run_file(Options* opt, String path)
 		io::eprintfn("c3f: %s: cannot read", path);
 		return ERROR;
 	}
-	return run(opt, path, (String)data, &cfg, true);
+	return run(opt, path, (String)data, &cfg);
 }
 
 <*
- Format one input and act on the mode; `in_place` says whether `name` is a file that -w may rewrite.
+ Format one input and act on the mode (-w is only given with files: stdin is printed).
  A place kept as written is exit status 3 for --check and -w; printing the result or the diff
  is a success (the notes go to stderr), so format-on-save works on code in progress.
 *>
-fn Status run(Options* opt, String name, String src, c3f::Config* cfg, bool in_place)
+fn Status run(Options* opt, String name, String src, c3f::Config* cfg)
 {
 	c3f::FormatResult r = c3f::format(tmem, src, cfg);
 	Status s = report(name, &r);
@@ -128,17 +127,9 @@ fn Status run(Options* opt, String name, String src, c3f::Config* cfg, bool in_p
 			if (r.changed) io::print(c3f::unified_diff(tmem, name, src, r.text));
 			return OK;
 		case WRITE:
-			if (!in_place)
-			{
-				// printed for an editor: the output is the whole file, the notes went to stderr
-				io::print(r.text);
-				return OK;
-			}
-			else if (r.changed && !write_atomic(name, r.text))
-			{
-				return ERROR;
-			}
+			if (r.changed && !write_atomic(name, r.text)) return ERROR;
 		default:
+			// printed (for an editor: the whole file; the notes went to stderr)
 			io::print(r.text);
 			return OK;
 	}

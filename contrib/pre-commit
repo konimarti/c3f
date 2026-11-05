@@ -11,6 +11,8 @@ IFS='
 '
 set -f
 for f in $(git -c core.quotePath=false diff --cached --name-only --diff-filter=ACM -- '*.c3' '*.c3i' '*.c3t'); do
+	# what `c3f --check .` skips: hidden directories, build output, dependencies
+	case "/$f" in */.*/*|*/build/*|*/lib/*) continue ;; esac
 	if ! git show ":$f" > "$tmp"; then
 		echo "c3f: $f: cannot read the staged version" >&2
 		status=1
