@@ -6,7 +6,6 @@ struct Unit @local
 {
 	sz     first, last;    // token range
 	String key;            // module path, e.g. "std::io::file"
-	sz     order;          // original position, for a stable sort
 }
 
 <* Compare module paths segment by segment ("std::io" < "std::io::file" < "std::math"). *>
@@ -26,11 +25,8 @@ fn int compare_paths(String a, String b)
 	}
 }
 
-fn int compare_units(Unit a, Unit b) @local
-{
-	int c = compare_paths(a.key, b.key);
-	return c != 0 ? c : (int)(a.order - b.order);
-}
+// (the sorts are merge sorts: stable, so equal paths keep their order)
+fn int compare_units(Unit a, Unit b) @local => compare_paths(a.key, b.key);
 
 <* The module path starting at token k. *>
 fn String Src.path_at(&self, sz k)
@@ -112,14 +108,13 @@ fn String sort_imports(String text, SortImports mode)
 			String body = s.span_text(u.first, u.last);
 			if (mode == LISTS || mode == ALL) body = sort_list(&s, &run[k], body);
 			texts.push(body);
-			run[k].order = (sz)k;
 		}
 		List{sz} order;
 		order.tinit();
 		for (sz k = 0; k < run.len(); k++) order.push(k);
 		if ((mode == LINES || mode == ALL) && run.len() > 1)
 		{
-			sort::insertionsort(&order, fn int(sz a, sz b, List{Unit}* run) => compare_units((*run)[a], (*run)[b]), &run);
+			sort::mergesort(&order, fn int(sz a, sz b, List{Unit}* run) => compare_units((*run)[a], (*run)[b]), &run);
 		}
 		// write: everything before the run, then the units in their new order with the old gaps
 		out.append(text[copied:s.toks[run[0].first].start - copied]);
@@ -152,14 +147,14 @@ fn String sort_list(Src* s, Unit* u, String body) @local
 		if (!t.code) return body;   // a comment inside: leave the list alone
 		if (t.type != COMMA && t.type != EOS) continue;
 		if (k == from) return body;
-		items.push({.first = from, .last = k - 1, .key = s.path_at(from), .order = (sz)items.len()});
+		items.push({.first = from, .last = k - 1, .key = s.path_at(from)});
 		from = k + 1;
 	}
 	if (items.len() < 2) return body;
 	List{Unit} sorted;
 	sorted.tinit();
 	foreach (it : items) sorted.push(it);
-	sort::insertionsort(&sorted, fn int(Unit a, Unit b) => compare_units(a, b));
+	sort::mergesort(&sorted, &compare_units);
 	u.key = sorted[0].key;   // the statement now sorts by its first module
 	DString d;
 	d.tinit();
