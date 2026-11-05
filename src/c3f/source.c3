@@ -1,0 +1,454 @@
+module c3f;
+import c3::lexer, std::collections::list;
+
+const sz NO = -1;
+
+<* What a '{' opens, decided from the tokens before it. *>
+enum BraceKind : char
+{
+	NONE,      // not a '{'
+	BLOCK,     // statements: function, if/while/for/switch body, bare block
+	BODY,      // struct/union/enum/bitstruct/interface/constdef members
+	INIT,      // initializer list or anything else
+	GENERIC,   // List{int}
+}
+
+struct Tok
+{
+	TokenType type;
+	String    text;
+	sz      start;       // byte offset in the source
+	sz      line;        // 1-based line of the first byte
+	sz      nl;          // newlines in the gap before this token (wrapping may change it)
+	sz      src_nl;      // as in the source
+	sz      match;       // matching bracket, $end keyword or $if of an $else; NO if none
+	sz      encl;        // innermost bracket open at the gap before this token; NO at top level
+	sz      parent;      // for case/default and $case/$default: the switch '{' or $switch; else NO
+	BraceKind brace;
+	bool      is_switch;   // '{' of a switch, or a $switch
+	bool      label;       // ':' that ends a case label or a compile-time header
+	bool      keep;        // the gap before this token is copied as written
+	bool      code;        // not a comment or contract
+	bool      unterminated;
+}
+
+struct Src
+{
+	String     text;
+	List{Tok}  toks;
+	List{sz} line_start;    // byte offset of line n+1
+	bool       crlf;
+	bool       bom;
+	List{char} memo;          // cached answers of is_cast_close / is_type_star
+}
+
+fn bool is_comment_type(TokenType t) => t == LINE_COMMENT || t == BLOCK_COMMENT || t == CONTRACT;
+fn bool is_opener(TokenType t) => t == LPAREN || t == LBRACKET || t == LBRACE || t == LVEC;
+fn bool is_closer(TokenType t) => t == RPAREN || t == RBRACKET || t == RBRACE || t == RVEC;
+
+fn TokenType closer_of(TokenType t)
+{
+	switch (t)
+	{
+		case LPAREN: return RPAREN;
+		case LBRACKET: return RBRACKET;
+		case LBRACE: return RBRACE;
+		default: return RVEC;
+	}
+}
+
+fn bool is_base_type(TokenType t)
+{
+	switch (t)
+	{
+		case VOID: case BOOL: case CHAR: case ICHAR: case SHORT: case USHORT: case INT: case UINT:
+		case LONG: case ULONG: case INT128: case UINT128: case FLOAT: case DOUBLE: case FLOAT16:
+		case BFLOAT: case FLOAT128: case IPTR: case UPTR: case ISZ: case USZ: case FAULT: case ANY:
+		case TYPEID:
+			return true;
+		default:
+			return false;
+	}
+}
+
+fn bool is_type_token(TokenType t) => is_base_type(t) || t == TYPE_IDENT || t == CT_TYPE_IDENT || t == AT_TYPE_IDENT;
+
+<* Lex `text` and compute all structure. The tokens' text slices point into `text`. *>
+fn void Src.init(&self, String text)
+{
+	*self = {};
+	if (text.starts_with("\xEF\xBB\xBF"))
+	{
+		self.bom = true;
+		text = text[3..];
+	}
+	self.text = text;
+	self.line_start.push(0);
+	foreach (i, c : text)
+	{
+		if (c != '\n') continue;
+		self.line_start.push(i + 1);
+		if (self.line_start.len() == 2) self.crlf = i > 0 && text[i - 1] == '\r';
+	}
+	Lexer lx;
+	lx.init(text);
+	while (try t = lx.next())
+	{
+		if (t.type == EOF) break;
+		self.toks.push({
+			.type = t.type, .text = t.text, .start = t.offset, .line = t.ln, .nl = t.nl_before, .src_nl = t.nl_before,
+			.match = NO, .encl = NO, .parent = NO, .code = !is_comment_type(t.type),
+			.unterminated = t.unterminated });
+	}
+	self.match_brackets();
+	self.classify_braces();
+	self.match_ct();
+	self.mark_labels();
+	self.mark_off_regions();
+}
+
+fn sz Src.len(&self) @inline => self.toks.len();
+fn sz Src.end(&self, sz i) @inline => self.toks[i].start + self.toks[i].text.len;
+
+<* The whitespace before token i (i == len: after the last token). *>
+fn String Src.gap(&self, sz i)
+{
+	sz from = i == 0 ? 0 : self.end(i - 1);
+	sz to = i < self.len() ? self.toks[i].start : self.text.len;
+	return self.text[from:to - from];
+}
+
+<* Leading whitespace of a 1-based source line. *>
+fn String Src.line_indent(&self, sz line)
+{
+	sz s = self.line_start[line - 1];
+	sz e = s;
+	while (e < self.text.len && (self.text[e] == ' ' || self.text[e] == '\t')) e++;
+	return self.text[s:e - s];
+}
+
+fn sz Src.prev_code(&self, sz i)
+{
+	while (i > 0)
+	{
+		i--;
+		if (self.toks[i].code) return i;
+	}
+	return NO;
+}
+
+fn sz Src.next_code(&self, sz i)
+{
+	for (sz k = i + 1; k < self.len(); k++) if (self.toks[k].code) return k;
+	return NO;
+}
+
+fn TokenType Src.type_at(&self, sz i) @inline => i == NO || i >= self.len() ? TokenType.INVALID : self.toks[i].type;
+
+<* Keep every gap of tokens from..to (inclusive), and the gap after the last token if to is the end. *>
+fn void Src.keep_range(&self, sz from, sz to)
+{
+	for (sz k = from; k <= to && k < self.len(); k++) self.toks[k].keep = true;
+}
+
+<*
+ Pair brackets with a stack. Damage stays local: the inside of an unclosed or
+ mismatched bracket is kept as written.
+*>
+fn void Src.match_brackets(&self)
+{
+	List{sz} stack;
+	stack.tinit();
+	for (sz i = 0; i < self.len(); i++)
+	{
+		Tok* t = &self.toks[i];
+		t.encl = stack.len() ? stack[^1] : NO;
+		if (is_opener(t.type))
+		{
+			stack.push(i);
+			continue;
+		}
+		if (!is_closer(t.type)) continue;
+		// find the nearest opener of the right kind
+		sz k = (sz)stack.len() - 1;
+		while (k >= 0 && closer_of(self.toks[stack[k]].type) != t.type) k--;
+		if (k < 0)
+		{
+			// stray closer: keep the enclosing span (or everything around it at top level)
+			self.keep_range(stack.len() ? stack[^1] + 1 : 0, self.len() - 1);
+			continue;
+		}
+		while ((sz)stack.len() - 1 > k)
+		{
+			sz o = stack.pop()!!;
+			self.keep_range(o + 1, i);
+		}
+		sz o = stack.pop()!!;
+		t.match = o;
+		self.toks[o].match = i;
+	}
+	while (stack.len())
+	{
+		sz o = stack.pop()!!;
+		self.keep_range(o + 1, self.len() - 1);
+	}
+}
+
+<* First code token of the statement containing token i (stops at ; { } or an open bracket). *>
+fn sz Src.stmt_start(&self, sz i)
+{
+	sz k = i;
+	while (true)
+	{
+		sz p = self.prev_code(k);
+		if (p == NO) return k;
+		Tok* t = &self.toks[p];
+		if (t.type == EOS || t.type == LBRACE || t.type == RBRACE || t.label) return k;
+		if (is_opener(t.type)) return k;
+		if (is_closer(t.type) && t.match != NO)
+		{
+			k = t.match;
+			continue;
+		}
+		k = p;
+	}
+}
+
+fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
+{
+	sz p = self.prev_code(i);
+	if (p == NO) return INIT;
+	Tok* pt = &self.toks[p];
+	switch (self.toks[self.stmt_start(i)].type)
+	{
+		case STRUCT: case UNION: case ENUM: case BITSTRUCT: case INTERFACE: case CONSTDEF: case CONSTSET:
+			// header only: a '{' after '=' or '(' inside the header is something else
+			if (pt.type != EQ && pt.type != COMMA && pt.type != LPAREN) return BODY;
+		case FUNC: case MACRO:
+			// the body of a function, whatever ends its header (`@inline`, `<Type>`, `@Attr`); not `=> expr`
+			if (self.toks[i].encl == NO && pt.type != EQ && pt.type != COMMA && !self.after_implies(i)) return BLOCK;
+		default:
+	}
+	switch (pt.type)
+	{
+		case RPAREN:
+			if (pt.match == NO) return INIT;
+			TokenType bt = self.type_at(self.prev_code(pt.match));
+			switch (bt)
+			{
+				case IF: case WHILE: case FOR: case FOREACH: case FOREACH_R: case SWITCH:
+				case IDENT: case AT_IDENT: case FUNC: case RBRACE: case RBRACKET: case STAR: case HASH_IDENT:
+				case CT_IDENT: case CONST_IDENT:
+					return BLOCK;
+				default:
+					return is_type_token(bt) ? BLOCK : INIT;
+			}
+		case ELSE: case DO: case DEFER: case SWITCH: case AT_IDENT: case AT_INLINE: case AT_PURE: case AT_NOINLINE:
+		case ASM: case TRY: case CATCH:
+			return BLOCK;
+		case EOS: case LBRACE: case RBRACE:
+			return enclosing == BLOCK || enclosing == NONE ? BLOCK : INIT;
+		case TYPE_IDENT: case AT_TYPE_IDENT: case IDENT:
+			// `List{int}`, `foo{int}(x)`: an initializer never follows a name (since C3 0.7)
+			return GENERIC;
+		default:
+			return pt.label ? BLOCK : INIT;
+	}
+}
+
+<* Is the '{' at o the body of a lambda (`fn (int x) {`, `fn int() {`)? *>
+fn bool Src.is_lambda_body(&self, sz o)
+{
+	sz p = self.prev_code(o);
+	if (self.type_at(p) != RPAREN || self.toks[p].match == NO) return false;
+	sz b = self.prev_code(self.toks[p].match);
+	if (self.type_at(b) == FUNC) return true;
+	return b != NO && is_type_token(self.toks[b].type) && self.type_at(self.prev_code(b)) == FUNC;
+}
+
+<* Is there a top-level `=>` in the statement before token i (`macro m() => { … }`)? *>
+fn bool Src.after_implies(&self, sz i)
+{
+	for (sz k = self.stmt_start(i); k < i; k++)
+	{
+		if (self.toks[k].type == IMPLIES && self.toks[k].encl == self.toks[i].encl) return true;
+	}
+	return false;
+}
+
+fn void Src.classify_braces(&self)
+{
+	for (sz i = 0; i < self.len(); i++)
+	{
+		Tok* t = &self.toks[i];
+		if (t.type != LBRACE) continue;
+		BraceKind enclosing = NONE;
+		for (sz e = t.encl; e != NO; e = self.toks[e].encl)
+		{
+			if (self.toks[e].type == LBRACE)
+			{
+				enclosing = self.toks[e].brace;
+				break;
+			}
+		}
+		// labels are marked later; a block after a case label is found through BLOCK enclosing
+		t.brace = self.brace_kind(i, enclosing);
+		sz p = self.prev_code(i);
+		if (t.brace == BLOCK && p != NO)
+		{
+			Tok* pt = &self.toks[p];
+			t.is_switch = pt.type == SWITCH
+				|| (pt.type == RPAREN && pt.match != NO && self.type_at(self.prev_code(pt.match)) == SWITCH);
+			if (pt.type == ASM && t.match != NO) self.keep_range(i + 1, t.match);
+		}
+	}
+}
+
+fn bool is_ct_open(TokenType t) => t == CT_IF || t == CT_FOR || t == CT_FOREACH || t == CT_SWITCH;
+
+fn TokenType ct_end_of(TokenType t)
+{
+	switch (t)
+	{
+		case CT_IF: return CT_ENDIF;
+		case CT_FOR: return CT_ENDFOR;
+		case CT_FOREACH: return CT_ENDFOREACH;
+		default: return CT_ENDSWITCH;
+	}
+}
+
+<* Pair $if/$for/$foreach/$switch with their $end keyword; $else points to its $if, $case to its $switch. *>
+fn void Src.match_ct(&self)
+{
+	List{sz} stack;
+	stack.tinit();
+	for (sz i = 0; i < self.len(); i++)
+	{
+		Tok* t = &self.toks[i];
+		if (is_ct_open(t.type))
+		{
+			stack.push(i);
+			continue;
+		}
+		switch (t.type)
+		{
+			case CT_ELSE:
+				if (stack.len() && self.toks[stack[^1]].type == CT_IF) t.match = stack[^1];
+			case CT_CASE: case CT_DEFAULT:
+				if (stack.len() && self.toks[stack[^1]].type == CT_SWITCH) t.parent = stack[^1];
+			case CT_ENDIF: case CT_ENDFOR: case CT_ENDFOREACH: case CT_ENDSWITCH:
+				if (stack.len() && ct_end_of(self.toks[stack[^1]].type) == t.type)
+				{
+					sz o = stack.pop()!!;
+					t.match = o;
+					self.toks[o].match = i;
+					self.toks[o].is_switch = t.type == CT_ENDSWITCH;
+				}
+			default:
+		}
+	}
+}
+
+<* The ':' that ends the label or header starting at token i, or NO. *>
+fn sz Src.header_colon(&self, sz i, bool skip_first, bool semicolons = false)
+{
+	int ternary;
+	bool skip = skip_first;
+	for (sz k = i + 1; k < self.len(); k++)
+	{
+		Tok* t = &self.toks[k];
+		if (!t.code) continue;
+		if (is_opener(t.type) && t.match != NO)
+		{
+			k = t.match;
+			continue;
+		}
+		switch (t.type)
+		{
+			case EOS:
+				if (!semicolons) return NO;
+			case LBRACE: case RBRACE: return NO;
+			case QUESTION: case CT_TERNARY: ternary++;
+			case COLON:
+				if (ternary > 0)
+				{
+					ternary--;
+					break;
+				}
+				if (skip)
+				{
+					skip = false;
+					break;
+				}
+				return k;
+			default:
+		}
+	}
+	return NO;
+}
+
+fn void Src.mark_labels(&self)
+{
+	for (sz i = 0; i < self.len(); i++)
+	{
+		Tok* t = &self.toks[i];
+		sz colon = NO;
+		switch (t.type)
+		{
+			case CASE: case DEFAULT:
+				sz e = t.encl;
+				if (e == NO || !self.toks[e].is_switch) break;
+				t.parent = e;
+				colon = self.header_colon(i, false);
+			case CT_IF: case CT_SWITCH: case CT_CASE: case CT_DEFAULT:
+				colon = self.header_colon(i, false);
+			case CT_FOR:
+				colon = self.header_colon(i, false, semicolons: true);
+			case CT_FOREACH:
+				colon = self.header_colon(i, true);
+			default:
+		}
+		if (colon != NO) self.toks[colon].label = true;
+	}
+	// a '{' right after a label is a block
+	for (sz i = 0; i < self.len(); i++)
+	{
+		Tok* t = &self.toks[i];
+		if (t.type != LBRACE || t.brace != INIT) continue;
+		sz p = self.prev_code(i);
+		if (p != NO && self.toks[p].label) t.brace = BLOCK;
+	}
+}
+
+fn bool is_directive(String comment, String word)
+{
+	String s = comment.trim();
+	if (!s.starts_with("//")) return false;
+	s = s[2..].trim();
+	foreach (tool : (String[]){ "c3f ", "c3fmt " })
+	{
+		if (s.starts_with(tool)) return s[tool.len..].trim() == word;
+	}
+	return false;
+}
+
+<* `// c3f off` … `// c3f on` (or c3fmt): everything in between is kept as written. *>
+fn void Src.mark_off_regions(&self)
+{
+	sz off = NO;
+	for (sz i = 0; i < self.len(); i++)
+	{
+		Tok* t = &self.toks[i];
+		if (t.type != LINE_COMMENT) continue;
+		if (off == NO && is_directive(t.text, "off"))
+		{
+			off = i;
+		}
+		else if (off != NO && is_directive(t.text, "on"))
+		{
+			self.keep_range(off + 1, i);
+			off = NO;
+		}
+	}
+	if (off != NO) self.keep_range(off + 1, self.len() - 1);
+}
