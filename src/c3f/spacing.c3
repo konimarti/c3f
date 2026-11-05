@@ -469,14 +469,12 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 		Space pad = cfg.bracket_padding == SPACE ? Space.ONE : Space.NONE;
 		if (prev.type == LBRACKET && next.type != RBRACKET) return pad;
 		if (next.type == RBRACKET && prev.type != LBRACKET) return pad;
-		if (prev.type == LBRACE && prev.brace == INIT && prev.match != i && self.single_line(i - 1)) return pad;
-		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == INIT
-			&& prev.type != LBRACE && self.single_line(next.match)) return pad;
+		// the gap itself is on a line (the caller only asks for those), whatever the rest of the braces does
+		if (prev.type == LBRACE && prev.brace == INIT && prev.match != i) return pad;
+		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == INIT && prev.type != LBRACE) return pad;
 	}
 	return self.table_space(i, cfg.spacing == STRICT);
 }
-
-fn bool Src.single_line(&self, sz open) => self.toks[open].match != NO && self.toks[self.toks[open].match].line == self.toks[open].line;
 
 <* Removing the space between a and b keeps them two tokens of the same kind. *>
 fn bool glue_safe(String a, String b, TokenType ta, TokenType tb)

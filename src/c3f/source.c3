@@ -98,7 +98,7 @@ fn void Src.init(&self, String text)
 		self.toks.push({
 			.type = t.type, .text = t.text, .start = t.offset, .line = t.ln, .nl = t.nl_before, .src_nl = t.nl_before,
 			.match = NO, .encl = NO, .parent = NO, .code = !is_comment_type(t.type),
-			.unterminated = t.unterminated });
+			.unterminated = t.unterminated});
 	}
 	self.match_brackets();
 	self.classify_braces();

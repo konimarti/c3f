@@ -197,8 +197,8 @@ fn sz Wrap.build_span(&self, sz open, sz depth)
 	Src* s = self.f.src;
 	sz close = s.toks[open].match;
 	sz index = self.seqs.len();
-	self.seqs.push({ .depth = depth, .magic = self.f.cfg.magic_comma && s.toks[close - 1].type == COMMA && close > open + 1,
-		.frozen = self.blocked(open + 1) });
+	self.seqs.push({.depth = depth, .magic = self.f.cfg.magic_comma && s.toks[close - 1].type == COMMA && close > open + 1,
+		.frozen = self.blocked(open + 1)});
 	Seq* q = &self.seqs[index];
 	q.elems.tinit();
 	q.points.tinit();

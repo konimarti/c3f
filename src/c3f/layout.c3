@@ -245,15 +245,15 @@ fn void Fmt.layout(&self)
 			// a column-0 directive inside a block adds no level
 			Indent content = self.flush_directive(i) ? f.content : self.ct_content(i, line);
 			// the header line is the frame's head: its own continuation lines indent from it
-			self.frames.push({ .kind = CT, .opener = i, .owner = NO, .anchor = f.anchor, .base = line, .content = content,
-				.head = line, .head_src = s.line_indent(t.line), .has_head = true });
+			self.frames.push({.kind = CT, .opener = i, .owner = NO, .anchor = f.anchor, .base = line, .content = content,
+				.head = line, .head_src = s.line_indent(t.line), .has_head = true});
 		}
 		else if (case_line)
 		{
 			bool ct = t.type == CT_CASE || t.type == CT_DEFAULT;
 			Indent content = ct ? self.ct_content(i, line) : line.deeper();
-			self.frames.push({ .kind = CASE, .opener = i, .owner = t.parent, .anchor = f.anchor, .base = line,
-				.content = content, .head = line, .head_src = s.line_indent(t.line), .has_head = true });
+			self.frames.push({.kind = CASE, .opener = i, .owner = t.parent, .anchor = f.anchor, .base = line,
+				.content = content, .head = line, .head_src = s.line_indent(t.line), .has_head = true});
 		}
 	}
 }
