@@ -507,4 +507,7 @@ fn void fifth_review_regressions() @test
 	c3f::Config strict = c3f::defaults();
 	(void)strict.set("c3f_style", "strict");
 	check("excuse{A, B}\nexcuse {C, D}\n", "excuse { A, B }\nexcuse { C, D }\n", &strict);
+	// align continuations do not follow a trailing comment after the opener (aligning moves it)
+	stable_with("fn void f()\n{\n\tmain(            //\n\t     a: \"x\", //\n\t     b: 30\n\t     );\n}\n",
+		{"c3f_continuation", "align", "c3f_align_comments", "always"});
 }

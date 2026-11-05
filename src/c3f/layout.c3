@@ -404,7 +404,9 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 			return {base.levels, base.extra.tconcat(self.relative(s.indent_of(i), f.head_src))};
 		case ALIGN:
 			sz o = t.encl;
-			if (o != NO && (s.toks[o].type == LPAREN || s.toks[o].type == LBRACKET) && o + 1 < i && self.out[o + 1].nl == 0)
+			// (under the first token after the opener; not under a comment there, which aligning moves)
+			if (o != NO && (s.toks[o].type == LPAREN || s.toks[o].type == LBRACKET) && o + 1 < i && self.out[o + 1].nl == 0
+				&& s.toks[o + 1].code)
 			{
 				Indent line = self.out[self.out[o].line_tok].indent;
 				sz pad = self.out[o + 1].col - self.indent_width(line);
