@@ -1,0 +1,2 @@
+# the sources are LF everywhere (the .editorconfig asks for it, and CI checks it on Windows too)
+* text=auto eol=lf
