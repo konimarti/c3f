@@ -13,32 +13,40 @@ A faithful formatter for [C3](https://c3-lang.org).
   syntax errors and new syntax do not stop it, and format-on-save keeps working while you
   type. An unclosed bracket is reported and the code inside it left as written; the rest of
   the file is formatted.
-- **Fast.** c3f formats the whole standard library in 0.12 s, about 20 times faster than
-  c3fmt, and its time grows in step with the size of a file: a table of 4,000 numbers
-  takes 3 ms.
+- **Fast.** c3f formats the whole standard library in 0.13 s, and in 0.32 s while wrapping
+  it at 120 columns, where c3fmt takes 2.4 s. Its time grows in step with the size of a
+  file: a table of 4,000 numbers takes 3 ms.
 
 Also: `.editorconfig` support, import sorting, alignment that survives re-indentation,
 and format-on-save, CI and git-hook integration.
 
 ## How it compares
 
-Formatting the C3 standard library (364 files) with each tool's default settings
-(c3tools: `--width=120 --indent=t`, as its README suggests for the stdlib):
+Formatting the C3 standard library (364 files), with every tool built with `-O3` and
+wrapping at 120 columns: c3fmt by default, c3tools with `--width=120 --indent=t` (as its
+README suggests for the stdlib), and c3f with `max_line_length = 120` and
+`c3f_line_breaks = long` (wrap the lines over the limit, with the optimal layout). c3f's
+default, which does not wrap, is shown too.
 
-| | c3f | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
-|---|---|---|---|
-| Time (median of 5 runs) | 0.12 s | 2.5 s ² | 88 s |
-| Peak memory | 9 MB | 91 MB | 15 MB |
-| Lines changed | 1,842 | 14,069 | 14,854 |
-| Files whose code or comments changed | 0 ¹ | 77 | 110 |
-| Files that change again on a second run | 0 | 31 | 5 |
-| Files it fails on | 0 | 0 | 69 |
-| c3c's unit tests still pass afterwards | yes | yes | no (does not compile) |
+| | c3f | c3f, 120 columns | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
+|---|---|---|---|---|
+| Time (median of 5 runs) | 0.13 s | 0.32 s | 2.4 s | 99 s ² |
+| Peak memory | 9 MB | 16 MB | 78 MB | 17 MB |
+| Lines changed | 1,842 | 2,905 | 14,069 | 14,854 |
+| Lines over 120 columns left (1,329 before) | 1,325 | 305 ³ | 522 | 738 |
+| Files whose code or comments changed | 0 ¹ | 0 ¹ | 77 | 110 |
+| Files that change again on a second run | 0 | 0 | 31 | 5 |
+| Files it fails on | 0 | 0 | 0 | 69 |
+| c3c's unit tests still pass afterwards | yes | yes | yes | no (does not compile) |
 
 ¹ Two files have multi-line comments whose inner lines moved along with the comment's
 indentation; their text is otherwise unchanged.
 
-² As its project builds it (`-O1`); 2.4 s built with `-O3`, like c3f.
+² Nearly all of it on the 69 files it fails on, each about 1.4 s before it stops; the
+others take a few milliseconds each.
+
+³ Mostly comments, contract text and long strings (213); then what c3f keeps on one line:
+statements with a comment inside (38), one-line blocks and bodies (29), aligned rows (17).
 
 ## Install
 
