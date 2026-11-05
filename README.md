@@ -9,10 +9,10 @@ A faithful formatter for [C3](https://c3-lang.org).
   dynamic-programming algorithm of [A New Approach to Optimal Code Formatting](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf)
   (Yelland, the algorithm of Google's rfmt): it weighs every way to break the statement
   against a layout cost, instead of filling one line after the other.
-- **Works on code in progress.** c3f reads tokens, not a C3 grammar, so half-written code,
-  syntax errors and new syntax do not stop it, and format-on-save keeps working while you
-  type. An unclosed bracket is reported and the code inside it left as written; the rest of
-  the file is formatted.
+- **Format on save, even mid-edit.** c3f reads tokens, not a C3 grammar, so half-written
+  code, syntax errors and new syntax do not stop it: the code inside an unclosed bracket is
+  left as written, the rest of the file is formatted, and a note names the line. Setups for
+  Vim, Neovim and Helix are below.
 - **Fast.** c3f formats the whole standard library in 0.13 s, and in 0.32 s while wrapping
   it at 120 columns, where c3fmt takes 2.4 s. Its time grows in step with the size of a
   file: a table of 4,000 numbers takes 3 ms.
@@ -39,6 +39,7 @@ core (28 here).
 | Files that change again on a second run | 0 | 0 | 31 | 5 |
 | Files it fails on | 0 | 0 | 0 | 69 |
 | c3c's unit tests still pass afterwards | yes | yes | yes | no (does not compile) |
+| Formats a file with a syntax error (e.g. while typing) | yes | yes | no | no |
 
 ¹ Two files have multi-line comments whose inner lines moved along with the comment's
 indentation; their text is otherwise unchanged.
@@ -54,7 +55,9 @@ so files are formatted one at a time.
 
 ## Install
 
-Needs [c3c](https://github.com/c3lang/c3c) 0.8.6 and [c3l](https://github.com/konimarti/c3l):
+Download a binary for Linux, macOS or Windows from the
+[releases](https://github.com/konimarti/c3f/releases), or build it; that needs
+[c3c](https://github.com/c3lang/c3c) 0.8.6 and [c3l](https://github.com/konimarti/c3l):
 
 ```sh
 git clone https://github.com/konimarti/c3f && cd c3f
@@ -71,54 +74,58 @@ c3f --check src/           # list files that would change (exit 1 if any)
 c3f --diff src/            # show the changes as a unified diff
 c3f - < file.c3            # stdin → stdout (--stdin-filename for the config lookup)
 c3f --print-config file.c3 # the options in effect, and where they come from
+c3f -w --exclude 'gen/*' .  # skip paths matching a glob (repeatable)
 ```
 
 `// c3f off` … `// c3f on` leaves a region untouched. Exit status: 0 ok, 1 `--check`
-found changes, 2 usage or I/O error, 3 a place was kept as written. In
-directories, hidden ones and those named `build` or `lib` are skipped.
+found changes, 2 usage or I/O error, 3 a place was kept as written (with `-w`, `--check`
+or `--diff`; printing the result succeeds, with the notes on stderr). In directories,
+hidden ones and those named `build` or `lib` are skipped.
 
 ## Format on save, in CI, before every commit
 
 **Editors.** Pipe the buffer through `c3f --stdin-filename <path> -`: the formatted file
-comes out on stdout, and the path is used to find `.editorconfig`. For example, Vim
-(`~/.vim/after/ftplugin/c3.vim`, or your `.vimrc`); the buffer is only replaced if c3f
-succeeds:
+comes out on stdout, notes (such as an unclosed bracket) on stderr, and the path is used to
+find `.editorconfig`. For example, Vim (`~/.vim/after/ftplugin/c3.vim`, or your `.vimrc`);
+the buffer is only replaced if c3f succeeds, and the notes are shown as warnings:
 
 ```vim
 function! C3fFormat() abort
-	let l:out = systemlist('c3f --stdin-filename ' . shellescape(expand('%')) . ' -', getline(1, '$'))
-	if (v:shell_error == 0 || v:shell_error == 3) && l:out !=# getline(1, '$')
+	let l:err = tempname()
+	let l:out = systemlist('c3f --stdin-filename ' . shellescape(expand('%')) . ' - 2>' . shellescape(l:err), getline(1, '$'))
+	if v:shell_error == 0 && l:out !=# getline(1, '$')
 		let l:view = winsaveview()
 		call setline(1, l:out)
 		silent! execute (len(l:out) + 1) . ',$delete _'
 		call winrestview(l:view)
 	endif
+	for l:msg in readfile(l:err)
+		echohl WarningMsg | echomsg l:msg | echohl None
+	endfor
+	call delete(l:err)
 endfunction
 autocmd BufWritePre *.c3,*.c3i call C3fFormat()
 ```
 
 Feeling bold? `:%!c3f -` formats the buffer in one go, but it replaces the buffer with
-whatever c3f prints, error messages included (`u` undoes it).
+whatever c3f prints, notes and error messages included (`u` undoes it).
 
 Neovim with [conform.nvim](https://github.com/stevearc/conform.nvim):
 
 ```lua
 require("conform").setup({
-	formatters = {
-		c3f = { command = "c3f", args = { "--stdin-filename", "$FILENAME", "-" }, exit_codes = { 0, 3 } },
-	},
+	formatters = { c3f = { command = "c3f", args = { "--stdin-filename", "$FILENAME", "-" } } },
 	formatters_by_ft = { c3 = { "c3f" } },
 	format_on_save = { timeout_ms = 500 },
 })
 ```
 
-or Helix (`languages.toml`; the `sh` wrapper lets exit status 3, a place kept as written,
-still format the buffer):
+or Helix (`languages.toml`):
 
 ```toml
 [[language]]
 name = "c3"
-formatter = { command = "sh", args = ["-c", "c3f -; s=$?; [ $s -eq 3 ] && exit 0; exit $s"] }
+formatter = { command = "c3f", args = ["-"] }
 auto-format = true
 ```
 
@@ -176,6 +183,9 @@ spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is
 | `c3f_align`, `c3f_align_comments` | `preserve`, `decls` (names, `=` and `=>` of consecutive lines), `off`; `preserve`, `always`, `off` |
 | `c3f_trailing_comment_spaces` | `keep`, or the number of spaces before a trailing `//` comment |
 | `c3f_magic_comma` | `true` (a trailing comma keeps one item per line when wrapping) |
+| `c3f_wrap_cost_hard`, `c3f_wrap_cost_break` | wrapping costs: 100 per column past `max_line_length`, 2 per line break |
+| `c3f_soft_max_line_length`, `c3f_wrap_cost_soft` | a second, soft limit (off), and 0.05 per column past it |
+| `c3f_wrap_budget` | 2000: statements of more tokens are not wrapped |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all` |
 
 ## License
