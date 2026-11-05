@@ -43,7 +43,8 @@ fn void? collect(List{String}* files, String arg, List{String}* excludes)
 		if (excluded(full, excludes)) continue;
 		if (file::is_dir(full))
 		{
-			if (!skipped_dir(name)) collect(files, full, excludes)!;
+			// a linked directory is not followed (it can loop, or lead out of the tree)
+			if (!skipped_dir(name) && !path::is_link(path::tnew(full)!)) collect(files, full, excludes)!;
 		}
 		else if (is_source(name))
 		{

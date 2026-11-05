@@ -50,10 +50,10 @@ fn void? Options.parse(&self, String[] args)
 		switch (a)
 		{
 			case "--": flags_done = true;
-			case "-w": case "--write": self.mode = WRITE;
-			case "--check": self.mode = CHECK;
-			case "--diff": self.mode = DIFF;
-			case "--print-config": self.mode = PRINT_CONFIG;
+			case "-w": case "--write": self.set_mode(WRITE, a)!;
+			case "--check": self.set_mode(CHECK, a)!;
+			case "--diff": self.set_mode(DIFF, a)!;
+			case "--print-config": self.set_mode(PRINT_CONFIG, a)!;
 			case "-h": case "--help": self.help = true;
 			case "--version": self.version = true;
 			case "--git-hook": self.git_hook = true;
@@ -84,6 +84,27 @@ fn void? Options.parse(&self, String[] args)
 		io::eprintn("c3f: '-' (stdin) cannot be combined with paths");
 		return USAGE~;
 	}
+	if (self.stdin && self.mode == WRITE)
+	{
+		io::eprintn("c3f: -w writes files; for stdin the result goes to stdout without it");
+		return USAGE~;
+	}
+	if (self.stdin_filename.len && !self.stdin)
+	{
+		io::eprintn("c3f: --stdin-filename is for '-' (stdin)");
+		return USAGE~;
+	}
+}
+
+<* One of -w, --check, --diff, --print-config; they do not combine. *>
+fn void? Options.set_mode(&self, Mode m, String flag) @local
+{
+	if (self.mode != STDOUT && self.mode != m)
+	{
+		io::eprintfn("c3f: %s: only one of -w, --check, --diff and --print-config can be given", flag);
+		return USAGE~;
+	}
+	self.mode = m;
 }
 
 const String HELP = `c3f - a formatter for C3

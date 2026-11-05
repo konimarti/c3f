@@ -38,6 +38,11 @@ fn int main(String[] args)
 	{
 		if (catch c3f::cli::collect(&files, p, &opt.excludes)) return Status.ERROR.ordinal;
 	}
+	if (!files.len())
+	{
+		io::eprintn("c3f: no C3 files (*.c3, *.c3i, *.c3t) found");
+		return opt.mode == STDOUT ? Status.ERROR.ordinal : Status.OK.ordinal;
+	}
 	bool one = opt.paths.len() == 1 && files.len() == 1 && !file::is_dir(opt.paths[0]);
 	if (opt.mode == STDOUT && !one)
 	{
@@ -150,6 +155,7 @@ fn Status report(String name, c3f::FormatResult* r)
 }
 
 extern fn CInt chmod(ZString path, libc::Mode_t mode) @feat(POSIX);
+extern fn CInt access(ZString path, CInt mode) @feat(POSIX);
 
 <*
  Write through a temporary file that takes the original's permissions, then rename it over
@@ -167,10 +173,19 @@ fn bool write_atomic(String path, String text)
 		}
 		return true;
 	}
+	$if env::POSIX:
+		// the rename below would replace a read-only file: refuse, as writing to it would
+		if (access(path.zstr_tcopy(), 2 /* W_OK */) != 0)
+		{
+			io::eprintfn("c3f: %s: not writable", path);
+			return false;
+		}
+	$endif
 	String tmp = path.tconcat(".c3f~");
 	if (catch file::save(tmp, text))
 	{
 		io::eprintfn("c3f: %s: cannot write", tmp);
+		(void)file::delete(tmp);
 		return false;
 	}
 	$if env::POSIX:
