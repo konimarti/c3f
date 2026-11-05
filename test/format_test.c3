@@ -283,6 +283,21 @@ fn void strict_mode() @test
 	      "fn List{int} f()\n{\n\tforeach (&o : x) *o = 1;\n\tif (a) (void)b;\n\t$assert X : \"m\";\n}\nfn Tok* Fmt.tok(&self) => null;\nstruct G { int a; }\n", &c);
 }
 
+fn void style_sweep_regressions() @test
+{
+	// in every style: label and header colons are tight, prefix operators open statements
+	// after blocks, comments and `$endif`
+	String src = "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase a.b :\n\t\t\tbreak;\n\t}\n\t$if X :\n\t\ty();\n\t$endif\n\t*p = 1;\n\tif (q)\n\t{\n\t\tz();\n\t}\n\t/* c */\n\t*s = 2;\n}\n";
+	String want = "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase a.b:\n\t\t\tbreak;\n\t}\n\t$if X:\n\t\ty();\n\t$endif\n\t*p = 1;\n\tif (q)\n\t{\n\t\tz();\n\t}\n\t/* c */\n\t*s = 2;\n}\n";
+	check(src, want);
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_style", "strict");
+	check(src, want, &c);
+	// strict: a tie in a narrow context falls back to the broader one; function types are tight
+	check("fn void f()\n{\n\tvar $r = $$h(@sprintf(\"%s\", $x, $i));\n}\nalias P = fn Eb (int a);\n",
+	      "fn void f()\n{\n\tvar $r = $$h(@sprintf(\"%s\", $x, $i));\n}\nalias P = fn Eb(int a);\n", &c);
+}
+
 fn void import_sorting() @test
 {
 	c3f::Config c = c3f::defaults();

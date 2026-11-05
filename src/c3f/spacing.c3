@@ -58,7 +58,11 @@ bool slots_ready @local;
 
 fn sz slot_of(ulong key) @local => (sz)((key * 0x9E3779B97F4A7C15) >> 51);
 
-fn Rule*? find_rule(GapKey* key) @local
+<*
+ The cell that decides a context: the most specific one. In strict mode, the most specific one
+ that is consistent (an inconsistent context falls back to a broader one), or the broadest.
+*>
+fn Rule*? find_rule(GapKey* key, bool strict) @local
 {
 	$assert SPACING_RULES.len * 2 <= SLOTS : "spacing table too large: raise SLOTS";
 	if (!slots_ready)
@@ -71,15 +75,19 @@ fn Rule*? find_rule(GapKey* key) @local
 		}
 		slots_ready = true;
 	}
+	Rule* found;
 	for (char level = 4; level >= 2; level--)
 	{
 		ulong want = key.pack(level);
 		for (sz k = slot_of(want); slots[k]; k = (k + 1) & (SLOTS - 1))
 		{
-			if (slots[k].pack() == want) return slots[k];
+			if (slots[k].pack() != want) continue;
+			if (!strict || slots[k].consistent()) return slots[k];
+			found = slots[k];
+			break;
 		}
 	}
-	return NOT_FOUND~;
+	return found ?: NOT_FOUND~;
 }
 
 const float THRESHOLD = 0.99;
@@ -95,14 +103,14 @@ fn bool Rule.weak(&self) => !self.consistent() && self.n0 + self.n1 - self.major
 <* The table's answer; strict mode takes the majority even where the stdlib is inconsistent. *>
 fn Space Rule.decide(&self, bool strict)
 {
-	if (strict || self.consistent()) return self.n1 > self.n0 ? Space.ONE : Space.NONE;
-	return KEEP;
+	if (self.consistent() || (strict && self.n0 != self.n1)) return self.n1 > self.n0 ? Space.ONE : Space.NONE;
+	return KEEP;   // inconsistent, or a tie even for strict
 }
 
 fn Space Src.table_space(&self, sz i, bool strict)
 {
 	GapKey key = self.gap_key(i);
-	if (try r = find_rule(&key)) return r.decide(strict);
+	if (try r = find_rule(&key, strict)) return r.decide(strict);
 	return KEEP;
 }
 
@@ -342,21 +350,28 @@ fn bool Src.is_unary(&self, sz o)
 			return false;
 	}
 	if (!self.same_line(o + 1) || !is_operand_start(self.toks[o + 1].type)) return false;
-	if (o == 0) return true;
-	Tok* p = &self.toks[o - 1];
+	// what comes before, comments skipped
+	sz pi = self.prev_code(o);
+	if (pi == NO) return true;
+	Tok* p = &self.toks[pi];
 	switch (p.type)
 	{
 		case LPAREN: case LBRACKET: case LBRACE: case LVEC: case COMMA: case EOS: case COLON: case IMPLIES:
 		case RETURN: case CASE: case ASSERT:
+		case CT_ELSE: case CT_ENDIF: case CT_ENDFOR: case CT_ENDFOREACH: case CT_ENDSWITCH:   // `$endif *p = 1;`
 			return true;
+		case RBRACE:
+			// a statement after a block: `} *p = 1;`
+			return p.match != NO && (self.toks[p.match].brace == BLOCK || self.toks[p.match].brace == BODY);
 		case RPAREN:
 			// after a cast, or at the start of the statement of `if (…)`, `foreach (…)`, …
-			return self.is_cast_close(o - 1) || self.is_header_close(o - 1);
+			return self.is_cast_close(pi) || self.is_header_close(pi);
 		case BANG: case BANGBANG: case BIT_NOT: case PLUSPLUS: case MINUSMINUS:
 			// postfix after an operand (`foo()! + 1`, `i++ - 1`): then o is binary
-			return o < 2 || !is_operand_end(self.toks[o - 2].type);
+			sz before = self.prev_code(pi);
+			return before == NO || !is_operand_end(self.toks[before].type);
 		case STAR:
-			return !self.is_type_star(o - 1) && self.is_unary(o - 1);
+			return !self.is_type_star(pi) && self.is_unary(pi);
 		default:
 			return is_operator_text(p.text);
 	}
@@ -421,6 +436,10 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 			if (k == BLOCK || k == BODY) return ONE;
 		}
 	}
+	// the ':' of a label or compile-time header is tight: `case X:`, `$if cond:`
+	if (next.type == COLON && next.label) return NONE;
+	// strict: the parameter list of a function type is tight, `fn Type(...)` like `fn void(...)`
+	if (cfg.spacing == STRICT && next.type == LPAREN && i >= 2 && self.toks[i - 2].type == FUNC && is_type_token(prev.type)) return NONE;
 	// `$assert cond : "message"`
 	if ((next.type == COLON && self.is_assert_colon(i)) || (prev.type == COLON && self.is_assert_colon(i - 1))) return ONE;
 	// `if (x) y;`: the statement after a control header is spaced off

@@ -627,7 +627,21 @@ fn sz Fmt.end_col(&self, sz k)
 fn String Fmt.joined_spacing(&self, sz k)
 {
 	Space rule = self.src.space_rule(k, self.cfg);
-	if (rule == KEEP) rule = ONE;
+	if (rule == KEEP)
+	{
+		// there was no spacing to keep: take what the stdlib writes most often here
+		Config strict = *self.cfg;
+		strict.spacing = STRICT;
+		rule = self.src.space_rule(k, &strict);
+	}
+	if (rule == KEEP)
+	{
+		// nothing known about this context: parentheses and brackets hug, anything else gets a space
+		TokenType p = self.src.toks[k - 1].type;
+		TokenType n = self.src.toks[k].type;
+		bool hug = p == LPAREN || p == LBRACKET || n == RPAREN || n == RBRACKET;
+		rule = hug ? Space.NONE : Space.ONE;
+	}
 	return self.apply(k, rule, " ");
 }
 
