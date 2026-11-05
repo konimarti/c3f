@@ -79,8 +79,9 @@ c3f -w --exclude 'gen/*' .  # skip paths matching a glob (repeatable)
 
 `// c3f off` … `// c3f on` leaves a region untouched. Exit status: 0 ok, 1 `--check`
 found changes, 2 usage or I/O error, 3 a place was kept as written (with `-w` or `--check`;
-printing the result or the diff succeeds, with the notes on stderr). In directories,
-hidden ones and those named `build` or `lib` are skipped.
+printing the result or the diff succeeds, with the notes on stderr). In directories, the
+files ending in `.c3`, `.c3i` and `.c3t` are formatted; hidden directories and those named
+`build` or `lib` are skipped, and linked directories are not followed.
 
 ## Format on save, in CI, before every commit
 
@@ -148,24 +149,25 @@ search) and can be overridden with `--set key=value`:
 [*.c3]
 c3f_style = stdlib            # or knr, strict
 indent_style = tab
-max_line_length = 100
-c3f_line_breaks = long        # wrap only lines longer than max_line_length (or: fit)
+max_line_length = 100         # used by c3f only with c3f_line_breaks = long or fit
+c3f_line_breaks = long        # wrap the lines longer than that (fit: lay out every statement anew)
 c3f_sort_imports = lines
 ```
 
 `c3f_style` picks a preset; the options below then change single settings:
 
 - `stdlib` (default): the standard library's style: tabs, Allman braces, `else` on its own line.
-- `knr`: `stdlib` with K&R braces and `} else {`.
+- `knr`: `stdlib` with K&R braces, also for functions (`c3f_brace_style = linux` keeps those on
+  their own line), and `} else {`.
 - `strict`: `stdlib` with spacing made uniform even where the stdlib varies, `Foo* p`, no
-  padding inside brackets, and tight slices `s[a:b]`.
+  padding inside brackets and initializer braces (`{1, 2}`), and tight slices `s[a:b]`.
 
 **stdlib or strict?** Both format everything: indentation, braces, blank lines and the spacing
 between tokens (`a=b+c` → `a = b + c`, `if(x)` → `if (x)`, `foo( a ,b )` → `foo(a, b)`). The
 difference is in the few places where the standard library itself writes both forms, such as
 `Foo* p` and `Foo *p`, `[1, 2]` and `[ 1, 2 ]`, `s[a:b]` and `s[a : b]`: about 0.2% of the
 spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is stdlib style;
-`strict` always writes the more common one.
+`strict` always writes one form: the more common one, but no padding inside brackets and braces.
 
 | Option | Values (default first) |
 |---|---|
@@ -184,7 +186,7 @@ spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is
 | `c3f_trailing_comment_spaces` | `keep`, or the number of spaces before a trailing `//` comment |
 | `c3f_magic_comma` | `true` (a trailing comma keeps one item per line when wrapping) |
 | `c3f_wrap_cost_hard`, `c3f_wrap_cost_break` | wrapping costs: 100 per column past `max_line_length`, 2 per line break |
-| `c3f_soft_max_line_length`, `c3f_wrap_cost_soft` | a second, soft limit (off), and 0.05 per column past it |
+| `c3f_soft_max_line_length`, `c3f_wrap_cost_soft` | a second, soft limit (0: off), and 0.05 per column past it |
 | `c3f_wrap_budget` | 2000: statements of more tokens are not wrapped |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all` |
 
