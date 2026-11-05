@@ -9,9 +9,13 @@ A faithful formatter for [C3](https://c3-lang.org).
   dynamic-programming algorithm of [A New Approach to Optimal Code Formatting](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf)
   (Yelland, the algorithm of Google's rfmt): it weighs every way to break the statement
   against a layout cost, instead of filling one line after the other.
-- **Future-proof.** c3f does not depend on a C3 grammar, so new or unfinished syntax does
-  not stop it: that part is left as written and the rest of the file is formatted.
-- **Fast.** c3f formats the whole standard library in under 0.2 s.
+- **Works on code in progress.** c3f reads tokens, not a C3 grammar, so half-written code,
+  syntax errors and new syntax do not stop it, and format-on-save keeps working while you
+  type. An unclosed bracket is reported and the code inside it left as written; the rest of
+  the file is formatted.
+- **Fast.** c3f formats the whole standard library in 0.12 s, about 20 times faster than
+  c3fmt, and its time grows in step with the size of a file: a table of 4,000 numbers
+  takes 3 ms.
 
 Also: `.editorconfig` support, import sorting, alignment that survives re-indentation,
 and format-on-save, CI and git-hook integration.
@@ -23,9 +27,9 @@ Formatting the C3 standard library (364 files) with each tool's default settings
 
 | | c3f | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
 |---|---|---|---|
-| Time (median of 5 runs) | 0.17 s | 2.5 s | 88 s |
+| Time (median of 5 runs) | 0.12 s | 2.5 s ² | 88 s |
 | Peak memory | 9 MB | 91 MB | 15 MB |
-| Lines changed | 1,804 | 14,069 | 14,854 |
+| Lines changed | 1,842 | 14,069 | 14,854 |
 | Files whose code or comments changed | 0 ¹ | 77 | 110 |
 | Files that change again on a second run | 0 | 31 | 5 |
 | Files it fails on | 0 | 0 | 69 |
@@ -33,6 +37,8 @@ Formatting the C3 standard library (364 files) with each tool's default settings
 
 ¹ Two files have multi-line comments whose inner lines moved along with the comment's
 indentation; their text is otherwise unchanged.
+
+² As its project builds it (`-O1`); 2.4 s built with `-O3`, like c3f.
 
 ## Install
 
@@ -86,18 +92,21 @@ Neovim with [conform.nvim](https://github.com/stevearc/conform.nvim):
 
 ```lua
 require("conform").setup({
-	formatters = { c3f = { command = "c3f", args = { "--stdin-filename", "$FILENAME", "-" } } },
+	formatters = {
+		c3f = { command = "c3f", args = { "--stdin-filename", "$FILENAME", "-" }, exit_codes = { 0, 3 } },
+	},
 	formatters_by_ft = { c3 = { "c3f" } },
 	format_on_save = { timeout_ms = 500 },
 })
 ```
 
-or Helix (`languages.toml`):
+or Helix (`languages.toml`; the `sh` wrapper lets exit status 3, a place kept as written,
+still format the buffer):
 
 ```toml
 [[language]]
 name = "c3"
-formatter = { command = "c3f", args = ["-"] }
+formatter = { command = "sh", args = ["-c", "c3f -; s=$?; [ $s -eq 3 ] && exit 0; exit $s"] }
 auto-format = true
 ```
 
