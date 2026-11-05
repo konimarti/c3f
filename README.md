@@ -156,3 +156,7 @@ spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is
 | `c3f_trailing_comment_spaces` | `keep`, or the number of spaces before a trailing `//` comment |
 | `c3f_magic_comma` | `true` (a trailing comma keeps one item per line when wrapping) |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all` |
+
+## License
+
+MIT, see [LICENSE](LICENSE).
