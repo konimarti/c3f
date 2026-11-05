@@ -693,30 +693,34 @@ fn void Wrap.solve_statement(&self, List{bool}* breaks)
 	{
 		WrapMemo* memo = self.f.memo;
 		String key = memo ? self.model_key(start) : "";
-		if (memo)
+		uint[]? known = memo ? memo.seen.get(key) : NOT_FOUND~;
+		if (try known)
 		{
-			if (try known = memo.seen.get(key))
-			{
-				foreach (k : known) (*breaks)[k] = true;
-				return;
-			}
-		}
-		(void)self.step(self.top, INLINE, 0, 0, 0);
-		if (!self.overflow)
-		{
-			self.read(self.top, INLINE, 0, start, breaks);
-			if (memo)
-			{
-				List{uint} at;
-				at.tinit();
-				foreach (k, b : *breaks) if (b) at.push((uint)k);
-				memo.seen.set(key, at.to_array(mem));
-			}
+			// (an overflow is a function of the model as well: it is not tried again)
+			if (known.len == 1 && known[0] == OVERFLOWED) return self.first_fit(start, breaks);
+			foreach (k : known) (*breaks)[k] = true;
 			return;
 		}
+		(void)self.step(self.top, INLINE, 0, 0, 0);
+		List{uint} at;
+		at.tinit();
+		if (self.overflow)
+		{
+			at.push(OVERFLOWED);
+		}
+		else
+		{
+			self.read(self.top, INLINE, 0, start, breaks);
+			foreach (k, b : *breaks) if (b) at.push((uint)k);
+		}
+		if (memo) memo.seen.set(key, at.to_array(mem));
+		if (!self.overflow) return;
 	}
 	self.first_fit(start, breaks);
 }
+
+// a memo entry for a statement too big for the tables (no break index is that large)
+const uint OVERFLOWED = uint::max;
 
 <* Everything the solver reads, written out: the same key means the same breaks. *>
 fn String Wrap.model_key(&self, sz start)

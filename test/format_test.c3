@@ -465,6 +465,8 @@ fn void later_wrap_passes_settle() @test
 	stable_with(call, {"max_line_length", "60", "c3f_line_breaks", "long", "c3f_continuation", "align"});
 	// an aligned gap before a name does not move the continuation lines that align after its '('
 	stable_with("fn int\tget_value(char r,\n\tint b)\n{\n\treturn 1;\n}\n", {"c3f_continuation", "align"});
+	// an aligned line that opens a bracket continued below keeps its place (the continuation was put under it)
+	stable_with("fn void f()\n{\n\tp[i,j]    = 1;\n\tvalue     = call(a,\n\t                 b);\n}\n", {"c3f_continuation", "align"});
 	// a compile-time header over two lines: the body is judged by the line after its ':'
 	check("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", "fn void f()\n{\n\t$if $a &&\n\t$b:\n\t\tfoo();\n\t$endif\n}\n");
 	stable_with("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", {"c3f_continuation", "tab"});

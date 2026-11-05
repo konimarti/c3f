@@ -142,7 +142,7 @@ fn void Fmt.align(&self)
 	foreach (an : anchors)
 	{
 		sz a = an.tok;
-		if (done[a]) continue;
+		if (done[a] || self.opens_aligned(a)) continue;
 		group.clear();
 		sz c = an.col;
 		sz line = s.toks[a].line;
@@ -151,7 +151,7 @@ fn void Fmt.align(&self)
 		{
 			sz? k = at.get(at_key(l, c));
 			if (catch k) break;
-			if (!self.alike(a, k) || !self.next_line(k, edge) || self.continues(k, edge)) break;
+			if (!self.alike(a, k) || !self.next_line(k, edge) || self.continues(k, edge) || self.opens_aligned(k)) break;
 			group.push(k);
 			edge = k;
 		}
@@ -161,7 +161,7 @@ fn void Fmt.align(&self)
 		{
 			sz? k = at.get(at_key(l, c));
 			if (catch k) break;
-			if (!self.alike(a, k) || !self.next_line(edge, k) || self.continues(edge, k)) break;
+			if (!self.alike(a, k) || !self.next_line(edge, k) || self.continues(edge, k) || self.opens_aligned(k)) break;
 			group.push(k);
 			edge = k;
 		}
@@ -192,6 +192,19 @@ fn bool Fmt.continues(&self, sz up, sz down)
 {
 	sz o = self.src.toks[self.out[down].line_tok].encl;
 	return o != NO && self.out[o].line_tok == self.out[up].line_tok;
+}
+
+<*
+ With `c3f_continuation = align`, does the line of token k open a bracket that the next line
+ continues in? That line was placed under the bracket before alignment: moving its opener
+ would leave it behind until the next run.
+*>
+fn bool Fmt.opens_aligned(&self, sz k)
+{
+	if (self.cfg.continuation != ALIGN) return false;
+	sz m = k + 1;
+	while (m < self.src.len() && self.out[m].nl == 0) m++;
+	return m < self.src.len() && self.continues(k, m);
 }
 
 enum DeclKind : char @local { NONE, NAME, ASSIGN, ARROW }
