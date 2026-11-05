@@ -167,6 +167,11 @@ fn void glob() @test
 	assert(c3f::glob_match("*.{c3,c3i}", "foo.c3i"));
 	assert(c3f::glob_match("src/[ab]?.c3", "src/b1.c3"));
 	assert(!c3f::glob_match("[!a]*", "abc"));
+	assert(c3f::glob_match("{src,test}/**/*.{c3,c3i}", "test/a/b.c3i"));
+	assert(!c3f::glob_match("{src,test}/*.c3", "lib/a.c3"));
+	assert(c3f::glob_match("a\\*b", "a*b") && !c3f::glob_match("a\\*b", "axb"));
+	// many stars against a long name that does not match: no exponential backtracking
+	assert(!c3f::glob_match("*a*a*a*a*a*a*a*a*a*a*a*a*b", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
 }
 
 fn void paths() @test
@@ -360,4 +365,39 @@ fn void wrapping() @test
 	      "fn void f()\n{\n\tif (spawn_actions(&actions, stdoutfd[1],\n\t\tlibc::STDOUT_FD)) return FAILED_TO_OPEN~;\n"
 	      "\treturn @atomic_exchange(ptr, value,\n\t\tAtomicOrdering.RELAXED, $alignment);\n}\n"
 	      "extern fn int get_path(WString name, ulong len,\n\tChar16* buffer) @cname(\"GetPath\");\n", &c);
+}
+
+fn void release_review_regressions() @test
+{
+	c3f::Config d = c3f::defaults();
+	c3f::Config strict = c3f::defaults();
+	(void)strict.set("c3f_style", "strict");
+	// a ternary '?' after ']' is spaced like any other (not the '?' of `int[]?`)
+	check("fn void f()\n{\n\tx = a[i]?b:c;\n\tint[]? z = g();\n}\n", "fn void f()\n{\n\tx = a[i] ? b : c;\n\tint[]? z = g();\n}\n", &strict);
+	// ... and the '?' of an optional return type stays tight, whatever follows in the file
+	check("fn sz? Foo.peek(&self)\n{\n\treturn 0;\n}\nfn void g()\n{\n\tx = c ? a : b;\n}\n",
+	      "fn sz? Foo.peek(&self)\n{\n\treturn 0;\n}\nfn void g()\n{\n\tx = c ? a : b;\n}\n", &strict);
+	// the statement after a control header starts on the header's line, also when wrapping
+	c3f::Config w = c3f::defaults();
+	(void)w.set("max_line_length", "60");
+	(void)w.set("c3f_line_breaks", "long");
+	String src = "fn void f()\n{\n\tif (s - buf == 1 && (y || p > 0 || flags_hash_value)) *s++ = 1;\n}\n";
+	check(src, "fn void f()\n{\n\tif (s - buf == 1\n\t\t&& (y || p > 0 || flags_hash_value)) *s++ = 1;\n}\n", &w);
+	// a '\r' that c3c would drop keeps the whole file
+	c3f::FormatResult r = c3f::format(tmem, "fn void f(){int x = 1; // c\rx = 2;}\n", &d);
+	assert(r.fallback && !r.changed && r.notes.len() == 1);
+	// notes are made once, about the input, even when wrapping runs again
+	r = c3f::format(tmem, "fn void f()\n{\n\tint x = (1;\n}\n", &w);
+	assert(r.fallback && r.notes.len() == 1 && r.notes[0].line == 3);
+	// a stray closer keeps only the span around it
+	check("fn void f()\n{\n\tint x = 3 ];\n}\nfn void g(){int z=3;}\n", "fn void f()\n{\n\tint x = 3 ];\n}\nfn void g() {int z = 3;}\n");
+	// a rejected value leaves the option as it was
+	c3f::Config c = c3f::defaults();
+	assert(@catch(c.set("tab_width", "0")));
+	assert(@catch(c.set("indent_size", "99")));
+	assert(c.tab_width == d.tab_width && c.indent_size == d.indent_size);
+	// a comment above an import list does not stop the list from being sorted
+	c3f::Config l = c3f::defaults();
+	(void)l.set("c3f_sort_imports", "lists");
+	check("module t;\n// c\nimport std::z, std::y;\n", "module t;\n// c\nimport std::y, std::z;\n", &l);
 }
