@@ -292,6 +292,9 @@ fn void strict_mode() @test
 
 fn void style_sweep_regressions() @test
 {
+	// the inside of a one-line block or initializer is padded alike on both ends
+	check("fn void f() {int a=1; }\nfn void g() { int a;}\nfn void h() {int a;}\nint[2] x = { 1, 2};\n",
+	      "fn void f() { int a = 1; }\nfn void g() { int a; }\nfn void h() {int a;}\nint[2] x = { 1, 2 };\n");
 	// in every style: label and header colons are tight, prefix operators open statements
 	// after blocks, comments and `$endif`
 	String src = "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase a.b :\n\t\t\tbreak;\n\t}\n\t$if X :\n\t\ty();\n\t$endif\n\t*p = 1;\n\tif (q)\n\t{\n\t\tz();\n\t}\n\t/* c */\n\t*s = 2;\n}\n";

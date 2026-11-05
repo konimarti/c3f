@@ -302,19 +302,19 @@ fn Space Src.space_rule(&self, sz i, Config* cfg)
 {
 	if (self.is_unary(i - 1)) return NONE;
 	Space rule = self.gap_rule(i, cfg);
-	if (rule == KEEP) return KEEP;
 	// the inside of a one-line `{ … }` is padded alike on both ends
 	sz open = self.toks[i - 1].type == LBRACE ? i - 1 : self.toks[i].type == RBRACE ? self.toks[i].match : NO;
 	// (both inner gaps on the line: a `{ … }` that was wrapped keeps the padding it had on one line)
-	if (open != NO && self.toks[open].brace == INIT && self.toks[open].match > open + 1
+	if (open != NO && self.toks[open].brace != GENERIC && self.toks[open].match > open + 1
 		&& self.toks[open + 1].nl == 0 && self.toks[self.toks[open].match].nl == 0)
 	{
 		sz close = self.toks[open].match;
 		Space a = self.gap_rule(open + 1, cfg);
 		Space b = self.gap_rule(close, cfg);
-		if (a == KEEP || b == KEEP) return KEEP;
-		if (a != b) return (self.gap(open + 1).len > 0) == (self.gap(close).len > 0) ? Space.KEEP : Space.ONE;
+		// the sides disagree, or one follows the source: a symmetric source stays, a lopsided one gets spaces
+		if (a == KEEP || b == KEEP || a != b) return (self.gap(open + 1).len > 0) == (self.gap(close).len > 0) ? Space.KEEP : Space.ONE;
 	}
+	if (rule == KEEP) return KEEP;
 	if (is_operator_text(self.toks[i].text) && self.same_line(i + 1))
 	{
 		Space after = self.gap_rule(i + 1, cfg);
