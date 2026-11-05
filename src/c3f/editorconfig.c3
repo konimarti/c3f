@@ -93,6 +93,7 @@ fn bool? read_editorconfig(String config_path, String file, List{Setting}* out, 
 		*error = string::tformat("%s: cannot read", config_path);
 		return BAD_CONFIG~;
 	}
+	if (((String)data).starts_with("\xEF\xBB\xBF")) data = data[3..];   // saved "with signature"
 	String dir = parent_dir(absolute(config_path));
 	bool root;
 	bool in_preamble = true;

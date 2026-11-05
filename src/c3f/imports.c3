@@ -42,6 +42,16 @@ fn String Src.path_at(&self, sz k)
 	return d.str_view();
 }
 
+<* Can token k be part of an import statement (`import std::io, foo @public;`)? *>
+fn bool Src.import_part(&self, sz k)
+{
+	switch (self.toks[k].type)
+	{
+		case IDENT: case SCOPE: case TYPE_IDENT: case CONST_IDENT: case COMMA: case AT_IDENT: return true;
+		default: return !self.toks[k].code;
+	}
+}
+
 <* Source text of tokens a..b, inside whitespace included. *>
 fn String Src.span_text(&self, sz a, sz b) => self.text[self.toks[a].start:self.end(b) - self.toks[a].start];
 
@@ -68,9 +78,12 @@ fn String sort_imports(String text, SortImports mode)
 	{
 		Tok* t = &s.toks[i];
 		if (t.type != IMPORT || t.encl != NO) continue;
-		sz end = i;
-		while (end < s.len() && s.toks[end].type != EOS) end++;
+		// up to its ';', over what an import holds: an import still being written (no ';' yet)
+		// must not reach into the code after it
+		sz end = i + 1;
+		while (end < s.len() && s.toks[end].type != EOS && s.import_part(end)) end++;
 		if (end >= s.len()) break;
+		if (s.toks[end].type != EOS) continue;
 		Unit u = {.first = i, .last = end, .key = s.path_at(i + 1)};
 		// comments in front of it (on its line, or on their own lines right above) move with it
 		while (u.first > 0 && !s.toks[u.first - 1].code)

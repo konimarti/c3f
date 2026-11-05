@@ -91,6 +91,8 @@ fn String Fmt.emit(&self, List{String}* texts)
 			default: d.append(o.spacing);
 		}
 		String text = self.token_text(i);
+		// the line breaks inside a comment follow end_of_line too (a string's are its value)
+		if (is_comment_type(s.toks[i].type)) text = self.convert_eol(text);
 		texts.push(text);
 		d.append(text);
 	}

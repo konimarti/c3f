@@ -474,3 +474,19 @@ fn void later_wrap_passes_settle() @test
 	stable_with("const Foo A = { 0x4c5c32ff, 0xbb9d, 0x43b0, x\"b5b42d72e54eaaa4\" };  const Foo B = { 0xb7bede81, 0xdf94, 0x4682, x\"a7d857a52620b86f\" };  const Foo C = { 0xA63293E8, 0x664E, 0x48DB, x\"A079DF759E0509F7\" };\n",
 		{"max_line_length", "40", "c3f_line_breaks", "long"});
 }
+
+fn void fourth_review_regressions() @test
+{
+	// a binary operator after a call is spaced, and a prefix operator after a binary one is tight
+	check("fn void f()\n{\n\tw = f(x)*-1;\n\ty = a * -b;\n}\n", "fn void f()\n{\n\tw = f(x) * -1;\n\ty = a * -b;\n}\n");
+	// an import still being written does not take the code after it along when sorting
+	c3f::Config l = c3f::defaults();
+	(void)l.set("c3f_sort_imports", "all");
+	check("module m;\nimport zzz;\nimport aaa\nfn void f()\n{\n\tint a, b;\n}\n", "module m;\nimport zzz;\nimport aaa\nfn void f()\n{\n\tint a, b;\n}\n", &l);
+	// code after a comment that follows '{' still opens the block
+	check("fn void f() { /* a */ int x;\n    z();\n}\n", "fn void f()\n{\n\t/* a */ int x;\n\tz();\n}\n");
+	// the line breaks inside comments follow end_of_line
+	c3f::Config lf = c3f::defaults();
+	(void)lf.set("end_of_line", "lf");
+	check("/* a\r\n b */\r\nint x;\r\n", "/* a\n b */\nint x;\n", &lf);
+}

@@ -123,7 +123,12 @@ fn void Fmt.brace_breaks(&self, sz o)
 		self.out[o].nl = 0;
 	}
 	if (!content) return;
-	if (self.out[o + 1].nl == 0 && !is_comment_type(s.toks[o + 1].type) && !self.fixed(o + 1)) self.out[o + 1].nl = 1;
+	// the content starts on a line of its own; a comment after the '{' stays on its line,
+	// unless code follows it there (`{ /* c */ x;`: the block would not open)
+	sz k = o + 1;
+	while (k < m && !s.toks[k].code && self.out[k].nl == 0) k++;
+	bool code_follows = k == o + 1 || (k < m && self.out[k].nl == 0);
+	if (self.out[o + 1].nl == 0 && code_follows && !self.fixed(o + 1)) self.out[o + 1].nl = 1;
 	if (self.out[m].nl == 0) self.out[m].nl = 1;
 }
 
