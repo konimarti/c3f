@@ -46,6 +46,7 @@ struct Fmt
 	List{Out}   out;
 	List{Frame} frames;
 	List{sz}    after;    // while aligning: output column after each token
+	WrapMemo*   memo;     // breaks of statements wrapped before (null: none kept)
 }
 
 fn void Fmt.init(&self, Src* src, Config* cfg)

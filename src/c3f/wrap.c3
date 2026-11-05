@@ -580,6 +580,26 @@ fn void Wrap.read(&self, sz seq, Layout l, sz open, sz c, List{bool}* breaks)
 
 // ---- driver --------------------------------------------------------------------------------
 
+<*
+ The breaks chosen for statements seen before in one format() call. The solver is a function
+ of its model, so a statement whose model is the same (a later pass, which sees each statement
+ again, or one written twice) gets the same breaks without solving it again.
+*>
+struct WrapMemo
+{
+	HashMap{String, uint[]} seen;   // the model, written out (see Wrap.model_key) → the tokens after a break
+	sz wrapped;                     // statements wrapped (by the solver or from here) since it was last reset
+}
+
+fn void WrapMemo.init(&self) => self.seen.init(mem);
+
+fn void WrapMemo.free(&self)
+{
+	// (the map copies and frees the keys itself)
+	self.seen.@each(; String key, uint[] breaks) { alloc::free(mem, breaks.ptr); };
+	self.seen.free();
+}
+
 <* Re-break the statements that need it (all of them in `fit`). *>
 fn void Fmt.wrap(&self)
 {
@@ -607,6 +627,7 @@ fn void Fmt.wrap_unit(&self, sz a, sz b)
 		for (sz k = a; k <= b; k++) breaks.push(false);
 		w.solve_statement(&breaks);
 		self.apply_breaks(&w, &breaks);
+		if (self.memo) self.memo.wrapped++;
 	};
 }
 
@@ -668,14 +689,63 @@ fn void Wrap.solve_statement(&self, List{bool}* breaks)
 	sz start = self.f.indent_width(self.base);
 	if ((sz)self.elems.len() * 3 * (self.w + 1) <= MAX_CELLS)
 	{
+		WrapMemo* memo = self.f.memo;
+		String key = memo ? self.model_key(start) : "";
+		if (memo)
+		{
+			if (try known = memo.seen.get(key))
+			{
+				foreach (k : known) (*breaks)[k] = true;
+				return;
+			}
+		}
 		(void)self.step(self.top, INLINE, 0, 0, 0);
 		if (!self.overflow)
 		{
 			self.read(self.top, INLINE, 0, start, breaks);
+			if (memo)
+			{
+				List{uint} at;
+				at.tinit();
+				foreach (k, b : *breaks) if (b) at.push((uint)k);
+				memo.seen.set(key, at.to_array(mem));
+			}
 			return;
 		}
 	}
 	self.first_fit(start, breaks);
+}
+
+<* Everything the solver reads, written out: the same key means the same breaks. *>
+fn String Wrap.model_key(&self, sz start)
+{
+	DString d;
+	d.tinit();
+	put(&d, {start, self.w, self.base.levels, self.top, self.elems.len(), self.seqs.len()});
+	d.append(self.base.extra);
+	d.append('|');
+	foreach (el : self.elems)
+	{
+		sz rel = el.first - self.first;
+		bool list = rel > 0 && self.list_comma(el.first);   // (only asked of a point: never the first token)
+		put(&d, {el.kind.ordinal, rel, el.width, el.seq, self.join_w[rel], list ? 1 : 0});
+	}
+	foreach (&q : self.seqs)
+	{
+		bool brace = q.elems.len() && self.f.src.toks[self.elems[q.elems[0]].first].type == LBRACE;
+		put(&d, {q.elems.len(), q.tail, q.magic ? 1 : 0, q.frozen ? 1 : 0, brace ? 1 : 0});
+		foreach (j, e : q.elems) put(&d, {e, q.points[j].ordinal, (sz)bitcast(q.mults[j], uint)});
+	}
+	return d.str_view();
+}
+
+fn void put(DString* d, sz[] values) @local
+{
+	foreach (x : values)
+	{
+		uint v = (uint)x;
+		d.append((String)((char*)&v)[:4]);
+	}
 }
 
 <* Write the chosen breaks into the layout, and decide the spacing again as the next run will see it. *>

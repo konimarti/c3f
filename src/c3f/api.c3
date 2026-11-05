@@ -47,18 +47,24 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	}
 	Config settled = *cfg;
 	settled.finish();
-	String text = format_text(input, &settled, &r, a);
+	bool wraps = settled.line_breaks != PRESERVE && settled.max_line_length != 0;
+	WrapMemo memo;
+	if (wraps) memo.init();
+	defer if (wraps) memo.free();
+	String text = format_text(input, &settled, &r, a, wraps ? &memo : null);
 	// wrapping can turn one statement into several (a '{' that now ends a line opens a block),
 	// which the next run may wrap again: repeat until nothing changes, so a second run never does
-	if (settled.line_breaks != PRESERVE)
+	// (if nothing was wrapped, the text is formatted as without wrapping: that needs one run)
+	if (wraps && memo.wrapped)
 	{
 		// the notes are about the input; a later pass that cannot be verified is not used
 		FormatResult later;
 		later.notes.tinit();
 		for (int pass = 1; pass < WRAP_PASSES; pass++)
 		{
-			String again = format_text(text, &settled, &later, tmem, attempts: 1);
-			if (again == text) break;
+			memo.wrapped = 0;
+			String again = format_text(text, &settled, &later, tmem, &memo, attempts: 1);
+			if (again == text || !memo.wrapped) break;
 			text = again;
 		}
 	}
@@ -68,7 +74,7 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 }
 
 <* Format once; a place whose result cannot be verified is kept as written and the rest is tried again. *>
-fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a, int attempts = MAX_ATTEMPTS) @local
+fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a, WrapMemo* memo, int attempts = MAX_ATTEMPTS) @local
 {
 	String input = original;
 	if (cfg.sort_imports != OFF)
@@ -90,6 +96,7 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	}
 	Fmt f;
 	f.init(&s, cfg);
+	f.memo = memo;
 	List{String} texts;
 	texts.tinit();
 	sz noted = r.notes.len();
