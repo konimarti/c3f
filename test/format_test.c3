@@ -406,3 +406,42 @@ fn void release_review_regressions() @test
 	(void)l.set("c3f_sort_imports", "lists");
 	check("module t;\n// c\nimport std::z, std::y;\n", "module t;\n// c\nimport std::y, std::z;\n", &l);
 }
+
+<* Formatting the result again changes nothing (for broken input, where the result itself is not the point). *>
+fn void stable(String src, String key = "", String value = "") @local
+{
+	c3f::Config cfg = c3f::defaults();
+	if (key.len) (void)cfg.set(key, value);
+	String once = fmt_with(src, &cfg);
+	String twice = fmt_with(once, &cfg);
+	if (twice != once) io::eprintfn("--- not idempotent ---\n%s\n--- then ---\n%s\n---", once, twice);
+	assert(twice == once);
+}
+
+fn void quality_review_regressions() @test
+{
+	c3f::Config d = c3f::defaults();
+	c3f::Config knr = c3f::defaults();
+	(void)knr.set("c3f_style", "knr");
+	c3f::Config expand = c3f::defaults();
+	(void)expand.set("c3f_one_line_blocks", "expand");
+	// ternaries are paired like brackets: a '?' inside generic arguments or before an initializer
+	check("fn void f()\n{\n\tList{int?} z = c?List{int?}{}:w;\n}\n", "fn void f()\n{\n\tList{int?} z = c ? List{int?}{} : w;\n}\n");
+	// the ':' of `$assert`, also after a ternary, and an optional type before it stays tight
+	check("fn int? f() {}\n$assert a ? b : c:\"m\";\n$assert x:\"m\";\n", "fn int? f() {}\n$assert a ? b : c : \"m\";\n$assert x : \"m\";\n");
+	// `(Type){ … }` is a value, not a block: it is not expanded, and a block brace gets its space
+	check("fn void f()\n{\n\ty = a * (int[<2>]){ 1, 2 };\n}\n", "fn void f()\n{\n\ty = a * (int[<2>]){ 1, 2 };\n}\n", &expand);
+	check("fn void f() {\n\twhile (i < mid){\n\t\ti++;\n\t}\n}\n", "fn void f() {\n\twhile (i < mid) {\n\t\ti++;\n\t}\n}\n", &knr);
+	// broken code (as in the middle of an edit) formats the same way the second time
+	stable("@d{|(())\n}");
+	stable("{\n/*\n*/v\no}");
+	stable("{\n$if}$endif\nF");
+	stable("@e{$if\n;}");
+	stable("\t$switch\n\t}\n($endswitch", "c3f_brace_style", "linux");
+	stable("1\n\t/*\n*/i/*\nc");
+	stable("e\n $foreach\n\t s$endforeach");
+	stable("c\n /*\n*/$for\nr$endfor");
+	stable("t\n/*\n*/[e\n]", "c3f_continuation", "align");
+	stable("struct:h\n{\n}", "c3f_style", "knr");
+	stable("$if{\ni}\nr$endif", "c3f_brace_style", "linux");
+}

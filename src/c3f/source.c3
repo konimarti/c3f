@@ -24,9 +24,13 @@ struct Tok
 	sz      match;       // matching bracket, $end keyword or $if of an $else; NO if none
 	sz      encl;        // innermost bracket open at the gap before this token; NO at top level
 	sz      parent;      // for case/default and $case/$default: the switch '{' or $switch; else NO
+	sz      prev, next;  // the nearest code tokens before and after (comments skipped); NO if none
+	sz      row;         // the first token of its source line
 	BraceKind brace;
 	bool      is_switch;   // '{' of a switch, or a $switch
 	bool      label;       // ':' that ends a case label or a compile-time header
+	bool      ternary;     // the '?' (or '???') and ':' of a ternary `c ? a : b`
+	bool      message;     // the ':' before the message of `$assert cond : "message"`
 	bool      keep;        // the gap before this token is copied as written
 	bool      code;        // not a comment or contract
 	bool      unterminated;
@@ -107,12 +111,26 @@ fn void Src.init(&self, String text)
 			.match = NO, .encl = NO, .parent = NO, .code = !is_comment_type(t.type),
 			.unterminated = t.unterminated});
 	}
-	// here, in the caller's scope: created lazily inside a wrap's @pool it would not outlive it
+	sz last = NO;
+	foreach (i, &t : self.toks)
+	{
+		t.prev = last;
+		if (t.code) last = i;
+		t.row = i == 0 || t.src_nl > 0 ? i : self.toks[i - 1].row;
+	}
+	last = NO;
+	for (sz i = self.len(); i > 0; i--)
+	{
+		self.toks[i - 1].next = last;
+		if (self.toks[i - 1].code) last = i - 1;
+	}
+	// here, in the caller's scope (temp memory of a wrap's @pool would not outlive it)
 	self.init_memo();
 	self.match_brackets();
 	self.classify_braces();
 	self.match_ct();
 	self.mark_labels();
+	self.mark_ternaries();
 	self.mark_off_regions();
 }
 
@@ -136,21 +154,14 @@ fn String Src.line_indent(&self, sz line)
 	return self.text[s:e - s];
 }
 
-fn sz Src.prev_code(&self, sz i)
-{
-	while (i > 0)
-	{
-		i--;
-		if (self.toks[i].code) return i;
-	}
-	return NO;
-}
+<*
+ Source indentation of the line token k is on. A line that begins inside a multi-line token
+ (`*/ x`) belongs to the line where that token begins.
+*>
+fn String Src.indent_of(&self, sz k) => self.line_indent(self.toks[self.toks[k].row].line);
 
-fn sz Src.next_code(&self, sz i)
-{
-	for (sz k = i + 1; k < self.len(); k++) if (self.toks[k].code) return k;
-	return NO;
-}
+fn sz Src.prev_code(&self, sz i) @inline => i <= 0 ? NO : self.toks[i - 1].code ? i - 1 : self.toks[i - 1].prev;
+fn sz Src.next_code(&self, sz i) @inline => self.toks[i].next;
 
 fn TokenType Src.type_at(&self, sz i) @inline => i == NO || i >= self.len() ? TokenType.INVALID : self.toks[i].type;
 
@@ -188,25 +199,25 @@ fn void Src.match_brackets(&self)
 			strays.push(i);
 			continue;
 		}
-		while ((sz)stack.len() - 1 > k)
-		{
-			sz o = stack.pop()!!;
-			self.unbalanced.push({o, i});
-			self.keep_range(o + 1, i);
-		}
+		// the openers left inside it are unclosed; their spans nest, so the outermost is kept
+		if ((sz)stack.len() - 1 > k) self.keep_range(stack[k + 1] + 1, i);
+		while ((sz)stack.len() - 1 > k) self.unbalanced.push({stack.pop()!!, i});
 		sz o = stack.pop()!!;
 		t.match = o;
 		self.toks[o].match = i;
 	}
-	while (stack.len())
-	{
-		sz o = stack.pop()!!;
-		self.unbalanced.push({o, self.len() - 1});
-		self.keep_range(o + 1, self.len() - 1);
-	}
+	if (stack.len()) self.keep_range(stack[0] + 1, self.len() - 1);
+	while (stack.len()) self.unbalanced.push({stack.pop()!!, self.len() - 1});
 	// a stray closer: the span around it is kept (at top level, its line)
+	sz kept_to = NO;   // the end of the range kept for the stray closer before
 	foreach (i : strays)
 	{
+		if (kept_to != NO && i <= kept_to)
+		{
+			// in the same span or on the same line as the one before: the same range
+			self.unbalanced.push({i, kept_to});
+			continue;
+		}
 		sz e = self.toks[i].encl;
 		sz from = e != NO ? e + 1 : i;
 		sz to = e != NO && self.toks[e].match != NO ? self.toks[e].match : i;
@@ -221,6 +232,7 @@ fn void Src.match_brackets(&self)
 		}
 		self.unbalanced.push({i, to});
 		self.keep_range(from, to);
+		kept_to = to;
 	}
 }
 
@@ -268,16 +280,25 @@ fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
 			switch (bt)
 			{
 				case IF: case WHILE: case FOR: case FOREACH: case FOREACH_R: case SWITCH:
-				case IDENT: case AT_IDENT: case FUNC: case RBRACE: case RBRACKET: case STAR: case HASH_IDENT:
+				case IDENT: case AT_IDENT: case FUNC: case RBRACE: case RBRACKET: case HASH_IDENT:
 				case CT_IDENT: case CONST_IDENT:
 					return BLOCK;
+				case STAR:
+					// `fn int*(int x) {` returns a pointer; `a * (Type){ … }` is a value
+					sz k = self.prev_code(pt.match);
+					while (self.type_at(k) == STAR) k = self.prev_code(k);
+					return is_type_token(self.type_at(k)) ? BLOCK : INIT;
 				default:
 					return is_type_token(bt) ? BLOCK : INIT;
 			}
 		case ELSE: case DO: case DEFER: case SWITCH: case AT_IDENT: case AT_INLINE: case AT_PURE: case AT_NOINLINE:
 		case ASM: case TRY: case CATCH:
 			return BLOCK;
-		case EOS: case LBRACE: case RBRACE:
+		case RBRACE:
+			// `List{int}{1, 2}`: what follows generic arguments is an initializer
+			if (pt.match != NO && self.toks[pt.match].brace == GENERIC) return INIT;
+			nextcase EOS;
+		case EOS: case LBRACE:
 			return enclosing == BLOCK || enclosing == NONE ? BLOCK : INIT;
 		case TYPE_IDENT: case AT_TYPE_IDENT: case IDENT:
 			// `List{int}`, `foo{int}(x)`: an initializer never follows a name (since C3 0.7)
@@ -445,6 +466,9 @@ fn void Src.mark_labels(&self)
 				colon = self.header_colon(i, false, semicolons: true);
 			case CT_FOREACH:
 				colon = self.header_colon(i, true);
+			case CT_ASSERT: case CT_ERROR:
+				sz m = self.header_colon(i, false);
+				if (m != NO) self.toks[m].message = true;
 			default:
 		}
 		if (colon != NO) self.toks[colon].label = true;
@@ -457,6 +481,54 @@ fn void Src.mark_labels(&self)
 		sz p = self.prev_code(i);
 		if (p != NO && self.toks[p].label) t.brace = BLOCK;
 	}
+}
+
+<*
+ Pair the '?' and ':' of each ternary like brackets, in one pass: a ':' that is not a label
+ closes the nearest open '?' at its bracket level. A ',' or ';' or a block or body '{' at that
+ level ends the open ones (the '?' of `int? x;` or `fn int? f() {` belongs to a type).
+*>
+fn void Src.mark_ternaries(&self)
+{
+	List{sz} open;       // '?' still waiting for their ':'
+	open.tinit();
+	List{Level} levels;  // the open brackets, innermost last
+	levels.tinit();
+	levels.push({NO, 0});
+	for (sz i = 0; i < self.len(); i++)
+	{
+		Tok* t = &self.toks[i];
+		// the brackets closed since the last token take their unanswered '?' with them
+		while (levels.len() > 1 && levels[^1].bracket != t.encl) cut(&open, levels.pop()!!.open);
+		if (!t.code) continue;
+		switch (t.type)
+		{
+			case EOS: case COMMA: cut(&open, levels[^1].open);
+			case QUESTION: case CT_TERNARY: open.push(i);
+			case COLON:
+				if (t.label || open.len() == levels[^1].open) break;
+				t.ternary = true;
+				self.toks[open.pop()!!].ternary = true;
+			default:
+		}
+		if (is_opener(t.type))
+		{
+			if (t.brace == BLOCK || t.brace == BODY) cut(&open, levels[^1].open);
+			levels.push({i, open.len()});
+		}
+	}
+}
+
+struct Level @local
+{
+	sz bracket;   // the opener (NO: top level)
+	sz open;      // how many '?' were open before it
+}
+
+<* Drop the last entries of a stack, down to n. *>
+fn void cut(List{sz}* l, sz n) @local
+{
+	while (l.len() > n) (void)l.pop();
 }
 
 fn bool is_directive(String comment, String word)

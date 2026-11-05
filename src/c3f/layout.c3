@@ -91,6 +91,8 @@ fn void Fmt.breaks(&self)
 		}
 		if (c.decl_spacing == ONE) self.decl_break(i);
 	}
+	// the spacing rules look at line breaks: let them see these, as the next run will
+	for (sz i = 1; i < s.len(); i++) s.toks[i].nl = self.out[i].nl;
 }
 
 fn bool Fmt.fixed(&self, sz i) @inline => i >= self.src.len() || self.src.toks[i].keep;
@@ -177,12 +179,12 @@ fn void Fmt.layout(&self)
 		if (t.type == RBRACE && t.match != NO)
 		{
 			while (self.top().kind == CASE && self.top().owner == t.match) self.frames.pop()!!;
-			closes = self.top().kind == BRACE && self.top().opener == t.match;
+			closes = self.unwind_to(BRACE, t.match);
 		}
 		else if (is_ct_end(t.type) && t.match != NO)
 		{
 			while (self.top().kind == CASE && self.top().owner == t.match) self.frames.pop()!!;
-			closes = self.top().kind == CT && self.top().opener == t.match;
+			closes = self.unwind_to(CT, t.match);
 		}
 		else if (t.type == CT_ELSE && t.match != NO)
 		{
@@ -227,7 +229,7 @@ fn void Fmt.layout(&self)
 			col = text_width(o.verbatim ? s.gap(i) : o.spacing, col, c.tab_width);
 		}
 		o.col = col;
-		col = text_width(t.text, col, c.tab_width);
+		col = text_width(self.token_text(i), col, c.tab_width);   // as written: a comment's lines may move
 
 		// frames that start at this token
 		Indent line = self.out[o.line_tok].indent;
@@ -246,16 +248,32 @@ fn void Fmt.layout(&self)
 			Indent content = self.flush_directive(i) ? f.content : self.ct_content(i, line);
 			// the header line is the frame's head: its own continuation lines indent from it
 			self.frames.push({.kind = CT, .opener = i, .owner = NO, .anchor = f.anchor, .base = line, .content = content,
-				.head = line, .head_src = s.line_indent(t.line), .has_head = true});
+				.head = line, .head_src = s.indent_of(i), .has_head = true});
 		}
 		else if (case_line)
 		{
 			bool ct = t.type == CT_CASE || t.type == CT_DEFAULT;
 			Indent content = ct ? self.ct_content(i, line) : line.deeper();
 			self.frames.push({.kind = CASE, .opener = i, .owner = t.parent, .anchor = f.anchor, .base = line,
-				.content = content, .head = line, .head_src = s.line_indent(t.line), .has_head = true});
+				.content = content, .head = line, .head_src = s.indent_of(i), .has_head = true});
 		}
 	}
+}
+
+<*
+ Is there a frame of this kind opened at `opener`? Then the frames above it end here as well
+ (`{ $if } $endif`: the '}' ends the `$if` inside it). The frame itself is the top afterwards.
+*>
+fn bool Fmt.unwind_to(&self, FrameKind kind, sz opener)
+{
+	// frames are pushed in source order: below one opened before `opener` there is none of it
+	for (sz k = self.frames.len() - 1; k > 0 && self.frames[k].opener >= opener; k--)
+	{
+		if (self.frames[k].kind != kind || self.frames[k].opener != opener) continue;
+		while (self.frames.len() - 1 > k) self.frames.pop()!!;
+		return true;
+	}
+	return false;
 }
 
 <* `$if`/`$else`/`$endif`… written at column 0 inside a block (keep mode): it stays there. *>
@@ -265,7 +283,7 @@ fn bool Fmt.flush_directive(&self, sz i)
 	Tok* t = &s.toks[i];
 	if (self.cfg.ct_indent != KEEP || (i > 0 && self.out[i].nl == 0) || t.encl == NO) return false;
 	if (!is_ct_open(t.type) && !is_ct_end(t.type) && t.type != CT_ELSE) return false;
-	return s.line_indent(t.line).len == 0;
+	return s.indent_of(i).len == 0;
 }
 
 <*
@@ -280,12 +298,21 @@ fn Indent Fmt.ct_content(&self, sz h, Indent line)
 		case FLUSH: return line;
 		case KEEP:
 			Src* s = self.src;
-			for (sz k = h + 1; k < s.len(); k++)
+			// the first source line of the body at the header's own level (a line inside a
+			// bracket opened in the body is indented by that bracket)
+			for (sz k = h + 1; k < s.len() && k != s.toks[h].match; k++)
 			{
-				if (s.toks[k].nl == 0) continue;
-				if (k == s.toks[h].match || is_ct_end(s.toks[k].type) || s.toks[k].type == CT_ELSE) return line;
+				Tok* t = &s.toks[k];
+				if (is_opener(t.type) && t.match != NO && t.src_nl == 0)
+				{
+					k = t.match;
+					continue;
+				}
+				// (a line kept as written does not move with the header: it says nothing)
+				if (t.src_nl == 0 || t.encl != s.toks[h].encl || t.keep) continue;
+				if (is_ct_end(t.type) || t.type == CT_ELSE) return line;
 				sz tw = self.cfg.tab_width;
-				bool deeper = text_width(s.line_indent(s.toks[k].line), 0, tw) > text_width(s.line_indent(s.toks[h].line), 0, tw);
+				bool deeper = text_width(s.indent_of(k), 0, tw) > text_width(s.indent_of(h), 0, tw);
 				return deeper ? line.deeper() : line;
 			}
 			return line;
@@ -335,16 +362,17 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 	if (head && f.kind == CASE && t.type == LBRACE && i == j && p != NO && s.toks[p].label)
 	{
 		sz tw = self.cfg.tab_width;
-		bool deeper = text_width(s.line_indent(t.line), 0, tw) > text_width(f.head_src, 0, tw);
+		bool deeper = text_width(s.indent_of(j), 0, tw) > text_width(f.head_src, 0, tw);
 		return deeper ? f.content : f.base;
 	}
 	if (head)
 	{
-		// the line starts the statement (possibly after a comment on the same line)
-		if (i == j || s.toks[i].line == t.line)
+		// the line starts the statement (possibly after a comment on the line, which may begin
+		// lines above: `/* … */ x`); its source indentation is that of the line's first token
+		if (self.same_output_line(i, j))
 		{
 			f.head = f.content;
-			f.head_src = s.line_indent(t.line);
+			f.head_src = s.indent_of(i);
 			f.has_head = true;
 		}
 		return f.content;
@@ -355,8 +383,9 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 	switch (self.cfg.continuation)
 	{
 		case KEEP:
-			String h = f.has_head ? f.head_src : "";
-			return {base.levels, base.extra.tconcat(self.relative(s.line_indent(s.toks[i].line), h))};
+			// relative to the line the statement started on (none: one level, as `tab` does)
+			if (!f.has_head) nextcase TAB;
+			return {base.levels, base.extra.tconcat(self.relative(s.indent_of(i), f.head_src))};
 		case ALIGN:
 			sz o = t.encl;
 			if (o != NO && (s.toks[o].type == LPAREN || s.toks[o].type == LBRACKET) && o + 1 < i && self.out[o + 1].nl == 0)
@@ -371,23 +400,35 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 	}
 }
 
+<* Are tokens i..j on one output line? *>
+fn bool Fmt.same_output_line(&self, sz i, sz j)
+{
+	for (sz k = i + 1; k <= j; k++) if (self.out[k].nl > 0) return false;
+	return true;
+}
+
 <* The extra indentation of source indent `line` over the head line's source indent `head`. *>
 fn String Fmt.relative(&self, String line, String head)
 {
 	sz tw = self.cfg.tab_width;
+	String extra;
 	if (line.starts_with(head))
 	{
-		String extra = line[head.len..];
-		bool head_spaces = head.len > 0 && !head.contains("\t");
-		if (self.cfg.indent_style == TAB && head_spaces && !extra.contains("\t"))
-		{
-			return tabs(extra.len / tw).tconcat(spaces(extra.len % tw));
-		}
-		return extra;
+		extra = line[head.len..];
 	}
-	sz w = text_width(line, 0, tw) - text_width(head, 0, tw);
-	if (w <= 0) return "";
-	return line.contains(" ") ? spaces(w) : tabs(w / tw);
+	else
+	{
+		sz w = text_width(line, 0, tw) - text_width(head, 0, tw);
+		if (w <= 0) return "";
+		extra = line.contains(" ") ? spaces(w) : tabs(w / tw);
+	}
+	// a head indented with spaces under tab indentation: the extra spaces become tabs (as wide)
+	bool head_spaces = head.len > 0 && !head.contains("\t");
+	if (self.cfg.indent_style == TAB && head_spaces && !extra.contains("\t"))
+	{
+		return tabs(extra.len / tw).tconcat(spaces(extra.len % tw));
+	}
+	return extra;
 }
 
 <* Decide the same-line gap before token i. *>

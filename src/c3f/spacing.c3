@@ -131,7 +131,6 @@ fn bool is_operand_start(TokenType t)
 <* Is the ')' at r the end of a cast `(Type)`? (Cached: chains like `(A)(B)(C)x` stay linear.) *>
 fn bool Src.is_cast_close(&self, sz r)
 {
-	if (!self.memo.len()) self.init_memo();
 	if (self.memo[r] & 3) return (self.memo[r] & 3) == 2;
 	bool v = self.cast_close_uncached(r);
 	self.memo[r] |= v ? 2 : 1;
@@ -187,74 +186,6 @@ fn bool Src.cast_close_uncached(&self, sz r)
 	return true;
 }
 
-<* Is the ':' at i the second half of a ternary `a ? b : c` (or `a ??? b : c`)? Cached like is_cast_close. *>
-fn bool Src.is_ternary_colon(&self, sz i)
-{
-	if (!self.memo.len()) self.init_memo();
-	if (self.memo[i] & 48) return (self.memo[i] & 48) == 32;
-	bool v = self.ternary_colon_uncached(i);
-	self.memo[i] |= v ? 32 : 16;
-	return v;
-}
-
-fn bool Src.ternary_colon_uncached(&self, sz i)
-{
-	Tok* t = &self.toks[i];
-	if (t.type != COLON || t.label) return false;
-	sz e = t.encl;
-	int pending;   // colons of ternaries nested inside this one, still waiting for their '?'
-	for (sz k = i; k > 0;)
-	{
-		k--;
-		if (k == e) return false;              // the opening bracket: no '?' before it
-		Tok* p = &self.toks[k];
-		if (p.encl != e || !p.code) continue;  // inside a nested bracket, or a comment
-		switch (p.type)
-		{
-			case EOS: case COMMA: return false;
-			case COLON:
-				if (!p.label) pending++;
-			case QUESTION: case CT_TERNARY:
-				if (pending == 0) return true;
-				pending--;
-			default:
-		}
-	}
-	return false;
-}
-
-<* Is the '?' at q the question of a ternary `c ? a : b` (not the '?' of an optional type `int[]?`)? *>
-fn bool Src.is_ternary_question(&self, sz q)
-{
-	Tok* t = &self.toks[q];
-	if (t.type != QUESTION) return false;
-	sz e = t.encl;
-	int pending;   // ternaries nested inside this one, still waiting for their ':'
-	for (sz k = q + 1; k < self.len(); k++)
-	{
-		Tok* p = &self.toks[k];
-		if (p.encl != e)
-		{
-			if (is_closer(p.type) && p.match == e) return false;   // the closing bracket: no ':'
-			continue;                                              // inside a nested bracket
-		}
-		if (!p.code) continue;
-		switch (p.type)
-		{
-			case EOS: case COMMA: return false;
-			// a block or a body: the '?' was part of a type (`fn int? f() { … }`)
-			case LBRACE: if (p.brace != INIT) return false;
-			case QUESTION: pending++;
-			case COLON:
-				if (p.label) return false;
-				if (pending == 0) return true;
-				pending--;
-			default:
-		}
-	}
-	return false;
-}
-
 fn bool is_control(TokenType t) => t == IF || t == WHILE || t == FOR || t == FOREACH || t == FOREACH_R || t == SWITCH;
 
 <* Is the ':' at i the one of a `foreach (i, v : list)` header? *>
@@ -271,34 +202,20 @@ fn bool Src.is_header_close(&self, sz r)
 {
 	Tok* t = &self.toks[r];
 	if (t.type != RPAREN || t.match == NO) return false;
-	switch (self.type_at(self.prev_code(t.match)))
-	{
-		case IF: case WHILE: case FOR: case FOREACH: case FOREACH_R: case SWITCH: return true;
-		default: return false;
-	}
-}
-
-<* Is the ':' at i the one before the message of `$assert cond : "message"`? *>
-fn bool Src.is_assert_colon(&self, sz i)
-{
-	Tok* t = &self.toks[i];
-	if (t.type != COLON || t.label || t.encl != NO && self.toks[t.encl].type != LBRACE) return false;
-	sz start = self.stmt_start(i);
-	return self.toks[start].type == CT_ASSERT || self.toks[start].type == CT_ERROR;
+	return is_control(self.type_at(self.prev_code(t.match)));
 }
 
 <* Is the ':' at i the separator of a slice `s[a:b]`? *>
 fn bool Src.is_slice_colon(&self, sz i)
 {
 	Tok* t = &self.toks[i];
-	return t.type == COLON && !t.label && t.encl != NO && self.toks[t.encl].type == LBRACKET && !self.is_ternary_colon(i);
+	return t.type == COLON && !t.label && t.encl != NO && self.toks[t.encl].type == LBRACKET && !t.ternary;
 }
 
 <* Is the '*' at s part of a pointer type (`Foo* p`, `(int*)x`)? (Cached, like is_cast_close.) *>
 fn bool Src.is_type_star(&self, sz s)
 {
 	if (s >= self.len()) return false;
-	if (!self.memo.len()) self.init_memo();
 	if (self.memo[s] & 12) return (self.memo[s] & 12) == 8;
 	bool v = self.type_star_uncached(s);
 	self.memo[s] |= v ? 8 : 4;
@@ -465,9 +382,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 {
 	Tok* prev = &self.toks[i - 1];
 	Tok* next = &self.toks[i];
-	// `a ? b : c`: the ':' has a space on both sides (it is not a label, slice or named argument)
-	if ((next.type == COLON && self.is_ternary_colon(i)) || (prev.type == COLON && self.is_ternary_colon(i - 1))) return ONE;
-	if ((next.type == QUESTION && self.is_ternary_question(i)) || (prev.type == QUESTION && self.is_ternary_question(i - 1))) return ONE;
+	// `a ? b : c`: the '?' and ':' have a space on both sides (`???` is left to the table)
+	if ((next.ternary && next.type != CT_TERNARY) || (prev.ternary && prev.type != CT_TERNARY)) return ONE;
 	// strict: generic arguments are tight, `List{Table[3]}` (the stdlib also writes `HashMap { K, V }`)
 	if (cfg.spacing == STRICT)
 	{
@@ -484,6 +400,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 			if (k == BLOCK || k == BODY) return ONE;
 		}
 	}
+	// a block or body is spaced off what it belongs to: `fn void f() {`, `enum E {`, `else {`
+	if (next.type == LBRACE && (next.brace == BLOCK || next.brace == BODY)) return ONE;
 	// control headers are spaced as the stdlib writes them (99%): `if (x)`, `foreach (i, v : list)`
 	if (next.type == LPAREN && is_control(prev.type)) return ONE;
 	if ((next.type == COLON && self.is_foreach_colon(i)) || (prev.type == COLON && self.is_foreach_colon(i - 1))) return ONE;
@@ -492,7 +410,7 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	// strict: the parameter list of a function type is tight, `fn Type(...)` like `fn void(...)`
 	if (cfg.spacing == STRICT && next.type == LPAREN && i >= 2 && self.toks[i - 2].type == FUNC && is_type_token(prev.type)) return NONE;
 	// `$assert cond : "message"`
-	if ((next.type == COLON && self.is_assert_colon(i)) || (prev.type == COLON && self.is_assert_colon(i - 1))) return ONE;
+	if (next.message || prev.message) return ONE;
 	// `if (x) y;`: the statement after a control header is spaced off
 	if (prev.type == RPAREN && self.is_header_close(i - 1) && next.type != EOS && next.type != LBRACE) return ONE;
 	// `s[a:b]`: in strict mode a slice's ':' sits tight (the stdlib writes both `[a:b]` and `[a : b]`)

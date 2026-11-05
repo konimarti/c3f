@@ -60,7 +60,7 @@ standard library of c3c c23910038 (0.8.6, 2026-11-04).
 | | c3f | c3f, 120 columns | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
 |---|---|---|---|---|
 | Time (median of 5 runs) | 0.13 s | 0.32 s | 2.4 s ⁴ | 99 s ² |
-| Peak memory | 9 MB | 16 MB | 78 MB | 17 MB |
+| Peak memory | 10 MB | 16 MB | 78 MB | 17 MB |
 | Lines changed | 1,857 | 2,920 | 14,069 | 14,854 |
 | Lines over 120 columns left (1,329 before) | 1,325 | 305 ³ | 522 | 738 |
 | Files whose code or comments changed | 0 ¹ | 0 ¹ | 77 | 110 |

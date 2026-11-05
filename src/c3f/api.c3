@@ -25,9 +25,11 @@ struct FormatResult
 fn void FormatResult.free(&self)
 {
 	alloc::free(self.notes.allocator, self.text.ptr);
-	foreach (n : self.notes) alloc::free(self.notes.allocator, n.text.ptr);
+	foreach (n : self.notes) free_note(n, self.notes.allocator);
 	self.notes.free();
 }
+
+fn void free_note(Note n, Allocator a) @local => alloc::free(a, n.text.ptr);
 
 const int MAX_ATTEMPTS = 8;
 const int WRAP_PASSES = 3;
@@ -57,13 +59,12 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	// which the next run may wrap again: repeat until nothing changes, so a second run never does
 	if (settled.line_breaks != PRESERVE)
 	{
-		// the notes are about the input: later passes only say whether something was kept
+		// the notes are about the input; a later pass that cannot be verified is not used
 		FormatResult later;
 		later.notes.tinit();
 		for (int pass = 1; pass < WRAP_PASSES; pass++)
 		{
-			String again = format_text(text, &settled, &later, tmem);
-			if (later.fallback) r.fallback = true;
+			String again = format_text(text, &settled, &later, tmem, attempts: 1);
 			if (again == text) break;
 			text = again;
 		}
@@ -150,18 +151,19 @@ fn String format_range(Allocator a, String input, sz start, sz end, Config* cfg)
 	return d.copy_str(a);
 }
 
-fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a) @local
+<* Format once; a place whose result cannot be verified is kept as written and the rest is tried again. *>
+fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a, int attempts = MAX_ATTEMPTS) @local
 {
 	String input = original;
 	if (cfg.sort_imports != OFF)
 	{
 		String sorted = sort_imports(original, cfg.sort_imports);
-		if (same_tokens(original, sorted)) input = sorted;
+		if (sorted != original && same_tokens(original, sorted)) input = sorted;
 	}
 	Src s;
 	s.init(input);
 	if (s.len() == 0) return input.trim().len == 0 ? "" : input;
-	sort::quicksort(&s.unbalanced, fn int(Damage x, Damage y) => (int)(x.tok - y.tok));
+	sort::mergesort(&s.unbalanced, fn int(Damage x, Damage y) => x.tok < y.tok ? -1 : x.tok > y.tok ? 1 : 0);
 	foreach (d : s.unbalanced)
 	{
 		r.fallback = true;
@@ -174,7 +176,8 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	f.init(&s, cfg);
 	List{String} texts;
 	texts.tinit();
-	for (int attempt = 0; ; attempt++)
+	sz noted = r.notes.len();
+	for (int attempt = 1; ; attempt++)
 	{
 		f.breaks();
 		f.layout();
@@ -183,12 +186,16 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 		String output = f.emit(&texts);
 		sz bad = f.verify(output, &texts);
 		if (bad == NO) return output;
-		r.fallback = true;
-		if (attempt + 1 == MAX_ATTEMPTS)
+		if (attempt == attempts)
 		{
+			if (attempts == 1) return original;   // a later pass: the input is a verified result already
+			// the places noted so far are part of the file, which is kept as a whole
+			while (r.notes.len() > noted) free_note(r.notes.pop()!!, a);
+			r.fallback = true;
 			r.notes.push({s.toks[bad].line, "could not be formatted safely; the file was kept as written".copy(a)});
 			return original;
 		}
+		r.fallback = true;
 		r.notes.push({s.toks[bad].line, "could not be formatted safely; kept as written".copy(a)});
 		s.keep_range(bad > 0 ? bad - 1 : 0, bad + 1);
 	}
@@ -200,8 +207,8 @@ fn bool same_tokens(String a, String b) @local
 	List{String} ta = token_texts(a);
 	List{String} tb = token_texts(b);
 	if (ta.len() != tb.len()) return false;
-	sort::quicksort(&ta, fn int(String x, String y) => x.compare_to(y));
-	sort::quicksort(&tb, fn int(String x, String y) => x.compare_to(y));
+	sort::mergesort(&ta, fn int(String x, String y) => x.compare_to(y));
+	sort::mergesort(&tb, fn int(String x, String y) => x.compare_to(y));
 	foreach (i, t : ta) if (t != tb[i]) return false;
 	return true;
 }

@@ -35,6 +35,8 @@ fn String Fmt.token_text(&self, sz i)
 {
 	Tok* t = &self.src.toks[i];
 	if ((t.type != CONTRACT && t.type != BLOCK_COMMENT) || !t.text.contains("\n")) return t.text;
+	// only a line that starts with a token moves (`*/ x /*` starts inside the comment before)
+	if (self.src.toks[self.out[i].line_tok].line != t.line) return t.text;
 	String old = self.src.line_indent(t.line);
 	String new = self.line_text(i);
 	if (old == new) return t.text;
