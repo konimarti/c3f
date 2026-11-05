@@ -26,11 +26,12 @@ Formatting the C3 standard library (364 files), with every tool built with `-O3`
 wrapping at 120 columns: c3fmt by default, c3tools with `--width=120 --indent=t` (as its
 README suggests for the stdlib), and c3f with `max_line_length = 120` and
 `c3f_line_breaks = long` (wrap the lines over the limit, with the optimal layout). c3f's
-default, which does not wrap, is shown too.
+default, which does not wrap, is shown too. c3f runs on one thread; c3fmt starts one per
+core (28 here).
 
 | | c3f | c3f, 120 columns | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
 |---|---|---|---|---|
-| Time (median of 5 runs) | 0.13 s | 0.32 s | 2.4 s | 99 s ² |
+| Time (median of 5 runs) | 0.13 s | 0.32 s | 2.4 s ⁴ | 99 s ² |
 | Peak memory | 9 MB | 16 MB | 78 MB | 17 MB |
 | Lines changed | 1,842 | 2,905 | 14,069 | 14,854 |
 | Lines over 120 columns left (1,329 before) | 1,325 | 305 ³ | 522 | 738 |
@@ -47,6 +48,9 @@ others take a few milliseconds each.
 
 ³ Mostly comments, contract text and long strings (213); then what c3f keeps on one line:
 statements with a comment inside (38), one-line blocks and bodies (29), aligned rows (17).
+
+⁴ The same on one core: c3fmt's threads each format a file while holding its output lock,
+so files are formatted one at a time.
 
 ## Install
 
