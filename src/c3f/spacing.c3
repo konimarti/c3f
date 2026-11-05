@@ -223,6 +223,38 @@ fn bool Src.ternary_colon_uncached(&self, sz i)
 	return false;
 }
 
+<* Is the '?' at q the question of a ternary `c ? a : b` (not the '?' of an optional type `int[]?`)? *>
+fn bool Src.is_ternary_question(&self, sz q)
+{
+	Tok* t = &self.toks[q];
+	if (t.type != QUESTION) return false;
+	sz e = t.encl;
+	int pending;   // ternaries nested inside this one, still waiting for their ':'
+	for (sz k = q + 1; k < self.len(); k++)
+	{
+		Tok* p = &self.toks[k];
+		if (p.encl != e)
+		{
+			if (is_closer(p.type) && p.match == e) return false;   // the closing bracket: no ':'
+			continue;                                              // inside a nested bracket
+		}
+		if (!p.code) continue;
+		switch (p.type)
+		{
+			case EOS: case COMMA: return false;
+			// a block or a body: the '?' was part of a type (`fn int? f() { … }`)
+			case LBRACE: if (p.brace != INIT) return false;
+			case QUESTION: pending++;
+			case COLON:
+				if (p.label) return false;
+				if (pending == 0) return true;
+				pending--;
+			default:
+		}
+	}
+	return false;
+}
+
 <* Is the ')' at r the end of the header of `if`, `while`, `for`, `foreach`, `foreach_r` or `switch`? *>
 fn bool Src.is_header_close(&self, sz r)
 {
@@ -411,6 +443,8 @@ fn bool Src.is_binary(&self, sz o)
 	TokenType p = self.toks[o - 1].type;
 	if (!is_operand_end(p) || !is_operand_start(self.toks[o + 1].type)) return false;
 	if (p == RPAREN && self.is_cast_close(o - 1)) return false;
+	// `if (x) *p = 1;`: what follows a control header starts a statement
+	if (p == RPAREN && self.is_header_close(o - 1)) return false;
 	return !self.is_type_star(o);
 }
 
@@ -420,6 +454,7 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	Tok* next = &self.toks[i];
 	// `a ? b : c`: the ':' has a space on both sides (it is not a label, slice or named argument)
 	if ((next.type == COLON && self.is_ternary_colon(i)) || (prev.type == COLON && self.is_ternary_colon(i - 1))) return ONE;
+	if ((next.type == QUESTION && self.is_ternary_question(i)) || (prev.type == QUESTION && self.is_ternary_question(i - 1))) return ONE;
 	// strict: generic arguments are tight, `List{Table[3]}` (the stdlib also writes `HashMap { K, V }`)
 	if (cfg.spacing == STRICT)
 	{
