@@ -1,5 +1,5 @@
 module c3f;
-import c3::lexer, std::collections::list;
+import c3::lexer, std::collections::list, std::collections::map;
 
 // Line wrapping: `c3f_line_breaks = long | fit`.
 //
@@ -13,6 +13,9 @@ import c3::lexer, std::collections::list;
 // hard margin, and per line break. Because columns are integers, the optimal cost of each
 // piece as a function of its start column is kept as a table over the columns 0..W, which is
 // exactly rfmt's piecewise-linear solution sampled at every column.
+//
+// A wrapped line is indented one level deeper than the line its innermost open bracket is on
+// (see depths()), so the tables also depend on the depth of the line a piece starts on.
 
 enum ElemKind : char @local { RUN, SPAN }
 
@@ -32,7 +35,7 @@ struct Seq @local
 	List{sz}    elems;
 	List{Point} points;     // points[j]: before elems[j] (points[0] unused)
 	List{float} mults;
-	sz          depth;      // continuation level of lines broken inside it
+	sz          depth;      // bracket nesting (breaks cost more the deeper they are)
 	bool        magic;      // a trailing comma: one item per line
 	bool        frozen;     // inside a one-line block: never breaks
 	sz          tail;       // width of the text that has to follow it on its last line
@@ -44,7 +47,8 @@ enum Layout : char @local { INLINE, HANG, STACK }
 struct Table @local
 {
 	float[] cost;
-	sz[]    end;
+	uint[]  end;      // the column it ends at
+	ushort[] depth;   // the depth of the line it ends on
 	char[]  pick;     // sequence step: bit 0 = break before the next element, bits 1-2 = this span's layout
 }
 
@@ -60,11 +64,12 @@ struct Wrap @local
 	sz          w;       // columns kept in a table
 	float       c0, c1, cb;
 	sz          m0, m1;
-	// solutions, filled on demand
-	List{bool}     span_done;
-	List{Table[3]} span_layouts;  // per span: its solution under each layout
-	List{List{Table}} steps;      // per (sequence, layout): the solver's steps, for reading back
-	sz             top;           // the statement's own sequence
+	sz          top;     // the statement's own sequence
+	// the solver's steps, filled on demand (see step_key)
+	HashMap{ulong, Table} steps;
+	sz          cells;   // table cells made so far
+	bool        overflow;   // more than MAX_CELLS: the statement is filled instead
+	Table       none;    // what step() gives after an overflow
 }
 
 fn sz rank(TokenType t) @local
@@ -320,7 +325,7 @@ const float DEPTH_COST = 0.5f;
 const float BRACKET_COST = 1.5f;
 const float ASSIGN_COST = 1.5f;
 const float OPERATOR_COST = 0.5f;
-const float PRECEDENCE_COST = 0.1f;
+const float PRECEDENCE_COST = 0.25f;
 // columns past the line limit that the cost tables cover before extrapolating
 const sz SLACK_COLUMNS = 40;
 
@@ -340,13 +345,27 @@ fn float Wrap.mult(&self, Point p, sz k, sz depth)
 
 // ---- solving -------------------------------------------------------------------------------
 
-<* Column of a line broken inside a sequence of this depth (a closer goes one level out). *>
-fn sz Wrap.target(&self, Seq* q, sz j)
+<*
+ The depth of the line after a break before element j of seq, whose opener is on a line of
+ depth `open`: as depths() writes it. Outside brackets one level deeper than the statement
+ (a new element of an enclosing list: at its level); a closer at the opener's line; in a
+ `{ … }` list the rest of an item two levels deeper; anything else one level deeper.
+*>
+fn sz Wrap.break_depth(&self, sz seq, sz j, sz open) => min(self.break_depth_of(seq, j, open), MAX_DEPTH);
+
+fn sz Wrap.break_depth_of(&self, sz seq, sz j, sz open)
 {
-	sz d = q.points[j] == CLOSE ? q.depth - 1 : max(q.depth, 1);
-	if (q.depth == 0 && self.list_comma(self.elems[q.elems[j]].first)) d = 0;
-	return self.f.indent_width(self.base.deeper(d));
+	Seq* q = &self.seqs[seq];
+	if (seq == self.top) return self.list_comma(self.elems[q.elems[j]].first) ? 0 : 1;
+	switch (q.points[j])
+	{
+		case CLOSE: return open;
+		case OPEN: case COMMA: return open + 1;
+		default: return self.f.src.toks[self.elems[q.elems[0]].first].type == LBRACE ? open + 2 : open + 1;
+	}
 }
+
+fn sz Wrap.column_at(&self, sz depth) @inline => self.f.indent_width(self.base.deeper(depth));
 
 fn float Wrap.text_cost(&self, sz c, sz width)
 {
@@ -358,36 +377,21 @@ fn float Wrap.text_cost(&self, sz c, sz width)
 }
 
 <* Value of a table at any column (past W the line only gets longer). *>
-fn float Wrap.at(&self, Table* t, sz c, sz* end)
+fn float Wrap.at(&self, Table* t, sz c, sz* end, sz* depth)
 {
-	if (c <= self.w)
-	{
-		*end = t.end[c];
-		return t.cost[c];
-	}
-	*end = t.end[self.w] + (c - self.w);
-	return t.cost[self.w] + (self.c0 + self.c1) * (float)(c - self.w);
+	sz k = min(c, self.w);
+	*end = (sz)t.end[k] + (c - k);
+	*depth = (sz)t.depth[k];
+	return t.cost[k] + (self.c0 + self.c1) * (float)(c - k);
 }
 
 fn Table Wrap.new_table(&self)
 {
-	Table t = {mem::talloc_array(float, self.w + 1), mem::talloc_array(sz, self.w + 1), mem::talloc_array(char, self.w + 1)};
+	self.cells += self.w + 1;
+	if (self.cells > MAX_CELLS) self.overflow = true;
+	Table t = {mem::talloc_array(float, self.w + 1), mem::talloc_array(uint, self.w + 1), mem::talloc_array(ushort, self.w + 1), mem::talloc_array(char, self.w + 1)};
 	t.pick[..] = 0;
 	return t;
-}
-
-<* Solutions of span element e under each layout (INLINE, HANG, STACK), as tables over the start column. *>
-fn Table[3]* Wrap.layouts(&self, sz e)
-{
-	sz seq = self.elems[e].seq;
-	if (!self.span_done[seq])
-	{
-		Table[3] tables;
-		for (int l = 0; l < 3; l++) tables[l] = self.solve(seq, (Layout)l);
-		self.span_layouts[seq] = tables;
-		self.span_done[seq] = true;
-	}
-	return &self.span_layouts[seq];
 }
 
 <* Is the point before element j of seq allowed / forced under a layout? *>
@@ -415,131 +419,160 @@ fn bool Wrap.forced(&self, Seq* q, sz j, Layout l)
 	}
 }
 
-<* Best way to go on after element i ends at column `end`: stay on the line, or break before element i + 1. *>
-fn float Wrap.continue_after(&self, Seq* q, List{Table}* steps, sz i, Layout l, sz end, sz* rest_end, char* brk)
+<* A step is identified by its sequence, layout, the depth of the opener's line, element and the depth of the line the element starts on. *>
+fn ulong step_key(sz seq, Layout l, sz open, sz j, sz cur) @local
 {
-	float best = float::inf;
-	*brk = 0;
-	if (!self.forced(q, i + 1, l))
-	{
-		sz gap = self.join_w[self.elems[q.elems[i + 1]].first - self.first];
-		best = self.at(&(*steps)[i + 1], end + gap, rest_end);
-	}
-	if (self.allowed(q, i + 1, l))
-	{
-		sz e2;
-		float cost = self.cb * q.mults[i + 1] + self.at(&(*steps)[i + 1], self.target(q, i + 1), &e2);
-		if (cost < best)
-		{
-			best = cost;
-			*rest_end = e2;
-			*brk = 1;
-		}
-	}
-	return best;
+	return (ulong)seq << 44 | (ulong)l.ordinal << 42 | (ulong)open << 32 | (ulong)j << 10 | (ulong)cur;
 }
 
+// line depths the tables tell apart (deeper lines are not wrapped sensibly anyway)
+const sz MAX_DEPTH = 1023;
+
 <*
- Solve a sequence for every start column, right to left: steps[j] is the best way to lay
- out elements j.. starting at a column; it either continues on the line or breaks before j+1.
+ The best way to lay out elements j.. of seq (layout l, its opener on a line of depth `open`)
+ when element j starts on a line of depth `cur`, for every start column: element j stays on
+ the line or breaks before j + 1; a span is tried in each layout with each continuation (rfmt's
+ choice blocks see the rest of the line).
 *>
-fn Table Wrap.solve(&self, sz seq, Layout l)
+fn Table Wrap.step(&self, sz seq, Layout l, sz open, sz j, sz cur)
 {
+	ulong key = step_key(seq, l, open, j, cur);
+	if (try t = self.steps.get(key)) return t;
+	if (self.overflow) return self.none;
 	Seq* q = &self.seqs[seq];
 	sz n = q.elems.len();
-	List{Table} steps;
-	steps.tinit();
-	for (sz j = 0; j < n; j++) steps.push(self.new_table());
-	for (sz j = n; j > 0; j--)
+	Elem el = self.elems[q.elems[j]];
+	Table t = self.new_table();
+	int first_layout = el.kind == SPAN && self.seqs[el.seq].magic ? 2 : 0;
+	int last_layout = el.kind == SPAN ? 2 : 0;
+	bool more = j + 1 < n;
+	// what follows: after a break (the same for every column), or on the line (by the depth it is at)
+	bool can_break = more && self.allowed(q, j + 1, l);
+	bool can_stay = more && !self.forced(q, j + 1, l);
+	sz break_to = can_break ? self.break_depth(seq, j + 1, open) : 0;
+	Table after_break = can_break ? self.step(seq, l, open, j + 1, break_to) : self.none;
+	float break_cost = can_break ? self.cb * q.mults[j + 1] : 0;
+	sz gap = more ? self.join_w[self.elems[q.elems[j + 1]].first - self.first] : 0;
+	Table[3] lay;       // a span's tables under each layout
+	if (el.kind == SPAN) for (int k = first_layout; k <= last_layout; k++) lay[k] = self.step(el.seq, (Layout)k, cur, 0, cur);
+	sz tail = el.kind == SPAN ? self.seqs[el.seq].tail : 0;
+	Table[4] stay;      // the step after j on the line, for the depths seen so far
+	sz[4] stay_depth;
+	sz stays;
+	for (sz c = 0; c <= self.w; c++)
 	{
-		sz i = j - 1;
-		Table* t = &steps[i];
-		Elem* el = &self.elems[q.elems[i]];
-		// a span's layout is chosen together with what follows it on the line (rfmt's
-		// choice blocks see the rest of the line): every layout is tried with every continuation
-		int first_layout = el.kind == SPAN && self.seqs[el.seq].magic ? 2 : 0;
-		int last_layout = el.kind == SPAN ? 2 : 0;
-		Table[3]* lay = el.kind == SPAN ? self.layouts(q.elems[i]) : null;
-		for (sz c = 0; c <= self.w; c++)
+		t.cost[c] = float::inf;
+		for (int k = first_layout; k <= last_layout; k++)
 		{
-			t.cost[c] = float::inf;
-			for (int k = first_layout; k <= last_layout; k++)
+			sz end;
+			sz depth = cur;
+			float cost;
+			if (el.kind == SPAN)
 			{
-				sz end;
-				float cost;
-				if (lay)
+				// without the text after it: that is laid out here
+				cost = self.at(&lay[k], c, &end, &depth);
+				if (tail) cost -= self.text_cost(end, tail);
+			}
+			else
+			{
+				end = c + el.width;
+				cost = self.text_cost(c, el.width);
+			}
+			sz rest_end = end;
+			sz rest_depth = depth;
+			char brk;
+			if (more)
+			{
+				float best = float::inf;
+				if (can_stay)
 				{
-					cost = self.at(&(*lay)[k], c, &end);
+					sz x = 0;
+					while (x < stays && stay_depth[x] != depth) x++;
+					Table next = x < stays ? stay[x] : self.step(seq, l, open, j + 1, depth);
+					if (x == stays && stays < 4)
+					{
+						stay[stays] = next;
+						stay_depth[stays++] = depth;
+					}
+					best = self.at(&next, end + gap, &rest_end, &rest_depth);
 				}
-				else
+				if (can_break)
 				{
-					end = c + el.width;
-					cost = self.text_cost(c, el.width);
+					sz e2;
+					sz d2;
+					float broken = break_cost + self.at(&after_break, self.column_at(break_to), &e2, &d2);
+					if (broken < best)
+					{
+						best = broken;
+						rest_end = e2;
+						rest_depth = d2;
+						brk = 1;
+					}
 				}
-				sz rest_end = end;
-				char brk;
-				if (i < n - 1) cost += self.continue_after(q, &steps, i, l, end, &rest_end, &brk);
-				// the text glued to the end of the span counts in the choice (the parent pays for it again)
-				if (i == n - 1 && q.tail) cost += self.text_cost(end, q.tail);
-				if (cost < t.cost[c])
-				{
-					t.cost[c] = cost;
-					t.end[c] = rest_end;
-					t.pick[c] = brk | (char)(k << 1);
-				}
+				cost += best;
+			}
+			else if (q.tail)
+			{
+				// the text glued to the end of the span counts in the choice (span_at takes it off again)
+				cost += self.text_cost(end, q.tail);
+			}
+			if (cost < t.cost[c])
+			{
+				t.cost[c] = cost;
+				t.end[c] = (uint)rest_end;
+				t.depth[c] = (ushort)min(rest_depth, MAX_DEPTH);
+				t.pick[c] = brk | (char)(k << 1);
 			}
 		}
 	}
-	// keep the steps for reading the layout back
-	self.steps_of(seq, l).clear();
-	foreach (st : steps) self.steps_of(seq, l).push(st);
-	if (!q.tail) return steps[0];
-	// the parent lays the tail out itself: hand it the cost without it
-	Table out = self.new_table();
-	for (sz c = 0; c <= self.w; c++)
-	{
-		out.end[c] = steps[0].end[c];
-		out.pick[c] = steps[0].pick[c];
-		out.cost[c] = steps[0].cost[c] - self.text_cost(steps[0].end[c], q.tail);
-	}
-	return out;
+	if (self.overflow) return self.none;
+	self.steps.set(key, t);
+	return t;
 }
 
-fn List{Table}* Wrap.steps_of(&self, sz seq, Layout l) => &self.steps[seq * 3 + l.ordinal];
+<* A span laid out from column c on a line of depth `cur`: its cost, without the text after it (the parent lays that out). *>
+fn float Wrap.span_at(&self, sz seq, Layout l, sz cur, sz c, sz* end, sz* depth)
+{
+	Table t = self.step(seq, l, cur, 0, cur);
+	float cost = self.at(&t, c, end, depth);
+	return self.seqs[seq].tail ? cost - self.text_cost(*end, self.seqs[seq].tail) : cost;
+}
 
-<* Read the chosen layout of sequence seq (layout l) from column c into `breaks`. *>
-fn void Wrap.read(&self, sz seq, Layout l, sz c, List{bool}* breaks)
+<* Read the chosen breaks of seq (layout l, opener on a line of depth `open`) from column c into `breaks`. *>
+fn void Wrap.read(&self, sz seq, Layout l, sz open, sz c, List{bool}* breaks)
 {
 	Seq* q = &self.seqs[seq];
-	List{Table}* steps = self.steps_of(seq, l);
-	for (sz i = 0; i < q.elems.len(); i++)
+	sz n = q.elems.len();
+	sz cur = open;
+	for (sz i = 0; i < n; i++)
 	{
 		Elem* el = &self.elems[q.elems[i]];
-		sz cc = min(c, self.w);
-		char pick = (*steps)[i].pick[cc];
-		bool brk = i + 1 < q.elems.len() && c <= self.w ? (pick & 1) == 1 : false;
-		if (c > self.w && i + 1 < q.elems.len()) brk = self.forced(q, i + 1, l);
+		Table t = self.step(seq, l, open, i, cur);
+		char pick = t.pick[min(c, self.w)];
 		sz end;
+		sz depth = cur;
 		if (el.kind == SPAN)
 		{
-			Layout sl = (Layout)(pick >> 1);
-			if (self.seqs[el.seq].magic) sl = STACK;
-			self.read(el.seq, sl, c, breaks);
-			(void)self.at(&(*self.layouts(q.elems[i]))[sl.ordinal], c, &end);
+			Layout sl = self.seqs[el.seq].magic ? Layout.STACK : (Layout)(pick >> 1);
+			self.read(el.seq, sl, cur, c, breaks);
+			(void)self.span_at(el.seq, sl, cur, c, &end, &depth);
 		}
 		else
 		{
 			end = c + el.width;
 		}
-		if (i + 1 == q.elems.len()) break;
+		if (i + 1 == n) break;
+		bool brk = c <= self.w ? (pick & 1) == 1 : self.forced(q, i + 1, l);
 		sz next = self.elems[q.elems[i + 1]].first;
 		if (brk)
 		{
 			(*breaks)[next - self.first] = true;
-			c = self.target(q, i + 1);
+			cur = self.break_depth(seq, i + 1, open);
+			c = self.column_at(cur);
 		}
 		else
 		{
+			cur = depth;
 			c = end + self.join_w[next - self.first];
 		}
 	}
@@ -624,29 +657,25 @@ fn void Wrap.init(&self, Fmt* f, sz a, sz b)
 	self.seqs.tinit();
 	self.top = self.build(a, b, 0);
 	self.set_tails(self.top, 0);
-	self.span_done.tinit();
-	self.span_layouts.tinit();
 	self.steps.tinit();
-	for (sz q = 0; q < self.seqs.len(); q++)
-	{
-		self.span_done.push(false);
-		self.span_layouts.push({});
-		for (int l = 0; l < 3; l++) self.steps.push({});
-	}
-	foreach (&st : self.steps) st.tinit();
+	self.none = self.new_table();
+	foreach (&x : self.none.cost) *x = float::inf;
 }
 
 <* Choose the line breaks: the optimal layout, or filled lines if the tables would be too big. *>
 fn void Wrap.solve_statement(&self, List{bool}* breaks)
 {
 	sz start = self.f.indent_width(self.base);
-	if ((sz)self.elems.len() * 3 * (self.w + 1) > MAX_CELLS)
+	if ((sz)self.elems.len() * 3 * (self.w + 1) <= MAX_CELLS)
 	{
-		self.first_fit(start, breaks);
-		return;
+		(void)self.step(self.top, INLINE, 0, 0, 0);
+		if (!self.overflow)
+		{
+			self.read(self.top, INLINE, 0, start, breaks);
+			return;
+		}
 	}
-	(void)self.solve(self.top, INLINE);
-	self.read(self.top, INLINE, start, breaks);
+	self.first_fit(start, breaks);
 }
 
 <* Write the chosen breaks into the layout, and decide the spacing again as the next run will see it. *>
@@ -819,4 +848,4 @@ fn Point Wrap.point_kind(&self, sz k)
 }
 
 // the most table cells a statement may take (elements × layouts × columns)
-const sz MAX_CELLS = 4_000_000;
+const sz MAX_CELLS = 8_000_000;

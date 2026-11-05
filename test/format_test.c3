@@ -432,3 +432,18 @@ fn void third_review_regressions() @test
 	assert(@catch(c.set("c3f_wrap_cost_hard", "nan")));
 	assert(@catch(c.set("c3f_trailing_comment_spaces", "0")));
 }
+
+fn void wrapping_counts_the_indentation_it_writes() @test
+{
+	// a line broken inside a `{ … }` item is two levels deeper: the layout must see that
+	String src = "fn void f()\n{\n\tFoo x = { .alpha = compute_value_one + compute_value_two + compute_three, .beta = other_value_here + more_stuff_more };\n}\n";
+	for (int limit = 44; limit <= 47; limit++)
+	{
+		c3f::Config c = c3f::defaults();
+		(void)c.set("max_line_length", string::tformat("%d", limit));
+		(void)c.set("c3f_line_breaks", "fit");
+		String got = fmt_with(src, &c);
+		foreach (line : got.tsplit("\n")) assert(c3f::text_width(line, 0, 4) <= limit, "%d: %s", limit, line);
+		assert(fmt_with(got, &c) == got);
+	}
+}
