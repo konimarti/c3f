@@ -235,3 +235,29 @@ fn void more_regressions() @test
 	(void)c.set("c3f_align_comments", "always");
 	check("fn void f()\n{\n\tint a; // first\n\tint bbbbb; // second\n}\n", "fn void f()\n{\n\tint a;     // first\n\tint bbbbb; // second\n}\n", &c);
 }
+
+fn void import_sorting() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_sort_imports", "all");
+	// runs are sorted on their own; comments and attributes move with their statement
+	check("module x;\n// io\nimport std::io;\nimport std::collections::list, std::collections::map @public; // c\n\nimport zeta, alpha;\nimport beta;\n",
+	      "module x;\nimport std::collections::list, std::collections::map @public; // c\n// io\nimport std::io;\n\nimport alpha, zeta;\nimport beta;\n", &c);
+	assert(c3f::compare_paths("std::io", "std::io::file") < 0);
+	assert(c3f::compare_paths("std::io::file", "std::math") < 0);
+	assert(c3f::compare_paths("a", "a") == 0);
+	c = c3f::defaults();
+	check("module x;\nimport b;\nimport a;\n", "module x;\nimport b;\nimport a;\n", &c);   // off by default
+}
+
+fn void import_sorting_edge_cases() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_sort_imports", "lines");
+	// a range never reorders imports, and never loses one
+	String src = "module foo;\nimport zzz;\nimport aaa;\nint  x;\n";
+	assert(c3f::format_range(tmem, src, 0, 20, &c) == src);
+	// only statements on lines of their own are sorted
+	check("module x;\nimport ppp; /* c */ import ooo;\nimport bbb;\nimport aaa; // a\n",
+	      "module x;\nimport ppp; /* c */ import ooo;\nimport aaa; // a\nimport bbb;\n", &c);
+}

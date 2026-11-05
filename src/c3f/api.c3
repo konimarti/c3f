@@ -105,7 +105,9 @@ fn List{Token} all_tokens(String text) @local
 *>
 fn String format_range(Allocator a, String input, sz start, sz end, Config* cfg) => @pool()
 {
-	FormatResult r = format(tmem, input, cfg);
+	Config local = *cfg;
+	local.sort_imports = OFF;   // reordering is never part of formatting a range
+	FormatResult r = format(tmem, input, &local);
 	DString d;
 	d.tinit();
 	sz at = 0;
@@ -124,6 +126,11 @@ fn String format_range(Allocator a, String input, sz start, sz end, Config* cfg)
 fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a) @local
 {
 	String input = original;
+	if (cfg.sort_imports != OFF)
+	{
+		String sorted = sort_imports(original, cfg.sort_imports);
+		if (same_tokens(original, sorted)) input = sorted;
+	}
 	Src s;
 	s.init(input);
 	if (s.len() == 0) return input.trim().len == 0 ? "" : input;
@@ -146,3 +153,28 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	}
 }
 
+<* Do a and b hold the same tokens, in any order? (A reordering must not lose or add any.) *>
+fn bool same_tokens(String a, String b) @local
+{
+	List{String} ta = token_texts(a);
+	List{String} tb = token_texts(b);
+	if (ta.len() != tb.len()) return false;
+	sort::quicksort(&ta, fn int(String x, String y) => x.compare_to(y));
+	sort::quicksort(&tb, fn int(String x, String y) => x.compare_to(y));
+	foreach (i, t : ta) if (t != tb[i]) return false;
+	return true;
+}
+
+fn List{String} token_texts(String text) @local
+{
+	List{String} l;
+	l.tinit();
+	Lexer lx;
+	lx.init(text);
+	while (try t = lx.next())
+	{
+		if (t.type == EOF) break;
+		l.push(t.text);
+	}
+	return l;
+}
