@@ -636,20 +636,13 @@ fn void Wrap.init(&self, Fmt* f, sz a, sz b)
 	foreach (&st : self.steps) st.tinit();
 }
 
-<* Choose the line breaks: the optimal layout, or the search (asked for, or the tables would be too big). *>
+<* Choose the line breaks: the optimal layout, or filled lines if the tables would be too big. *>
 fn void Wrap.solve_statement(&self, List{bool}* breaks)
 {
 	sz start = self.f.indent_width(self.base);
-	bool too_big = (sz)self.elems.len() * 3 * (self.w + 1) > MAX_CELLS;
-	if (too_big)
+	if ((sz)self.elems.len() * 3 * (self.w + 1) > MAX_CELLS)
 	{
-		// too long for the tables, and for the search to get far: fill the lines
 		self.first_fit(start, breaks);
-		return;
-	}
-	if (self.f.cfg.wrap_solver == SEARCH)
-	{
-		self.search(start, breaks);
 		return;
 	}
 	(void)self.solve(self.top, INLINE);
@@ -767,52 +760,7 @@ fn void Wrap.depths(&self, List{bool}* breaks, List{sz}* out)
 	}
 }
 
-// ---- dfmt's best-first search, as the alternative solver ------------------------------------
-
-struct State @local
-{
-	List{sz} chosen;   // wrap points taken, in order
-	float    cost;
-	bool     fits;
-}
-
-<* The cost of a set of breaks; its scratch memory is freed again (the search calls it often). *>
-fn float Wrap.simulate(&self, List{bool}* breaks, sz start, bool* fits) => @pool()
-{
-	return self.simulate_breaks(breaks, start, fits);
-}
-
-fn float Wrap.simulate_breaks(&self, List{bool}* breaks, sz start, bool* fits) @local
-{
-	Src* s = self.f.src;
-	float cost;
-	sz col = start;
-	*fits = true;
-	List{sz} depth;
-	depth.tinit();
-	self.depths(breaks, &depth);
-	for (sz k = self.first; k <= self.last; k++)
-	{
-		sz i = k - self.first;
-		if (k > self.first)
-		{
-			if ((*breaks)[i])
-			{
-				cost += self.cb * self.mult(self.point_kind(k), k, depth[i]);
-				col = self.f.indent_width(self.base.deeper(depth[i]));
-			}
-			else
-			{
-				col += self.join_w[i];
-			}
-		}
-		sz w = text_width(s.toks[k].text, 0, self.f.cfg.tab_width);
-		cost += self.text_cost(col, w);
-		col += w;
-		if (col > self.m1) *fits = false;
-	}
-	return cost;
-}
+// ---- filling, for statements too big for the tables ------------------------------------------
 
 <* Fill the lines: when one gets too long, break at its outermost point (the last of those). *>
 fn void Wrap.first_fit(&self, sz start, List{bool}* breaks) => @pool()
@@ -838,7 +786,7 @@ fn void Wrap.first_fit(&self, sz start, List{bool}* breaks) => @pool()
 }
 
 <* How many brackets of the statement enclose token k. *>
-fn sz Wrap.nesting(&self, sz k) @local
+fn sz Wrap.nesting(&self, sz k)
 {
 	sz n;
 	for (sz e = self.f.src.toks[k].encl; e != NO && e >= self.first; e = self.f.src.toks[e].encl) n++;
@@ -846,7 +794,7 @@ fn sz Wrap.nesting(&self, sz k) @local
 }
 
 <* Column after token k with these breaks. *>
-fn sz Wrap.end_column(&self, List{bool}* breaks, sz start, sz k) @local => @pool()
+fn sz Wrap.end_column(&self, List{bool}* breaks, sz start, sz k) => @pool()
 {
 	List{sz} depth;
 	depth.tinit();
@@ -870,59 +818,5 @@ fn Point Wrap.point_kind(&self, sz k)
 	return is_closer(self.f.src.toks[k].type) ? Point.CLOSE : Point.NONE;
 }
 
-const int SEARCH_TRIES = 1000;
-// layouts the search tries in all: each costs a copy of its breaks and a pass over the statement
-const sz SEARCH_EXPANSIONS = 20_000;
+// the most table cells a statement may take (elements × layouts × columns)
 const sz MAX_CELLS = 4_000_000;
-
-<* Best-first search over sets of wrap points (dfmt's wrapping.d): cheapest set first, stop at the first that fits. *>
-fn void Wrap.search(&self, sz start, List{bool}* breaks)
-{
-	List{sz} points;
-	points.tinit();
-	for (sz k = self.first + 1; k <= self.last; k++)
-	{
-		Point p = self.point_kind(k);
-		if (p != NONE && p != CLOSE && !self.blocked(k)) points.push(k);
-	}
-	List{State} open;
-	open.tinit();
-	List{sz} none;
-	none.tinit();
-	bool fits;
-	float c0 = self.simulate(breaks, start, &fits);
-	open.push({none, c0, fits});
-	State best = open[0];
-	sz expansions;
-	for (int tries = 0; tries < SEARCH_TRIES && open.len() && expansions < SEARCH_EXPANSIONS; tries++)
-	{
-		// take the cheapest open state
-		sz bi = 0;
-		foreach (i, st : open) if (st.cost < open[bi].cost) bi = i;
-		State cur = open[bi];
-		open.remove_at(bi);
-		if (cur.fits)
-		{
-			best = cur;
-			break;
-		}
-		if (cur.cost < best.cost) best = cur;
-		// expand: add one more wrap point after the last one taken
-		sz from = cur.chosen.len() ? cur.chosen[^1] : 0;
-		foreach (p : points)
-		{
-			if (p <= from) continue;
-			if (++expansions > SEARCH_EXPANSIONS) break;
-			List{sz} next;
-			next.tinit();
-			foreach (x : cur.chosen) next.push(x);
-			next.push(p);
-			foreach (&x : *breaks) *x = false;
-			foreach (x : next) (*breaks)[x - self.first] = true;
-			float cost = self.simulate(breaks, start, &fits);
-			open.push({next, cost, fits});
-		}
-	}
-	foreach (&x : *breaks) *x = false;
-	foreach (x : best.chosen) (*breaks)[x - self.first] = true;
-}

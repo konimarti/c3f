@@ -97,7 +97,7 @@ fn void? Options.parse(&self, String[] args)
 }
 
 <* One of -w, --check, --diff, --print-config; they do not combine. *>
-fn void? Options.set_mode(&self, Mode m, String flag) @local
+fn void? Options.set_mode(&self, Mode m, String flag)
 {
 	if (self.mode != STDOUT && self.mode != m)
 	{

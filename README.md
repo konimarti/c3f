@@ -176,7 +176,7 @@ search) and can be overridden with `--set key=value`:
 [*.c3]
 c3f_style = stdlib            # or knr, strict
 indent_style = tab
-max_line_length = 100         # used by c3f only with c3f_line_breaks = long or fit
+max_line_length = 100         # wraps only with c3f_line_breaks; alignment never goes past it
 c3f_line_breaks = long        # wrap the lines longer than that (fit: lay out every statement anew)
 c3f_sort_imports = lines
 ```
@@ -201,7 +201,6 @@ spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is
 | `indent_style`, `indent_size`, `tab_width` | `tab`, 4, 4 |
 | `end_of_line`, `insert_final_newline` | keep the file's, `true` |
 | `max_line_length`, `c3f_line_breaks` | `off`; `preserve`, `long`, `fit` |
-| `c3f_wrap_solver` | `dp` (optimal), `search` |
 | `c3f_brace_style`, `c3f_else_style` | `allman`, `knr`, `linux` (function bodies Allman, the rest K&R); `follow`, `own_line`, `cuddle` |
 | `c3f_one_line_blocks` | `keep`, `expand` |
 | `c3f_case_indent`, `c3f_ct_indent` | `indent`, `flush`; `keep`, `indent`, `flush` |

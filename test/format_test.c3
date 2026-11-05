@@ -191,29 +191,6 @@ fn void diff() @test
 	assert(c3f::unified_diff(tmem, "x", "a\nb\nc\n", "a\nB\nc\n") == "--- a/x\n+++ b/x\n@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n");
 }
 
-fn void edits_and_ranges() @test
-{
-	c3f::Config c = c3f::defaults();
-	String src = "fn void f()\n{\n  a=1;\n  b=2;\n}\n";
-	c3f::FormatResult r = c3f::format(tmem, src, &c);
-	// applying the edits gives the formatted text
-	DString d;
-	d.tinit();
-	sz at = 0;
-	foreach (e : c3f::edits(tmem, src, r.text))
-	{
-		d.append(src[at:e.start - at]);
-		d.append(e.text);
-		at = e.end;
-	}
-	d.append(src[at..]);
-	assert(d.str_view() == r.text);
-	// only the third line is formatted
-	sz from = 14;
-	sz to = 20;
-	assert(c3f::format_range(tmem, src, from, to, &c) == "fn void f()\n{\n\ta = 1;\n  b=2;\n}\n");
-}
-
 fn void decl_alignment() @test
 {
 	c3f::Config c = c3f::defaults();
@@ -331,9 +308,6 @@ fn void import_sorting_edge_cases() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("c3f_sort_imports", "lines");
-	// a range never reorders imports, and never loses one
-	String src = "module foo;\nimport zzz;\nimport aaa;\nint  x;\n";
-	assert(c3f::format_range(tmem, src, 0, 20, &c) == src);
 	// only statements on lines of their own are sorted
 	check("module x;\nimport ppp; /* c */ import ooo;\nimport bbb;\nimport aaa; // a\n",
 	      "module x;\nimport ppp; /* c */ import ooo;\nimport aaa; // a\nimport bbb;\n", &c);
@@ -346,7 +320,6 @@ fn void wrapping() @test
 	(void)c.set("c3f_line_breaks", "long");
 	check("fn void f()\n{\n\tint r = compute(first_argument, second_argument);\n\tshort(a);\n}\n",
 	      "fn void f()\n{\n\tint r = compute(first_argument,\n\t\tsecond_argument);\n\tshort(a);\n}\n", &c);
-	(void)c.set("c3f_wrap_solver", "search");
 	check("fn void f()\n{\n\tif (alpha_condition && beta_condition || gamma) return;\n}\n",
 	      "fn void f()\n{\n\tif (alpha_condition\n\t\t&& beta_condition\n\t\t|| gamma) return;\n}\n", &c);
 	// a wrapped initializer item stays where the next run puts it
@@ -454,4 +427,8 @@ fn void third_review_regressions() @test
 	c3f::Config d = c3f::defaults();
 	(void)d.set("c3f_decl_spacing", "1");
 	check("fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\nint x;\n", "fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\n\nint x;\n", &d);
+	// values that make no sense are rejected
+	c3f::Config c = c3f::defaults();
+	assert(@catch(c.set("c3f_wrap_cost_hard", "nan")));
+	assert(@catch(c.set("c3f_trailing_comment_spaces", "0")));
 }

@@ -83,7 +83,7 @@ fn String Fmt.emit(&self, List{String}* texts)
 		Out* o = &self.out[i];
 		switch
 		{
-			case o.verbatim: d.append(i == 0 ? s.gap(0) : self.convert_eol(s.gap(i)));
+			case o.verbatim: d.append(self.convert_eol(s.gap(i)));   // (never the first token)
 			case i == 0: d.append(self.indent_text(o.indent));
 			case o.nl > 0:
 				self.newlines(&d, o.nl, i - 1);

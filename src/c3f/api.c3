@@ -7,13 +7,6 @@ struct Note
 	String text;
 }
 
-<* Replace input bytes [start, end) with `text`. *>
-struct TextEdit
-{
-	sz     start, end;
-	String text;
-}
-
 struct FormatResult
 {
 	String         text;
@@ -72,83 +65,6 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	r.text = text.copy(a);
 	r.changed = r.text != input;
 	return r;
-}
-
-<*
- The edits that turn `old` into `new` (e.g. an input and its formatted text): one per changed
- gap or token. If the two do not hold the same tokens in the same order (sorted imports), one
- edit replaces everything. The edit texts are slices of `new`.
-*>
-fn TextEdit[] edits(Allocator a, String old, String new) => @pool()
-{
-	List{TextEdit} l;
-	l.tinit();
-	diff_tokens(old, new, &l);
-	return l.to_array(a);
-}
-
-fn void diff_tokens(String old, String new, List{TextEdit}* edits) @local
-{
-	List{Token} a = all_tokens(old);
-	List{Token} b = all_tokens(new);
-	bool same = a.len() == b.len();
-	// the same tokens in the same order; only gaps (and re-indented comment lines) differ
-	for (sz i = 0; same && i < a.len(); i++) same = a[i].type == b[i].type && (a[i].text == b[i].text || is_comment_type(a[i].type));
-	if (!same)
-	{
-		edits.push({0, old.len, new});
-		return;
-	}
-	sz pa = 0;
-	sz pb = 0;
-	for (sz i = 0; i <= a.len(); i++)
-	{
-		sz sa = i < a.len() ? a[i].offset : old.len;
-		sz sb = i < b.len() ? b[i].offset : new.len;
-		if (old[pa:sa - pa] != new[pb:sb - pb]) edits.push({pa, sa, new[pb:sb - pb]});
-		if (i == a.len()) break;
-		if (a[i].text != b[i].text) edits.push({sa, sa + a[i].len, b[i].text});
-		pa = sa + a[i].len;
-		pb = sb + b[i].len;
-	}
-}
-
-fn List{Token} all_tokens(String text) @local
-{
-	List{Token} l;
-	l.tinit();
-	Lexer lx;
-	lx.init(text);
-	while (try t = lx.next())
-	{
-		if (t.type == EOF) break;
-		l.push(t);
-	}
-	return l;
-}
-
-<*
- Format only the part of `input` between byte offsets start and end (for editors): the
- edits that overlap [start, end) are applied, everything else stays as it is.
-*>
-fn String format_range(Allocator a, String input, sz start, sz end, Config* cfg) => @pool()
-{
-	Config local = *cfg;
-	local.sort_imports = OFF;   // reordering is never part of formatting a range
-	FormatResult r = format(tmem, input, &local);
-	DString d;
-	d.tinit();
-	sz at = 0;
-	foreach (e : edits(tmem, input, r.text))
-	{
-		bool overlaps = e.start == e.end ? e.start >= start && e.start <= end : e.start < end && e.end > start;
-		if (!overlaps) continue;
-		d.append(input[at:e.start - at]);
-		d.append(e.text);
-		at = e.end;
-	}
-	d.append(input[at..]);
-	return d.copy_str(a);
 }
 
 <* Format once; a place whose result cannot be verified is kept as written and the rest is tried again. *>

@@ -65,7 +65,7 @@ struct Glob @local
 	char[] memo;   // per (pattern index, text index): 0 unknown, 1 no, 2 yes
 }
 
-fn bool Glob.at(&self, sz p, sz t) @local
+fn bool Glob.at(&self, sz p, sz t)
 {
 	char* m = &self.memo[p * (self.text.len + 1) + t];
 	if (*m) return *m == 2;
@@ -74,7 +74,7 @@ fn bool Glob.at(&self, sz p, sz t) @local
 	return r;
 }
 
-fn bool Glob.step(&self, sz p, sz t) @local
+fn bool Glob.step(&self, sz p, sz t)
 {
 	String pat = self.pattern;
 	String text = self.text;
