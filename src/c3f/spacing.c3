@@ -255,6 +255,17 @@ fn bool Src.is_ternary_question(&self, sz q)
 	return false;
 }
 
+fn bool is_control(TokenType t) => t == IF || t == WHILE || t == FOR || t == FOREACH || t == FOREACH_R || t == SWITCH;
+
+<* Is the ':' at i the one of a `foreach (i, v : list)` header? *>
+fn bool Src.is_foreach_colon(&self, sz i)
+{
+	Tok* t = &self.toks[i];
+	if (t.type != COLON || t.label || t.encl == NO || self.toks[t.encl].type != LPAREN) return false;
+	TokenType k = self.type_at(self.prev_code(t.encl));
+	return k == FOREACH || k == FOREACH_R;
+}
+
 <* Is the ')' at r the end of the header of `if`, `while`, `for`, `foreach`, `foreach_r` or `switch`? *>
 fn bool Src.is_header_close(&self, sz r)
 {
@@ -333,6 +344,8 @@ fn bool Src.same_line(&self, sz i) @inline => i > 0 && i < self.len() && self.to
 fn Space Src.space_rule(&self, sz i, Config* cfg)
 {
 	if (self.is_unary(i - 1)) return NONE;
+	// a binary operator that starts a line (a wrapped `a\n* b`): the table would read it as `*p`
+	if (self.toks[i - 1].nl > 0 && self.is_binary(i - 1)) return ONE;
 	Space rule = self.gap_rule(i, cfg);
 	// the inside of a one-line `{ … }` is padded alike on both ends
 	sz open = self.toks[i - 1].type == LBRACE ? i - 1 : self.toks[i].type == RBRACE ? self.toks[i].match : NO;
@@ -471,6 +484,9 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 			if (k == BLOCK || k == BODY) return ONE;
 		}
 	}
+	// control headers are spaced as the stdlib writes them (99%): `if (x)`, `foreach (i, v : list)`
+	if (next.type == LPAREN && is_control(prev.type)) return ONE;
+	if ((next.type == COLON && self.is_foreach_colon(i)) || (prev.type == COLON && self.is_foreach_colon(i - 1))) return ONE;
 	// the ':' of a label or compile-time header is tight: `case X:`, `$if cond:`
 	if (next.type == COLON && next.label) return NONE;
 	// strict: the parameter list of a function type is tight, `fn Type(...)` like `fn void(...)`

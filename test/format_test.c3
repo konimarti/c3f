@@ -391,6 +391,11 @@ fn void release_review_regressions() @test
 	assert(r.fallback && r.notes.len() == 1 && r.notes[0].line == 3);
 	// a stray closer keeps only the span around it
 	check("fn void f()\n{\n\tint x = 3 ];\n}\nfn void g(){int z=3;}\n", "fn void f()\n{\n\tint x = 3 ];\n}\nfn void g() {int z = 3;}\n");
+	// a binary operator that starts a wrapped line keeps its space: `* b` is no `*p`
+	check("fn void f()\n{\n\tx = a\n\t\t*b;\n\t*p = 1;\n}\n", "fn void f()\n{\n\tx = a\n\t\t* b;\n\t*p = 1;\n}\n");
+	// control headers are spaced in every style, as the stdlib writes them
+	check("fn void f()\n{\n\tforeach(i,p:list) x();\n\tforeach_r(p:list) x();\n\tif(a) b();\n}\n",
+	      "fn void f()\n{\n\tforeach (i, p : list) x();\n\tforeach_r (p : list) x();\n\tif (a) b();\n}\n");
 	// a rejected value leaves the option as it was
 	c3f::Config c = c3f::defaults();
 	assert(@catch(c.set("tab_width", "0")));
