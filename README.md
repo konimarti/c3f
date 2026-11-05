@@ -1,24 +1,51 @@
 # c3f
 
-A faithful formatter for [C3](https://c3-lang.org).
+A formatter for [C3](https://c3-lang.org). It only changes the whitespace between tokens.
 
+- **Format on save, even mid-edit.** c3f reads tokens, not a C3 grammar, so half-written
+  code, syntax errors and new syntax do not stop it: the code inside an unclosed bracket is
+  left as written, the rest of the file is formatted, and a note names the line. Setups for
+  Vim, Neovim and Helix are below.
 - **Stdlib style.** c3f writes code in the style of the C3 standard library: its spacing
   rules are learned from the standard library itself, so formatted code reads like the
   stdlib, and the rules can be regenerated as the stdlib evolves.
 - **Optimal wrapping.** With a line limit set, c3f lays out each statement with the
   dynamic-programming algorithm of [A New Approach to Optimal Code Formatting](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf)
-  (Yelland, the algorithm of Google's rfmt): it weighs every way to break the statement
+  (Yelland, the algorithm of Google's rfmt): it weighs the ways to break each statement
   against a layout cost, instead of filling one line after the other.
-- **Format on save, even mid-edit.** c3f reads tokens, not a C3 grammar, so half-written
-  code, syntax errors and new syntax do not stop it: the code inside an unclosed bracket is
-  left as written, the rest of the file is formatted, and a note names the line. Setups for
-  Vim, Neovim and Helix are below.
 - **Fast.** c3f formats the whole standard library in 0.13 s, and in 0.32 s while wrapping
-  it at 120 columns, where c3fmt takes 2.4 s. Its time grows in step with the size of a
-  file: a table of 4,000 numbers takes 3 ms.
+  it at 120 columns. Its time grows in step with the size of a file: a table of 4,000
+  numbers takes under 5 ms.
 
-Also: `.editorconfig` support, import sorting, alignment that survives re-indentation,
-and format-on-save, CI and git-hook integration.
+Also: `.editorconfig` support, presets, import sorting, alignment of declarations and
+comments, and CI and git-hook integration.
+
+For example, with `max_line_length = 72` and `c3f_line_breaks = long`,
+
+```c3
+fn void main(){
+  int[] primes={2,3,5,7,11};
+  foreach(i,p:primes){
+      if(p>5&&i%2==0)io::printfn("prime %d at %d",p,i);
+      total+=compute_weight(p,i,primes.len)*scale_factor_for(category,p);
+  }
+}
+```
+
+becomes
+
+```c3
+fn void main()
+{
+	int[] primes = {2, 3, 5, 7, 11};
+	foreach (i, p : primes)
+	{
+		if (p > 5 && i % 2 == 0) io::printfn("prime %d at %d", p, i);
+		total += compute_weight(p, i, primes.len)
+			* scale_factor_for(category, p);
+	}
+}
+```
 
 ## How it compares
 
@@ -27,13 +54,14 @@ wrapping at 120 columns: c3fmt by default, c3tools with `--width=120 --indent=t`
 README suggests for the stdlib), and c3f with `max_line_length = 120` and
 `c3f_line_breaks = long` (wrap the lines over the limit, with the optimal layout). c3f's
 default, which does not wrap, is shown too. c3f runs on one thread; c3fmt starts one per
-core (28 here).
+core (28 here). Versions: c3fmt c74d563 (2026-11-01), c3tools 32b5f03 (2026-09-06), and the
+standard library of c3c c23910038 (0.8.6, 2026-11-04).
 
 | | c3f | c3f, 120 columns | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
 |---|---|---|---|---|
 | Time (median of 5 runs) | 0.13 s | 0.32 s | 2.4 s ⁴ | 99 s ² |
 | Peak memory | 9 MB | 16 MB | 78 MB | 17 MB |
-| Lines changed | 1,842 | 2,905 | 14,069 | 14,854 |
+| Lines changed | 1,857 | 2,920 | 14,069 | 14,854 |
 | Lines over 120 columns left (1,329 before) | 1,325 | 305 ³ | 522 | 738 |
 | Files whose code or comments changed | 0 ¹ | 0 ¹ | 77 | 110 |
 | Files that change again on a second run | 0 | 0 | 31 | 5 |
@@ -50,8 +78,7 @@ others take a few milliseconds each.
 ³ Mostly comments, contract text and long strings (213); then what c3f keeps on one line:
 statements with a comment inside (38), one-line blocks and bodies (29), aligned rows (17).
 
-⁴ The same on one core: c3fmt's threads each format a file while holding its output lock,
-so files are formatted one at a time.
+⁴ The same when it runs on one core.
 
 ## Install
 
