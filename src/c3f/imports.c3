@@ -75,7 +75,7 @@ fn String sort_imports(String text, SortImports mode)
 		sz end = i;
 		while (end < s.len() && s.toks[end].type != EOS) end++;
 		if (end >= s.len()) break;
-		Unit u = { .first = i, .last = end, .key = s.path_at(i + 1) };
+		Unit u = {.first = i, .last = end, .key = s.path_at(i + 1)};
 		// comments in front of it (on its line, or on their own lines right above) move with it
 		while (u.first > 0 && !s.toks[u.first - 1].code)
 		{
@@ -149,7 +149,7 @@ fn String sort_list(Src* s, Unit* u, String body) @local
 		if (!t.code) return body;   // a comment inside: leave the list alone
 		if (t.type != COMMA && t.type != EOS) continue;
 		if (k == from) return body;
-		items.push({ .first = from, .last = k - 1, .key = s.path_at(from), .order = (sz)items.len() });
+		items.push({.first = from, .last = k - 1, .key = s.path_at(from), .order = (sz)items.len()});
 		from = k + 1;
 	}
 	if (items.len() < 2) return body;

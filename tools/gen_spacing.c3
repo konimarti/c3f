@@ -18,7 +18,7 @@ fn void count(HashMap{ulong, Count}* table, c3f::GapKey* k, char level, bool spa
 	Count* c = table.get_ref(key) ?? null;
 	if (!c)
 	{
-		table.set(key, { .rule = r });
+		table.set(key, {.rule = r});
 		c = table.get_ref(key)!!;
 	}
 	if (space)
@@ -94,7 +94,7 @@ fn int main(String[] args)
 	io::printn("const Rule[] SPACING_RULES = {");
 	foreach (r : rules)
 	{
-		io::printfn("\t{ %d, %s, %s, %s, %s, %s, %d, %d },", r.level, r.p2, r.p1, r.nx, r.co, r.cb, r.n0, r.n1);
+		io::printfn("\t{%d, %s, %s, %s, %s, %s, %d, %d},", r.level, r.p2, r.p1, r.nx, r.co, r.cb, r.n0, r.n1);
 	}
 	io::printn("};");
 	return 0;

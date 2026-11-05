@@ -102,7 +102,7 @@ fn sz Wrap.build(&self, sz a, sz b, sz depth)
 {
 	Src* s = self.f.src;
 	sz index = self.seqs.len();
-	self.seqs.push({ .depth = depth });
+	self.seqs.push({.depth = depth});
 	self.seqs[index].elems.tinit();
 	self.seqs[index].points.tinit();
 	self.seqs[index].mults.tinit();
@@ -113,7 +113,7 @@ fn sz Wrap.build(&self, sz a, sz b, sz depth)
 		if (self.opens_span(k, b))
 		{
 			sz inner = self.build_span(k, depth + 1);
-			self.elems.push({ .kind = SPAN, .first = k, .seq = inner });
+			self.elems.push({.kind = SPAN, .first = k, .seq = inner});
 			k = t.match + 1;
 		}
 		else
@@ -126,7 +126,7 @@ fn sz Wrap.build(&self, sz a, sz b, sz depth)
 				r++;
 				width += self.join_w[r - self.first] + text_width(s.toks[r].text, 0, self.f.cfg.tab_width);
 			}
-			self.elems.push({ .kind = RUN, .first = k, .width = width });
+			self.elems.push({.kind = RUN, .first = k, .width = width});
 			k = r + 1;
 		}
 		sz e = self.elems.len() - 1;   // the element just added (a span's inside was added before it)
@@ -223,7 +223,7 @@ fn sz Wrap.build_span(&self, sz open, sz depth)
 fn void Wrap.push_run(&self, sz seq, sz tok, Point p, sz depth)
 {
 	sz e = self.elems.len();
-	self.elems.push({ .kind = RUN, .first = tok, .width = text_width(self.f.src.toks[tok].text, 0, self.f.cfg.tab_width) });
+	self.elems.push({.kind = RUN, .first = tok, .width = text_width(self.f.src.toks[tok].text, 0, self.f.cfg.tab_width)});
 	self.seqs[seq].elems.push(e);
 	self.seqs[seq].points.push(p);
 	self.seqs[seq].mults.push(self.mult(p, tok, depth));
@@ -304,7 +304,7 @@ fn float Wrap.at(&self, Table* t, sz c, sz* end)
 
 fn Table Wrap.new_table(&self)
 {
-	Table t = { mem::talloc_array(float, self.w + 1), mem::talloc_array(sz, self.w + 1), mem::talloc_array(char, self.w + 1) };
+	Table t = {mem::talloc_array(float, self.w + 1), mem::talloc_array(sz, self.w + 1), mem::talloc_array(char, self.w + 1)};
 	t.pick[..] = 0;
 	return t;
 }
@@ -738,7 +738,7 @@ fn void Wrap.search(&self, sz start, List{bool}* breaks)
 	none.tinit();
 	bool fits;
 	float c0 = self.simulate(breaks, start, &fits);
-	open.push({ none, c0, fits });
+	open.push({none, c0, fits});
 	State best = open[0];
 	for (int tries = 0; tries < SEARCH_TRIES && open.len(); tries++)
 	{
@@ -765,7 +765,7 @@ fn void Wrap.search(&self, sz start, List{bool}* breaks)
 			foreach (&x : *breaks) *x = false;
 			foreach (x : next) (*breaks)[x - self.first] = true;
 			float cost = self.simulate(breaks, start, &fits);
-			open.push({ next, cost, fits });
+			open.push({next, cost, fits});
 		}
 	}
 	foreach (&x : *breaks) *x = false;

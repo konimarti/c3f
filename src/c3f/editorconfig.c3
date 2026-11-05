@@ -127,7 +127,7 @@ fn bool? read_editorconfig(String config_path, String file, List{Setting}* out, 
 			if (key == "root") root = value.to_lower_tcopy() == "true";
 			continue;
 		}
-		if (matches) out.push({ key, value, string::tformat("%s:%d", config_path, line_no) });
+		if (matches) out.push({key, value, string::tformat("%s:%d", config_path, line_no)});
 	}
 	return root;
 }
@@ -186,7 +186,7 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 			*error = string::tformat("--set %s: expected key=value", kv);
 			return BAD_CONFIG~;
 		}
-		settings.push({ kv[:eq].trim().to_lower_tcopy(), kv[eq + 1..].trim(), "--set" });
+		settings.push({kv[:eq].trim().to_lower_tcopy(), kv[eq + 1..].trim(), "--set"});
 	}
 	// `unset` takes back everything said about a key before it
 	List{Setting} kept;

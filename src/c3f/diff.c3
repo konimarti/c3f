@@ -87,8 +87,8 @@ fn List{Op} edit_script(Lines* x, Lines* y) @local
 	}
 	if (found < 0)
 	{
-		for (sz i = 0; i < n; i++) ops.push({ DEL, i, 0 });
-		for (sz j = 0; j < m; j++) ops.push({ ADD, n, j });
+		for (sz i = 0; i < n; i++) ops.push({DEL, i, 0});
+		for (sz j = 0; j < m; j++) ops.push({ADD, n, j});
 		return ops;
 	}
 	List{Op} rev;
@@ -108,9 +108,9 @@ fn List{Op} edit_script(Lines* x, Lines* y) @local
 		{
 			xi--;
 			yi--;
-			rev.push({ SAME, xi, yi });
+			rev.push({SAME, xi, yi});
 		}
-		rev.push(down ? (Op){ ADD, px, py } : (Op){ DEL, px, py });
+		rev.push(down ? (Op){ADD, px, py} : (Op){DEL, px, py});
 		xi = px;
 		yi = py;
 	}
@@ -118,7 +118,7 @@ fn List{Op} edit_script(Lines* x, Lines* y) @local
 	{
 		xi--;
 		yi--;
-		rev.push({ SAME, xi, yi });
+		rev.push({SAME, xi, yi});
 	}
 	for (sz i = rev.len(); i > 0; i--) ops.push(rev[i - 1]);
 	return ops;

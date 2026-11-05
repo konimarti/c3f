@@ -81,7 +81,7 @@ fn void diff_tokens(String old, String new, List{TextEdit}* edits) @local
 	for (sz i = 0; same && i < a.len(); i++) same = a[i].type == b[i].type && (a[i].text == b[i].text || is_comment_type(a[i].type));
 	if (!same)
 	{
-		edits.push({ 0, old.len, new });
+		edits.push({0, old.len, new});
 		return;
 	}
 	sz pa = 0;
@@ -90,9 +90,9 @@ fn void diff_tokens(String old, String new, List{TextEdit}* edits) @local
 	{
 		sz sa = i < a.len() ? a[i].offset : old.len;
 		sz sb = i < b.len() ? b[i].offset : new.len;
-		if (old[pa:sa - pa] != new[pb:sb - pb]) edits.push({ pa, sa, new[pb:sb - pb] });
+		if (old[pa:sa - pa] != new[pb:sb - pb]) edits.push({pa, sa, new[pb:sb - pb]});
 		if (i == a.len()) break;
-		if (a[i].text != b[i].text) edits.push({ sa, sa + a[i].len, b[i].text });
+		if (a[i].text != b[i].text) edits.push({sa, sa + a[i].len, b[i].text});
 		pa = sa + a[i].len;
 		pb = sb + b[i].len;
 	}
@@ -161,7 +161,7 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 		sz bad = f.verify(output, &texts);
 		if (bad == NO) return output;
 		r.fallback = true;
-		r.notes.push({ s.toks[bad].line, "could not be formatted safely; kept as written".copy(a) });
+		r.notes.push({s.toks[bad].line, "could not be formatted safely; kept as written".copy(a)});
 		if (attempt + 1 == MAX_ATTEMPTS) return original;
 		s.keep_range(bad > 0 ? bad - 1 : 0, bad + 1);
 	}
