@@ -78,8 +78,8 @@ c3f -w --exclude 'gen/*' .  # skip paths matching a glob (repeatable)
 ```
 
 `// c3f off` … `// c3f on` leaves a region untouched. Exit status: 0 ok, 1 `--check`
-found changes, 2 usage or I/O error, 3 a place was kept as written (with `-w`, `--check`
-or `--diff`; printing the result succeeds, with the notes on stderr). In directories,
+found changes, 2 usage or I/O error, 3 a place was kept as written (with `-w` or `--check`;
+printing the result or the diff succeeds, with the notes on stderr). In directories,
 hidden ones and those named `build` or `lib` are skipped.
 
 ## Format on save, in CI, before every commit

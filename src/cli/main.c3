@@ -107,8 +107,8 @@ fn Status run_file(Options* opt, String path)
 
 <*
  Format one input and act on the mode; `in_place` says whether `name` is a file that -w may rewrite.
- A place kept as written is exit status 3 for --check, -w and --diff; printing the result is a
- success, so format-on-save works on code in progress.
+ A place kept as written is exit status 3 for --check and -w; printing the result or the diff
+ is a success (the notes go to stderr), so format-on-save works on code in progress.
 *>
 fn Status run(Options* opt, String name, String src, c3f::Config* cfg, bool in_place)
 {
@@ -121,6 +121,7 @@ fn Status run(Options* opt, String name, String src, c3f::Config* cfg, bool in_p
 			return worst(s, r.changed ? Status.CHANGED : Status.OK);
 		case DIFF:
 			if (r.changed) io::print(c3f::unified_diff(tmem, name, src, r.text));
+			return OK;
 		case WRITE:
 			if (!in_place)
 			{
