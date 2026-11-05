@@ -40,6 +40,16 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 {
 	FormatResult r;
 	r.notes.init(a);
+	// c3c drops a '\r' that is not part of "\r\n" before it reads the file, so a comment goes on
+	// past it; formatting would have to agree on where that comment ends: keep the file
+	foreach (i, c : input)
+	{
+		if (c != '\r' || (i + 1 < input.len && input[i + 1] == '\n')) continue;
+		r.fallback = true;
+		r.notes.push({input[:i].count("\n") + 1, "carriage return without a newline; the file was kept as written".copy(a)});
+		r.text = input.copy(a);
+		return r;
+	}
 	Config settled = *cfg;
 	settled.finish();
 	String text = format_text(input, &settled, &r, a);
@@ -47,9 +57,13 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	// which the next run may wrap again: repeat until nothing changes, so a second run never does
 	if (settled.line_breaks != PRESERVE)
 	{
+		// the notes are about the input: later passes only say whether something was kept
+		FormatResult later;
+		later.notes.tinit();
 		for (int pass = 1; pass < WRAP_PASSES; pass++)
 		{
-			String again = format_text(text, &settled, &r, a);
+			String again = format_text(text, &settled, &later, tmem);
+			if (later.fallback) r.fallback = true;
 			if (again == text) break;
 			text = again;
 		}
@@ -147,12 +161,14 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	Src s;
 	s.init(input);
 	if (s.len() == 0) return input.trim().len == 0 ? "" : input;
-	sort::quicksort(&s.unbalanced);
-	foreach (b : s.unbalanced)
+	sort::quicksort(&s.unbalanced, fn int(Damage x, Damage y) => (int)(x.tok - y.tok));
+	foreach (d : s.unbalanced)
 	{
 		r.fallback = true;
-		String what = is_opener(s.toks[b].type) ? "unclosed" : "unopened";
-		r.notes.push({s.toks[b].line, string::format(a, "%s '%s'; the code it encloses was kept as written", what, s.toks[b].text)});
+		Tok* t = &s.toks[d.tok];
+		String what = is_opener(t.type) ? "unclosed" : "unopened";
+		String upto = d.last == s.len() - 1 ? "to the end of the file" : string::tformat("up to line %d", s.toks[d.last].line);
+		r.notes.push({t.line, string::format(a, "%s '%s'; kept as written %s", what, t.text, upto)});
 	}
 	Fmt f;
 	f.init(&s, cfg);
@@ -168,8 +184,12 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 		sz bad = f.verify(output, &texts);
 		if (bad == NO) return output;
 		r.fallback = true;
+		if (attempt + 1 == MAX_ATTEMPTS)
+		{
+			r.notes.push({s.toks[bad].line, "could not be formatted safely; the file was kept as written".copy(a)});
+			return original;
+		}
 		r.notes.push({s.toks[bad].line, "could not be formatted safely; kept as written".copy(a)});
-		if (attempt + 1 == MAX_ATTEMPTS) return original;
 		s.keep_range(bad > 0 ? bad - 1 : 0, bad + 1);
 	}
 }

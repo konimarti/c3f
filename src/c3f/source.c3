@@ -40,7 +40,13 @@ struct Src
 	bool       crlf;
 	bool       bom;
 	List{char} memo;          // cached answers of is_cast_close / is_type_star
-	List{sz}   unbalanced;    // brackets without a partner: their span is kept as written
+	List{Damage} unbalanced;  // brackets without a partner: tokens tok..last are kept as written
+}
+
+struct Damage
+{
+	sz tok;    // the bracket without a partner
+	sz last;   // the last token kept as written because of it
 }
 
 fn bool is_comment_type(TokenType t) => t == LINE_COMMENT || t == BLOCK_COMMENT || t == CONTRACT;
@@ -101,6 +107,8 @@ fn void Src.init(&self, String text)
 			.match = NO, .encl = NO, .parent = NO, .code = !is_comment_type(t.type),
 			.unterminated = t.unterminated});
 	}
+	// here, in the caller's scope: created lazily inside a wrap's @pool it would not outlive it
+	self.init_memo();
 	self.match_brackets();
 	self.classify_braces();
 	self.match_ct();
@@ -160,6 +168,8 @@ fn void Src.match_brackets(&self)
 {
 	List{sz} stack;
 	stack.tinit();
+	List{sz} strays;   // stray closers whose enclosing span is only known at the end
+	strays.tinit();
 	for (sz i = 0; i < self.len(); i++)
 	{
 		Tok* t = &self.toks[i];
@@ -175,15 +185,13 @@ fn void Src.match_brackets(&self)
 		while (k >= 0 && closer_of(self.toks[stack[k]].type) != t.type) k--;
 		if (k < 0)
 		{
-			// stray closer: keep the enclosing span (or everything around it at top level)
-			self.unbalanced.push(i);
-			self.keep_range(stack.len() ? stack[^1] + 1 : 0, self.len() - 1);
+			strays.push(i);
 			continue;
 		}
 		while ((sz)stack.len() - 1 > k)
 		{
 			sz o = stack.pop()!!;
-			self.unbalanced.push(o);
+			self.unbalanced.push({o, i});
 			self.keep_range(o + 1, i);
 		}
 		sz o = stack.pop()!!;
@@ -193,8 +201,26 @@ fn void Src.match_brackets(&self)
 	while (stack.len())
 	{
 		sz o = stack.pop()!!;
-		self.unbalanced.push(o);
+		self.unbalanced.push({o, self.len() - 1});
 		self.keep_range(o + 1, self.len() - 1);
+	}
+	// a stray closer: the span around it is kept (at top level, its line)
+	foreach (i : strays)
+	{
+		sz e = self.toks[i].encl;
+		sz from = e != NO ? e + 1 : i;
+		sz to = e != NO && self.toks[e].match != NO ? self.toks[e].match : i;
+		if (e == NO)
+		{
+			while (from > 0 && self.toks[from].nl == 0) from--;
+			while (to + 1 < self.len() && self.toks[to + 1].nl == 0) to++;
+		}
+		else if (self.toks[e].match == NO)
+		{
+			to = self.len() - 1;
+		}
+		self.unbalanced.push({i, to});
+		self.keep_range(from, to);
 	}
 }
 
