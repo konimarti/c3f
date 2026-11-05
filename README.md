@@ -11,7 +11,7 @@ A faithful formatter for [C3](https://c3-lang.org).
   against a layout cost, instead of filling one line after the other.
 - **Future-proof.** c3f does not depend on a C3 grammar, so new or unfinished syntax does
   not stop it: that part is left as written and the rest of the file is formatted.
-- **Fast.** c3f formats the whole standard library in about 0.16 s.
+- **Fast.** c3f formats the whole standard library in under 0.2 s.
 
 Also: `.editorconfig` support, import sorting, alignment that survives re-indentation,
 and a library API with range formatting for editors.
@@ -23,8 +23,8 @@ Formatting the C3 standard library (364 files) with each tool's default settings
 
 | | c3f | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
 |---|---|---|---|
-| Time | 0.16 s | 2.5 s | 88 s |
-| Peak memory | 9 MB | 82 MB | 15 MB |
+| Time (median of 5 runs) | 0.17 s | 2.5 s | 88 s |
+| Peak memory | 9 MB | 91 MB | 15 MB |
 | Lines changed | 1,804 | 14,069 | 14,854 |
 | Files whose code or comments changed | 0 ¹ | 77 | 110 |
 | Files that change again on a second run | 0 | 31 | 5 |
