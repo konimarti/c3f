@@ -146,6 +146,9 @@ fn Status report(String name, c3f::FormatResult* r)
 
 extern fn CInt chmod(ZString path, libc::Mode_t mode) @feat(POSIX);
 extern fn CInt access(ZString path, CInt mode) @feat(POSIX);
+extern fn CInt move_file_ex(WString from, WString to, CUInt flags) @cname("MoveFileExW") @feat(WIN32);
+const CUInt MOVEFILE_REPLACE_EXISTING = 1;
+const CUInt MOVEFILE_WRITE_THROUGH = 8;
 
 <*
  Write through a temporary file that takes the original's permissions, then rename it over
@@ -156,7 +159,7 @@ fn bool write_atomic(String path, String text)
 	bool link = @ok(path::tnew(path)) && path::is_link(path::tnew(path)!!);
 	if (link)
 	{
-		if (catch file::save(path, text))
+		if (catch save_checked(path, text))
 		{
 			io::eprintfn("c3f: %s: cannot write", path);
 			return false;
@@ -174,7 +177,7 @@ fn bool write_atomic(String path, String text)
 	String tmp = path.tconcat(".c3f~");
 	// a file (or a planted link) of that name goes first: deleting a link does not follow it
 	(void)file::delete(tmp);
-	if (catch file::save(tmp, text))
+	if (catch save_checked(tmp, text))
 	{
 		io::eprintfn("c3f: %s: cannot write", tmp);
 		(void)file::delete(tmp);
@@ -184,10 +187,14 @@ fn bool write_atomic(String path, String text)
 		libc::Stat st;
 		if (libc::stat(path.zstr_tcopy(), &st) == 0) (void)chmod(tmp.zstr_tcopy(), st.st_mode & 0o7777);
 	$endif
-	bool renamed = libc::rename(tmp.zstr_tcopy(), path.zstr_tcopy()) == 0;
 	$if env::WIN32:
-		// Windows does not rename over an existing file: remove it first
-		if (!renamed && @ok(file::delete(path))) renamed = libc::rename(tmp.zstr_tcopy(), path.zstr_tcopy()) == 0;
+		// in one step, with UTF-16 paths: rename reads them in the ANSI code page and does not
+		// replace a file (deleting it first could lose both when the rename then fails)
+		WString? from = tmp.to_temp_wstring();
+		WString? to = path.to_temp_wstring();
+		bool renamed = @ok(from) && @ok(to) && move_file_ex(from!!, to!!, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+	$else
+		bool renamed = libc::rename(tmp.zstr_tcopy(), path.zstr_tcopy()) == 0;
 	$endif
 	if (!renamed)
 	{
@@ -196,6 +203,18 @@ fn bool write_atomic(String path, String text)
 		return false;
 	}
 	return true;
+}
+
+<*
+ Write a file and report every error: file::save ignores the result of closing it, and that is
+ where the end of the text is written (a full disk then left a cut file, and success).
+*>
+fn void? save_checked(String path, char[] data)
+{
+	File f = file::open(path, "wb")!;
+	defer (void)f.close();
+	io::write_all(&f, data)!;
+	f.close()!;
 }
 
 <* Print to stdout: false (and a message) if it could not be written, e.g. on a full disk. *>

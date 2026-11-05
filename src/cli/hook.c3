@@ -84,7 +84,7 @@ fn Status install_git_hook()
 		return OK;
 	}
 	if (!file::is_dir(hooks)) (void)path::mkdir(path::tnew(hooks)!!, true);
-	if (catch file::save(dest, &HOOK))
+	if (catch save_checked(dest, &HOOK))
 	{
 		io::eprintfn("c3f: %s: cannot write", dest);
 		return ERROR;
