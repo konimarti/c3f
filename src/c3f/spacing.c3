@@ -197,6 +197,20 @@ fn bool Src.is_foreach_colon(&self, sz i)
 	return k == FOREACH || k == FOREACH_R;
 }
 
+<* Is the ')' at r the end of a call's arguments, `f(…)`, `a[i](…)`, `f(x)(…)`? *>
+fn bool Src.closes_call(&self, sz r)
+{
+	Tok* t = &self.toks[r];
+	if (t.type != RPAREN || t.match == NO) return false;
+	switch (self.type_at(self.prev_code(t.match)))
+	{
+		case IDENT: case AT_IDENT: case CONST_IDENT: case HASH_IDENT: case CT_IDENT: case RPAREN: case RBRACKET: case BUILTIN:
+			return true;
+		default:
+			return false;
+	}
+}
+
 <* Is the ')' at r the end of the header of `if`, `while`, `for`, `foreach`, `foreach_r` or `switch`? *>
 fn bool Src.is_header_close(&self, sz r)
 {
@@ -280,8 +294,12 @@ fn Space Src.space_rule(&self, sz i, Config* cfg)
 	if (is_operator_text(self.toks[i].text) && self.same_line(i + 1))
 	{
 		Space after = self.gap_rule(i + 1, cfg);
-		if (after == KEEP) return KEEP;
-		if (after != rule && self.is_binary(i)) return self.symmetric(i);
+		// (a prefix operator, `f(x) * -1`, is spaced by what comes before it alone)
+		if (after != rule && !self.is_unary(i))
+		{
+			if (after == KEEP) return KEEP;
+			if (self.is_binary(i)) return self.symmetric(i);
+		}
 	}
 	if (is_operator_text(self.toks[i - 1].text) && self.same_line(i - 1))
 	{
@@ -333,7 +351,8 @@ fn bool Src.is_unary(&self, sz o)
 			sz before = self.prev_code(pi);
 			return before == NO || !is_operand_end(self.toks[before].type);
 		case STAR:
-			return !self.is_type_star(pi) && self.is_unary(pi);
+			// after a binary `*` (`a * -b`) or a prefix one (`*-p`), not after a pointer type
+			return self.is_binary(pi) || (!self.is_type_star(pi) && self.is_unary(pi));
 		default:
 			return is_operator_text(p.text);
 	}
@@ -402,6 +421,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	}
 	// a block or body is spaced off what it belongs to: `fn void f() {`, `enum E {`, `else {`
 	if (next.type == LBRACE && (next.brace == BLOCK || next.brace == BODY)) return ONE;
+	// a binary operator after a call is spaced, `f(x) * y` (the table also counts `(Foo)*p`)
+	if ((self.closes_call(i - 1) && self.is_binary(i)) || (i >= 2 && self.closes_call(i - 2) && self.is_binary(i - 1))) return ONE;
 	// control headers are spaced as the stdlib writes them (99%): `if (x)`, `foreach (i, v : list)`
 	if (next.type == LPAREN && is_control(prev.type)) return ONE;
 	if ((next.type == COLON && self.is_foreach_colon(i)) || (prev.type == COLON && self.is_foreach_colon(i - 1))) return ONE;

@@ -41,8 +41,8 @@ fn void main()
 	foreach (i, p : primes)
 	{
 		if (p > 5 && i % 2 == 0) io::printfn("prime %d at %d", p, i);
-		total += compute_weight(p, i, primes.len)
-			* scale_factor_for(category, p);
+		total += compute_weight(p, i, primes.len) * scale_factor_for(
+			category, p);
 	}
 }
 ```
@@ -124,7 +124,7 @@ function! C3fFormat() abort
 	if v:shell_error == 0 && l:out !=# getline(1, '$')
 		let l:view = winsaveview()
 		call setline(1, l:out)
-		silent! execute (len(l:out) + 1) . ',$delete _'
+		if len(l:out) < line('$') | silent execute (len(l:out) + 1) . ',$delete _' | endif
 		call winrestview(l:view)
 	endif
 	for l:msg in readfile(l:err)
