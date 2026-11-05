@@ -30,6 +30,7 @@ fn void FormatResult.free(&self)
 }
 
 const int MAX_ATTEMPTS = 8;
+const int WRAP_PASSES = 3;
 
 <*
  Format C3 source. Only whitespace changes; the result is checked by lexing it again.
@@ -41,7 +42,19 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	r.notes.init(a);
 	Config settled = *cfg;
 	settled.finish();
-	r.text = format_text(input, &settled, &r, a).copy(a);
+	String text = format_text(input, &settled, &r, a);
+	// wrapping can turn one statement into several (a '{' that now ends a line opens a block),
+	// which the next run may wrap again: repeat until nothing changes, so a second run never does
+	if (settled.line_breaks != PRESERVE)
+	{
+		for (int pass = 1; pass < WRAP_PASSES; pass++)
+		{
+			String again = format_text(text, &settled, &r, a);
+			if (again == text) break;
+			text = again;
+		}
+	}
+	r.text = text.copy(a);
 	r.changed = r.text != input;
 	return r;
 }
@@ -142,6 +155,7 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	{
 		f.breaks();
 		f.layout();
+		f.wrap();
 		f.align();
 		String output = f.emit(&texts);
 		sz bad = f.verify(output, &texts);

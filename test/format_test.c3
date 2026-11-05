@@ -261,3 +261,21 @@ fn void import_sorting_edge_cases() @test
 	check("module x;\nimport ppp; /* c */ import ooo;\nimport bbb;\nimport aaa; // a\n",
 	      "module x;\nimport ppp; /* c */ import ooo;\nimport aaa; // a\nimport bbb;\n", &c);
 }
+
+fn void wrapping() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("max_line_length", "40");
+	(void)c.set("c3f_line_breaks", "long");
+	check("fn void f()\n{\n\tint r = compute(first_argument, second_argument);\n\tshort(a);\n}\n",
+	      "fn void f()\n{\n\tint r = compute(first_argument,\n\t\tsecond_argument);\n\tshort(a);\n}\n", &c);
+	(void)c.set("c3f_wrap_solver", "search");
+	check("fn void f()\n{\n\tif (alpha_condition && beta_condition || gamma) return;\n}\n",
+	      "fn void f()\n{\n\tif (alpha_condition\n\t\t&& beta_condition\n\t\t|| gamma) return;\n}\n", &c);
+	// a wrapped initializer item stays where the next run puts it
+	c = c3f::defaults();
+	(void)c.set("max_line_length", "50");
+	(void)c.set("c3f_line_breaks", "fit");
+	check("fn void f()\n{\n\tFoo x = { .alpha = compute_value(1, 2), .beta = other_value(3) };\n}\n",
+	      "fn void f()\n{\n\tFoo x = { .alpha = compute_value(1, 2),\n\t\t.beta = other_value(3) };\n}\n", &c);
+}
