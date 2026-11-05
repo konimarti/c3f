@@ -236,6 +236,21 @@ fn void more_regressions() @test
 	check("fn void f()\n{\n\tint a; // first\n\tint bbbbb; // second\n}\n", "fn void f()\n{\n\tint a;     // first\n\tint bbbbb; // second\n}\n", &c);
 }
 
+fn void linux_braces_trailing_comments_and_arrows() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_brace_style", "linux");
+	// function bodies on their own line, every other block K&R
+	check("struct S\n{\n\tint a;\n}\nfn void f() {\n\tif (x)\n\t{\n\t\ty();\n\t}\n\telse\n\t{\n\t\tz();\n\t}\n}\n",
+	      "struct S {\n\tint a;\n}\nfn void f()\n{\n\tif (x) {\n\t\ty();\n\t} else {\n\t\tz();\n\t}\n}\n", &c);
+	c = c3f::defaults();
+	(void)c.set("c3f_trailing_comment_spaces", "2");
+	check("fn void f()\n{\n\ty(); // one\n\tz();    // two\n}\n", "fn void f()\n{\n\ty();  // one\n\tz();  // two\n}\n", &c);
+	c = c3f::defaults();
+	(void)c.set("c3f_align", "decls");
+	check("fn int g() => 1;\nfn int longer_name() => 2;\n", "fn int g()           => 1;\nfn int longer_name() => 2;\n", &c);
+}
+
 fn void import_sorting() @test
 {
 	c3f::Config c = c3f::defaults();

@@ -256,6 +256,14 @@ fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
 	}
 }
 
+<* Is the '{' at o the body of a function or macro (`fn void f() {`, also after `@attr` or `<Type>`)? *>
+fn bool Src.is_function_body(&self, sz o)
+{
+	if (self.toks[o].brace != BLOCK || self.toks[o].encl != NO) return false;
+	TokenType start = self.toks[self.stmt_start(o)].type;
+	return start == FUNC || start == MACRO;
+}
+
 <* Is the '{' at o the body of a lambda (`fn (int x) {`, `fn int() {`)? *>
 fn bool Src.is_lambda_body(&self, sz o)
 {

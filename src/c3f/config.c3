@@ -5,7 +5,7 @@ faultdef UNKNOWN_KEY, BAD_VALUE;
 
 enum IndentStyle : char { TAB, SPACE }
 enum Eol : char { KEEP, LF, CRLF }
-enum BraceStyle : char { ALLMAN, KNR }
+enum BraceStyle : char { ALLMAN, KNR, LINUX }   // LINUX: function bodies Allman, everything else K&R
 enum ElseStyle : char { FOLLOW, OWN_LINE, CUDDLE }
 enum OneLineBlocks : char { KEEP, EXPAND }
 enum Continuation : char { KEEP, TAB, ALIGN }
@@ -43,6 +43,7 @@ struct Config
 	DeclSpacing    decl_spacing;
 	AlignMode      align;
 	CommentAlign   align_comments;
+	sz             trailing_comment_spaces;  // before a trailing // comment; 0 = keep
 	LineBreaks     line_breaks;
 	WrapSolver     wrap_solver;
 	bool           magic_comma;
@@ -81,6 +82,7 @@ enum Key : char (String name)
 	DECL_SPACING         { "c3f_decl_spacing" },
 	ALIGN                { "c3f_align" },
 	ALIGN_COMMENTS       { "c3f_align_comments" },
+	TRAILING_COMMENT_SPACES { "c3f_trailing_comment_spaces" },
 	LINE_BREAKS          { "c3f_line_breaks" },
 	WRAP_SOLVER          { "c3f_wrap_solver" },
 	MAGIC_COMMA          { "c3f_magic_comma" },
@@ -228,6 +230,9 @@ fn void? Config.set(&self, String key, String value, String origin = "--set")
 		case DECL_SPACING: self.decl_spacing = v == "1" ? ONE : parse_enum(DeclSpacing, v)!;
 		case ALIGN: self.align = parse_enum(AlignMode, v)!;
 		case ALIGN_COMMENTS: self.align_comments = parse_enum(CommentAlign, v)!;
+		case TRAILING_COMMENT_SPACES:
+			self.trailing_comment_spaces = v == "keep" ? 0 : parse_uint(v)!;
+			if (self.trailing_comment_spaces > 16) return BAD_VALUE~;
 		case LINE_BREAKS: self.line_breaks = parse_enum(LineBreaks, v)!;
 		case WRAP_SOLVER: self.wrap_solver = parse_enum(WrapSolver, v)!;
 		case MAGIC_COMMA: self.magic_comma = parse_bool(v)!;
@@ -278,6 +283,7 @@ fn String Config.value_text(&self, Key k)
 		case DECL_SPACING: return self.decl_spacing == ONE ? "1" : "keep";
 		case ALIGN: return enum_text(self.align);
 		case ALIGN_COMMENTS: return enum_text(self.align_comments);
+		case TRAILING_COMMENT_SPACES: return self.trailing_comment_spaces ? string::tformat("%d", self.trailing_comment_spaces) : "keep";
 		case LINE_BREAKS: return enum_text(self.line_breaks);
 		case WRAP_SOLVER: return enum_text(self.wrap_solver);
 		case MAGIC_COMMA: return bool_text(self.magic_comma);

@@ -183,17 +183,29 @@ fn void Fmt.align(&self)
 	if (self.cfg.align_comments == ALWAYS) self.align_trailing_comments();
 }
 
-enum DeclKind : char @local { NONE, NAME, ASSIGN }
+enum DeclKind : char @local { NONE, NAME, ASSIGN, ARROW }
 
-<* On the output line starting at token a: the token to align (a declared name or an `=`), or NO. *>
+<* On the output line starting at token a: the token to align (a declared name, an `=` or the `=>` of a one-line function), or NO. *>
 fn sz Fmt.decl_anchor(&self, sz a, DeclKind* kind)
 {
 	Src* s = self.src;
 	*kind = NONE;
-	if (self.out[a].verbatim || (!is_type_token(s.toks[a].type) && s.toks[a].type != IDENT)) return NO;
+	if (self.out[a].verbatim) return NO;
 	sz end = a;
 	while (end + 1 < s.len() && self.out[end + 1].nl == 0 && s.toks[end + 1].code) end++;
 	if (s.toks[end].type != EOS) return NO;
+	if (s.toks[a].type == FUNC || s.toks[a].type == MACRO)
+	{
+		// `fn int f() => 1;`: the top-level `=>`
+		for (sz k = a + 1; k < end; k++)
+		{
+			if (s.toks[k].type != IMPLIES || s.toks[k].encl != s.toks[a].encl || s.toks[k].keep) continue;
+			*kind = ARROW;
+			return k;
+		}
+		return NO;
+	}
+	if (!is_type_token(s.toks[a].type) && s.toks[a].type != IDENT) return NO;
 	for (sz k = a + 1; k < end; k++)
 	{
 		Tok* t = &s.toks[k];
@@ -267,7 +279,8 @@ fn void Fmt.pad_to_common_column(&self, List{sz}* run)
 {
 	if (run.len() < 2) return;
 	sz target;
-	foreach (k : *run) target = max(target, self.prefix(k) + 1);
+	sz gap = self.src.toks[(*run)[0]].type == LINE_COMMENT ? max(self.cfg.trailing_comment_spaces, 1) : 1;
+	foreach (k : *run) target = max(target, self.prefix(k) + gap);
 	if (self.cfg.max_line_length)
 	{
 		// not if that pushes a line past the limit

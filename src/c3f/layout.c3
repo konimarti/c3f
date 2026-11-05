@@ -111,7 +111,7 @@ fn void Fmt.brace_breaks(&self, sz o)
 	{
 		// nothing
 	}
-	else if (self.cfg.brace_style == ALLMAN)
+	else if (self.cfg.brace_style == ALLMAN || (self.cfg.brace_style == LINUX && s.is_function_body(o)))
 	{
 		if (self.out[o].nl == 0) self.out[o].nl = 1;
 	}
@@ -404,6 +404,12 @@ fn void Fmt.space(&self, sz i)
 	}
 	Space rule = s.space_rule(i, c);
 	bool comment = is_comment_type(s.toks[i].type);
+	// c3f_trailing_comment_spaces: a fixed distance to a trailing // comment
+	if (s.toks[i].type == LINE_COMMENT && c.trailing_comment_spaces && c.align_comments != ALWAYS)
+	{
+		o.spacing = spaces(c.trailing_comment_spaces);
+		return;
+	}
 	bool wide = gap.len >= 2 || gap.contains("\t");
 	if (wide && (comment ? c.align_comments != OFF : c.align != OFF))
 	{

@@ -135,14 +135,15 @@ c3f_sort_imports = lines
 | `end_of_line`, `insert_final_newline` | keep the file's, `true` |
 | `max_line_length`, `c3f_line_breaks` | `off`; `preserve`, `long`, `fit` |
 | `c3f_wrap_solver` | `dp` (optimal), `search` |
-| `c3f_brace_style`, `c3f_else_style` | `allman`, `knr`; `follow`, `own_line`, `cuddle` |
+| `c3f_brace_style`, `c3f_else_style` | `allman`, `knr`, `linux` (function bodies Allman, the rest K&R); `follow`, `own_line`, `cuddle` |
 | `c3f_one_line_blocks` | `keep`, `expand` |
 | `c3f_case_indent`, `c3f_ct_indent` | `indent`, `flush`; `keep`, `indent`, `flush` |
 | `c3f_continuation` | `keep`, `tab`, `align` |
 | `c3f_spacing` | `stdlib`, `strict` |
 | `c3f_space_after_cast`, `c3f_pointer_style`, `c3f_bracket_padding` | `false`; `keep`, `type`, `name`; `keep`, `none`, `space` |
 | `c3f_max_blank_lines`, `c3f_trim_block_blanks`, `c3f_decl_spacing` | 2; `true`; `keep`, `1` |
-| `c3f_align`, `c3f_align_comments` | `preserve`, `decls`, `off`; `preserve`, `always`, `off` |
+| `c3f_align`, `c3f_align_comments` | `preserve`, `decls` (names, `=` and `=>` of consecutive lines), `off`; `preserve`, `always`, `off` |
+| `c3f_trailing_comment_spaces` | `keep`, or the number of spaces before a trailing `//` comment |
 | `c3f_magic_comma` | `true` (a trailing comma keeps one item per line when wrapping) |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all` |
 
