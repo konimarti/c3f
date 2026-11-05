@@ -644,6 +644,8 @@ fn bool Fmt.wants_wrap(&self, sz a, sz b)
 		if (!t.code || t.keep || self.out[k].verbatim || t.text.contains("\n") || t.unterminated) return false;
 		if (is_ct_open(t.type) || is_ct_end(t.type) || t.type == CT_ELSE || t.type == CT_CASE || t.type == CT_DEFAULT) return false;
 		if (is_opener(t.type) && (t.match == NO || t.match > b)) return false;
+		// several statements on a line (a table written that way): each pass would only settle one more
+		if (t.type == EOS && k < b && (t.encl == NO || t.encl < a)) return false;
 		bool eol = k == b || self.out[k + 1].nl > 0;
 		if (eol && self.end_col(k) > c.max_line_length) too_long = true;
 	}

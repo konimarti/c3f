@@ -54,7 +54,7 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	String text = format_text(input, &settled, &r, a, wraps ? &memo : null);
 	// wrapping can turn one statement into several (a '{' that now ends a line opens a block),
 	// which the next run may wrap again: repeat until nothing changes, so a second run never does
-	// (if nothing was wrapped, the text is formatted as without wrapping: that needs one run)
+	// (if the first pass wrapped nothing, the text is formatted as without wrapping: one run is enough)
 	if (wraps && memo.wrapped)
 	{
 		// the notes are about the input; a later pass that cannot be verified is not used
@@ -64,8 +64,9 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 		{
 			memo.wrapped = 0;
 			String again = format_text(text, &settled, &later, tmem, &memo, attempts: 1);
-			if (again == text || !memo.wrapped) break;
+			if (again == text) break;
 			text = again;
+			if (!memo.wrapped) break;   // (it may still have re-indented what was wrapped before)
 		}
 	}
 	r.text = text.copy(a);
