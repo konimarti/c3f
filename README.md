@@ -79,6 +79,9 @@ endfunction
 autocmd BufWritePre *.c3,*.c3i call C3fFormat()
 ```
 
+Feeling bold? `:%!c3f -` formats the buffer in one go, but it replaces the buffer with
+whatever c3f prints, error messages included (`u` undoes it).
+
 Neovim with [conform.nvim](https://github.com/stevearc/conform.nvim):
 
 ```lua
