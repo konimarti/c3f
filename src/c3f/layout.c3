@@ -145,7 +145,8 @@ fn void Fmt.decl_break(&self, sz i)
 	Src* s = self.src;
 	if (i == 0 || self.fixed(i) || self.out[i].nl != 1) return;
 	Tok* p = &s.toks[i - 1];
-	if (p.type != RBRACE || p.match == NO || p.encl != NO) return;
+	// (a closer's encl is its own opener: the opener tells whether it is at top level)
+	if (p.type != RBRACE || p.match == NO || s.toks[p.match].encl != NO) return;
 	BraceKind k = s.toks[p.match].brace;
 	if (k != BLOCK && k != BODY) return;
 	TokenType t = s.toks[i].type;
@@ -462,7 +463,7 @@ fn void Fmt.space(&self, sz i)
 	o.spacing = self.apply(i, rule, gap);
 }
 
-<* The text for a same-line gap, with the two guards: never merge two tokens, never split a future one. *>
+<* The text for a same-line gap; removing a space never merges two tokens (a space can always be added). *>
 fn String Fmt.apply(&self, sz i, Space rule, String gap)
 {
 	Tok* a = self.tok(i - 1);
@@ -471,7 +472,7 @@ fn String Fmt.apply(&self, sz i, Space rule, String gap)
 	{
 		case KEEP: return gap;
 		case NONE: return gap.len == 0 || glue_safe(a.text, b.text, a.type, b.type) ? "" : " ";
-		case ONE: return gap.len == 0 && may_join(a.text, b.text) ? "" : " ";
+		case ONE: return " ";
 	}
 }
 

@@ -22,7 +22,7 @@ struct Tok
 	sz      nl;          // newlines in the gap before this token (wrapping may change it)
 	sz      src_nl;      // as in the source
 	sz      match;       // matching bracket, $end keyword or $if of an $else; NO if none
-	sz      encl;        // innermost bracket open at the gap before this token; NO at top level
+	sz      encl;        // innermost bracket open at the gap before this token (a closer: its own opener); NO at top level
 	sz      parent;      // for case/default and $case/$default: the switch '{' or $switch; else NO
 	sz      prev, next;  // the nearest code tokens before and after (comments skipped); NO if none
 	sz      row;         // the first token of its source line

@@ -445,3 +445,13 @@ fn void quality_review_regressions() @test
 	stable("struct:h\n{\n}", "c3f_style", "knr");
 	stable("$if{\ni}\nr$endif", "c3f_brace_style", "linux");
 }
+
+fn void third_review_regressions() @test
+{
+	// an operator before a prefix operator is spaced on both sides
+	check("fn void f()\n{\n\tx=-1;\n\tok=a==-1;\n\tb=!c;\n\tp=*q;\n}\n", "fn void f()\n{\n\tx = -1;\n\tok = a == -1;\n\tb = !c;\n\tp = *q;\n}\n");
+	// a blank line after each top-level body, not inside one
+	c3f::Config d = c3f::defaults();
+	(void)d.set("c3f_decl_spacing", "1");
+	check("fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\nint x;\n", "fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\n\nint x;\n", &d);
+}

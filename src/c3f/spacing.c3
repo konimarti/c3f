@@ -464,12 +464,3 @@ fn bool glue_safe(String a, String b, TokenType ta, TokenType tb)
 }
 
 fn bool is_op_char(char c) => @ok("+-*/%&|^~!<>=?:.".index_of_char(c));
-
-<* Could the text of a and b, written together, be read as one future token? *>
-fn bool may_join(String a, String b)
-{
-	if (a.len == 0 || b.len == 0) return false;
-	char x = a[^1];
-	char y = b[0];
-	return (is_op_char(x) && is_op_char(y)) || (x == '[' && y == '<') || (x == '>' && y == ']');
-}
