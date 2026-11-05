@@ -179,6 +179,49 @@ fn bool Src.cast_close_uncached(&self, sz r)
 	return true;
 }
 
+<* Is the ':' at i the second half of a ternary `a ? b : c` (or `a ??? b : c`)? Cached like is_cast_close. *>
+fn bool Src.is_ternary_colon(&self, sz i)
+{
+	if (!self.memo.len()) self.init_memo();
+	if (self.memo[i] & 48) return (self.memo[i] & 48) == 32;
+	bool v = self.ternary_colon_uncached(i);
+	self.memo[i] |= v ? 32 : 16;
+	return v;
+}
+
+fn bool Src.ternary_colon_uncached(&self, sz i)
+{
+	Tok* t = &self.toks[i];
+	if (t.type != COLON || t.label) return false;
+	sz e = t.encl;
+	int pending;   // colons of ternaries nested inside this one, still waiting for their '?'
+	for (sz k = i; k > 0;)
+	{
+		k--;
+		if (k == e) return false;              // the opening bracket: no '?' before it
+		Tok* p = &self.toks[k];
+		if (p.encl != e || !p.code) continue;  // inside a nested bracket, or a comment
+		switch (p.type)
+		{
+			case EOS: case COMMA: return false;
+			case COLON:
+				if (!p.label) pending++;
+			case QUESTION: case CT_TERNARY:
+				if (pending == 0) return true;
+				pending--;
+			default:
+		}
+	}
+	return false;
+}
+
+<* Is the ':' at i the separator of a slice `s[a:b]`? *>
+fn bool Src.is_slice_colon(&self, sz i)
+{
+	Tok* t = &self.toks[i];
+	return t.type == COLON && !t.label && t.encl != NO && self.toks[t.encl].type == LBRACKET && !self.is_ternary_colon(i);
+}
+
 <* Is the '*' at s part of a pointer type (`Foo* p`, `(int*)x`)? (Cached, like is_cast_close.) *>
 fn bool Src.is_type_star(&self, sz s)
 {
@@ -338,6 +381,10 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 {
 	Tok* prev = &self.toks[i - 1];
 	Tok* next = &self.toks[i];
+	// `a ? b : c`: the ':' has a space on both sides (it is not a label, slice or named argument)
+	if ((next.type == COLON && self.is_ternary_colon(i)) || (prev.type == COLON && self.is_ternary_colon(i - 1))) return ONE;
+	// `s[a:b]`: in strict mode a slice's ':' sits tight (the stdlib writes both `[a:b]` and `[a : b]`)
+	if (cfg.spacing == STRICT && ((next.type == COLON && self.is_slice_colon(i)) || (prev.type == COLON && self.is_slice_colon(i - 1)))) return NONE;
 	if (prev.type == RPAREN && self.is_cast_close(i - 1)) return cfg.space_after_cast ? Space.ONE : Space.NONE;
 	if (cfg.pointer_style == KEEP)
 	{

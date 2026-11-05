@@ -251,6 +251,17 @@ fn void linux_braces_trailing_comments_and_arrows() @test
 	check("fn int g() => 1;\nfn int longer_name() => 2;\n", "fn int g()           => 1;\nfn int longer_name() => 2;\n", &c);
 }
 
+fn void ternary_and_slice_colons() @test
+{
+	// a ternary's ':' is spaced in every mode; labels, named arguments and slices are not ternaries
+	String src = "fn void f()\n{\n\tx = a ? x.y: e;\n\ty = foo(n: 1);\n\tswitch (q)\n\t{\n\t\tcase 1: w = t ? (b ? c : d) : z;\n\t}\n\tv = s[1 : 2];\n}\n";
+	check(src, "fn void f()\n{\n\tx = a ? x.y : e;\n\ty = foo(n: 1);\n\tswitch (q)\n\t{\n\t\tcase 1: w = t ? (b ? c : d) : z;\n\t}\n\tv = s[1 : 2];\n}\n");
+	// strict also makes slices tight
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_style", "strict");
+	check(src, "fn void f()\n{\n\tx = a ? x.y : e;\n\ty = foo(n: 1);\n\tswitch (q)\n\t{\n\t\tcase 1: w = t ? (b ? c : d) : z;\n\t}\n\tv = s[1:2];\n}\n", &c);
+}
+
 fn void import_sorting() @test
 {
 	c3f::Config c = c3f::defaults();
