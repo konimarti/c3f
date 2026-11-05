@@ -162,6 +162,17 @@ fn void glob() @test
 	assert(!c3f::glob_match("[!a]*", "abc"));
 }
 
+fn void paths() @test
+{
+	// POSIX and Windows paths, for the .editorconfig and git searches
+	assert(c3f::absolute("/x/./y/../z.c3") == "/x/z.c3");
+	assert(c3f::absolute("C:\\a\\b\\..\\c.c3") == "C:/a/c.c3");
+	assert(c3f::parent_dir("/x/y") == "/x" && c3f::parent_dir("/x") == "/" && c3f::parent_dir("/") == "/");
+	assert(c3f::parent_dir("C:/a/b") == "C:/a" && c3f::parent_dir("C:/a") == "C:/" && c3f::parent_dir("C:/") == "C:/");
+	assert(c3f::is_root("/") && c3f::is_root("C:/") && !c3f::is_root("C:/a"));
+	assert(c3f::join_path("C:/", ".git") == "C:/.git" && c3f::join_path("/x", ".git") == "/x/.git");
+}
+
 fn void diff() @test
 {
 	assert(c3f::unified_diff(tmem, "x", "a\nb\n", "a\nb\n") == "");

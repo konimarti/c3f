@@ -1,5 +1,5 @@
 module c3f;
-import std::io, std::io::path, std::collections::list;
+import std::io, std::io::path, std::collections::list, std::core::ascii;
 
 faultdef BAD_CONFIG;
 
@@ -10,24 +10,44 @@ struct Setting
 	String origin;     // file:line
 }
 
+<* The root part of an absolute path: "/" or a drive "C:/" ("" if relative). Paths use '/'. *>
+fn String path_root(String p)
+{
+	if (p.starts_with("/")) return "/";
+	if (p.len >= 3 && p[1] == ':' && p[2] == '/' && ascii::is_alpha(p[0])) return p[:3];
+	return "";
+}
+
+fn bool is_root(String p) => p.len && path_root(p) == p;
+
 fn String parent_dir(String p)
 {
-	if (try i = p.rindex_of_char('/')) return i == 0 ? "/" : p[:i];
+	if (is_root(p)) return p;
+	if (try i = p.rindex_of_char('/'))
+	{
+		String root = path_root(p);
+		return i < root.len ? root : p[:i];
+	}
 	return ".";
 }
+
+<* `dir` + "/" + name, without doubling the '/' of a root. *>
+fn String join_path(String dir, String name) => dir.ends_with("/") ? dir.tconcat(name) : string::tformat("%s/%s", dir, name);
 
 <* Absolute path with `.` and `..` resolved (so the .editorconfig search walks real ancestors). *>
 fn String absolute(String p)
 {
-	if (!p.starts_with("/"))
+	p = p.treplace("\\", "/");   // Windows separators
+	if (!path_root(p).len)
 	{
 		Path? cwd = path::tcwd();
 		if (catch cwd) return p;
-		p = string::tformat("%s/%s", (String)cwd, p);
+		p = join_path(((String)cwd).treplace("\\", "/"), p);
 	}
+	String root = path_root(p);
 	List{String} parts;
 	parts.tinit();
-	foreach (part : p.tsplit("/"))
+	foreach (part : p[root.len..].tsplit("/"))
 	{
 		switch (part)
 		{
@@ -38,9 +58,10 @@ fn String absolute(String p)
 	}
 	DString d;
 	d.tinit();
-	foreach (part : parts)
+	d.append(root);
+	foreach (i, part : parts)
 	{
-		d.append("/");
+		if (i > 0) d.append("/");
 		d.append(part);
 	}
 	return d.len() ? d.str_view() : "/";
@@ -143,7 +164,7 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 		String dir = parent_dir(abs);
 		while (true)
 		{
-			String candidate = dir == "/" ? "/.editorconfig" : dir.tconcat("/.editorconfig");
+			String candidate = join_path(dir, ".editorconfig");
 			if (file::exists(candidate))
 			{
 				found.push(candidate);
@@ -152,7 +173,7 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 				probe.tinit();
 				if (read_editorconfig(candidate, abs, &probe, error)!) break;
 			}
-			if (dir == "/" || dir == ".") break;
+			if (is_root(dir) || dir == ".") break;
 			dir = parent_dir(dir);
 		}
 		for (sz k = found.len(); k > 0; k--) read_editorconfig(found[k - 1], abs, &settings, error)!;

@@ -12,8 +12,8 @@ fn String? git_root()
 	String dir = c3f::absolute(".");
 	while (true)
 	{
-		if (file::exists(dir == "/" ? "/.git" : dir.tconcat("/.git"))) return dir;
-		if (dir == "/") return NOT_A_REPOSITORY~;
+		if (file::exists(c3f::join_path(dir, ".git"))) return dir;
+		if (c3f::is_root(dir)) return NOT_A_REPOSITORY~;
 		dir = c3f::parent_dir(dir);
 	}
 }
@@ -21,19 +21,20 @@ fn String? git_root()
 <* The hooks directory of the repository at `root` (a checkout, a worktree or a submodule). *>
 fn String? hooks_dir(String root)
 {
-	String dot_git = root.tconcat("/.git");
+	String dot_git = c3f::join_path(root, ".git");
 	if (file::is_dir(dot_git)) return dot_git.tconcat("/hooks");
 	// a worktree or submodule: ".git" is a file "gitdir: <path>"
 	String line = ((String)file::load_temp(dot_git)!).trim();
 	if (!line.starts_with("gitdir:")) return NOT_A_REPOSITORY~;
 	String dir = line[7..].trim();
-	if (!dir.starts_with("/")) dir = c3f::absolute(string::tformat("%s/%s", root, dir));
+	if (!c3f::path_root(dir.treplace("\\", "/")).len) dir = c3f::join_path(root, dir);
+	dir = c3f::absolute(dir);
 	// a worktree shares the hooks of the main repository
 	String common = dir.tconcat("/commondir");
 	if (file::exists(common))
 	{
 		String c = ((String)file::load_temp(common)!).trim();
-		dir = c3f::absolute(c.starts_with("/") ? c : string::tformat("%s/%s", dir, c));
+		dir = c3f::absolute(c3f::path_root(c.treplace("\\", "/")).len ? c : c3f::join_path(dir, c));
 	}
 	return dir.tconcat("/hooks");
 }

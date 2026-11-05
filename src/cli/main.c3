@@ -169,7 +169,12 @@ fn bool write_atomic(String path, String text)
 		libc::Stat st;
 		if (libc::stat(path.zstr_tcopy(), &st) == 0) (void)chmod(tmp.zstr_tcopy(), st.st_mode & 0o7777);
 	$endif
-	if (libc::rename(tmp.zstr_tcopy(), path.zstr_tcopy()) != 0)
+	bool renamed = libc::rename(tmp.zstr_tcopy(), path.zstr_tcopy()) == 0;
+	$if env::WIN32:
+		// Windows does not rename over an existing file: remove it first
+		if (!renamed && @ok(file::delete(path))) renamed = libc::rename(tmp.zstr_tcopy(), path.zstr_tcopy()) == 0;
+	$endif
+	if (!renamed)
 	{
 		io::eprintfn("c3f: %s: cannot replace", path);
 		(void)file::delete(tmp);
