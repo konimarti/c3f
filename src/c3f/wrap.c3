@@ -641,7 +641,13 @@ fn void Wrap.solve_statement(&self, List{bool}* breaks)
 {
 	sz start = self.f.indent_width(self.base);
 	bool too_big = (sz)self.elems.len() * 3 * (self.w + 1) > MAX_CELLS;
-	if (self.f.cfg.wrap_solver == SEARCH || too_big)
+	if (too_big)
+	{
+		// too long for the tables, and for the search to get far: fill the lines
+		self.first_fit(start, breaks);
+		return;
+	}
+	if (self.f.cfg.wrap_solver == SEARCH)
 	{
 		self.search(start, breaks);
 		return;
@@ -770,8 +776,13 @@ struct State @local
 	bool     fits;
 }
 
-<* Cost of a set of breaks: simulate the lines. *>
-fn float Wrap.simulate(&self, List{bool}* breaks, sz start, bool* fits)
+<* The cost of a set of breaks; its scratch memory is freed again (the search calls it often). *>
+fn float Wrap.simulate(&self, List{bool}* breaks, sz start, bool* fits) => @pool()
+{
+	return self.simulate_breaks(breaks, start, fits);
+}
+
+fn float Wrap.simulate_breaks(&self, List{bool}* breaks, sz start, bool* fits) @local
 {
 	Src* s = self.f.src;
 	float cost;
@@ -803,6 +814,53 @@ fn float Wrap.simulate(&self, List{bool}* breaks, sz start, bool* fits)
 	return cost;
 }
 
+<* Fill the lines: when one gets too long, break at its outermost point (the last of those). *>
+fn void Wrap.first_fit(&self, sz start, List{bool}* breaks) => @pool()
+{
+	foreach (&x : *breaks) *x = false;
+	sz pending = NO;   // where the current line can still break: its outermost point so far
+	for (sz k = self.first + 1; k <= self.last + 1; k++)
+	{
+		bool end = k > self.last;
+		if (!end)
+		{
+			Point p = self.point_kind(k);
+			if (p == NONE || p == CLOSE || self.blocked(k)) continue;
+		}
+		// the line runs up to token k - 1: too long, so break at the point kept
+		if (pending != NO && self.end_column(breaks, start, k - 1) > self.m1)
+		{
+			(*breaks)[pending - self.first] = true;
+			pending = NO;
+		}
+		if (!end && (pending == NO || self.nesting(k) <= self.nesting(pending))) pending = k;
+	}
+}
+
+<* How many brackets of the statement enclose token k. *>
+fn sz Wrap.nesting(&self, sz k) @local
+{
+	sz n;
+	for (sz e = self.f.src.toks[k].encl; e != NO && e >= self.first; e = self.f.src.toks[e].encl) n++;
+	return n;
+}
+
+<* Column after token k with these breaks. *>
+fn sz Wrap.end_column(&self, List{bool}* breaks, sz start, sz k) @local => @pool()
+{
+	List{sz} depth;
+	depth.tinit();
+	self.depths(breaks, &depth);
+	sz col = start;
+	for (sz j = self.first; j <= k; j++)
+	{
+		sz i = j - self.first;
+		if (j > self.first) col = (*breaks)[i] ? self.f.indent_width(self.base.deeper(depth[i])) : col + self.join_w[i];
+		col += text_width(self.f.src.toks[j].text, 0, self.f.cfg.tab_width);
+	}
+	return col;
+}
+
 fn Point Wrap.point_kind(&self, sz k)
 {
 	Point p = self.point_before(k);
@@ -813,6 +871,8 @@ fn Point Wrap.point_kind(&self, sz k)
 }
 
 const int SEARCH_TRIES = 1000;
+// layouts the search tries in all: each costs a copy of its breaks and a pass over the statement
+const sz SEARCH_EXPANSIONS = 20_000;
 const sz MAX_CELLS = 4_000_000;
 
 <* Best-first search over sets of wrap points (dfmt's wrapping.d): cheapest set first, stop at the first that fits. *>
@@ -833,7 +893,8 @@ fn void Wrap.search(&self, sz start, List{bool}* breaks)
 	float c0 = self.simulate(breaks, start, &fits);
 	open.push({none, c0, fits});
 	State best = open[0];
-	for (int tries = 0; tries < SEARCH_TRIES && open.len(); tries++)
+	sz expansions;
+	for (int tries = 0; tries < SEARCH_TRIES && open.len() && expansions < SEARCH_EXPANSIONS; tries++)
 	{
 		// take the cheapest open state
 		sz bi = 0;
@@ -851,6 +912,7 @@ fn void Wrap.search(&self, sz start, List{bool}* breaks)
 		foreach (p : points)
 		{
 			if (p <= from) continue;
+			if (++expansions > SEARCH_EXPANSIONS) break;
 			List{sz} next;
 			next.tinit();
 			foreach (x : cur.chosen) next.push(x);
