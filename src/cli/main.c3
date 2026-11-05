@@ -105,7 +105,11 @@ fn Status run_file(Options* opt, String path)
 	return run(opt, path, (String)data, &cfg, true);
 }
 
-<* Format one input and act on the mode; `in_place` says whether `name` is a file that -w may rewrite. *>
+<*
+ Format one input and act on the mode; `in_place` says whether `name` is a file that -w may rewrite.
+ A place kept as written is exit status 3 for --check, -w and --diff; printing the result is a
+ success, so format-on-save works on code in progress.
+*>
 fn Status run(Options* opt, String name, String src, c3f::Config* cfg, bool in_place)
 {
 	c3f::FormatResult r = c3f::format(tmem, src, cfg);
@@ -120,7 +124,9 @@ fn Status run(Options* opt, String name, String src, c3f::Config* cfg, bool in_p
 		case WRITE:
 			if (!in_place)
 			{
+				// printed for an editor: the output is the whole file, the notes went to stderr
 				io::print(r.text);
+				return OK;
 			}
 			else if (r.changed && !write_atomic(name, r.text))
 			{
@@ -128,6 +134,7 @@ fn Status run(Options* opt, String name, String src, c3f::Config* cfg, bool in_p
 			}
 		default:
 			io::print(r.text);
+			return OK;
 	}
 	return s;
 }
