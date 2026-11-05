@@ -14,7 +14,7 @@ A faithful formatter for [C3](https://c3-lang.org).
 - **Fast.** c3f formats the whole standard library in under 0.2 s.
 
 Also: `.editorconfig` support, import sorting, alignment that survives re-indentation,
-and a library API with range formatting for editors.
+and format-on-save, CI and git-hook integration.
 
 ## How it compares
 
@@ -126,8 +126,15 @@ c3f_sort_imports = lines
 
 - `stdlib` (default): the standard library's style: tabs, Allman braces, `else` on its own line.
 - `knr`: `stdlib` with K&R braces and `} else {`.
-- `strict`: `stdlib` with spacing made uniform even where the stdlib varies, `Foo* p`, and no
-  padding inside brackets.
+- `strict`: `stdlib` with spacing made uniform even where the stdlib varies, `Foo* p`, no
+  padding inside brackets, and tight slices `s[a:b]`.
+
+**stdlib or strict?** Both format everything: indentation, braces, blank lines and the spacing
+between tokens (`a=b+c` → `a = b + c`, `if(x)` → `if (x)`, `foo( a ,b )` → `foo(a, b)`). The
+difference is in the few places where the standard library itself writes both forms, such as
+`Foo* p` and `Foo *p`, `[1, 2]` and `[ 1, 2 ]`, `s[a:b]` and `s[a : b]`: about 0.2% of the
+spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is stdlib style;
+`strict` always writes the more common one.
 
 | Option | Values (default first) |
 |---|---|
@@ -146,19 +153,3 @@ c3f_sort_imports = lines
 | `c3f_trailing_comment_spaces` | `keep`, or the number of spaces before a trailing `//` comment |
 | `c3f_magic_comma` | `true` (a trailing comma keeps one item per line when wrapping) |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all` |
-
-## As a library
-
-```c3
-import c3f;
-
-fn void? example(String source, sz start, sz end)
-{
-	c3f::Config cfg = c3f::load_config("src/foo.c3")!;   // .editorconfig lookup
-	c3f::FormatResult r = c3f::format(mem, source, &cfg);
-	defer r.free();
-	// r.text, r.changed, r.notes; c3f::edits(mem, source, r.text) gives minimal text edits
-	String part = c3f::format_range(mem, source, start, end, &cfg);
-	defer part.free(mem);
-}
-```
