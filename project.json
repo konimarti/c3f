@@ -22,6 +22,12 @@
   "build-dir": "build",
   "output": "build",
   "targets": {
+    "c3f": {
+      "type": "executable",
+      "sources": [
+        "src/cli/**"
+      ]
+    },
     "gen-spacing": {
       "type": "executable",
       "sources": [
