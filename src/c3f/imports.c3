@@ -140,8 +140,11 @@ fn String sort_list(Src* s, Unit* u, String body) @local
 {
 	List{Unit} items;
 	items.tinit();
-	sz from = u.first + 1;
-	sz stmt_end = u.first;
+	// the unit may start with the comment above the statement
+	sz imp = u.first;
+	while (s.toks[imp].type != IMPORT) imp++;
+	sz from = imp + 1;
+	sz stmt_end = imp;
 	while (s.toks[stmt_end].type != EOS) stmt_end++;
 	for (sz k = from; k <= stmt_end; k++)
 	{
@@ -160,7 +163,8 @@ fn String sort_list(Src* s, Unit* u, String body) @local
 	u.key = sorted[0].key;   // the statement now sorts by its first module
 	DString d;
 	d.tinit();
-	d.append(s.span_text(u.first, u.first));             // "import"
+	d.append(s.text[s.toks[u.first].start:s.toks[imp].start - s.toks[u.first].start]);   // a comment above
+	d.append(s.span_text(imp, imp));                     // "import"
 	foreach (k, it : sorted)
 	{
 		// the separators stay where they were: "import" + gap, then ", " (or whatever was written)
