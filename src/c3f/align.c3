@@ -310,8 +310,10 @@ fn void Fmt.pad_to_common_column(&self, List{sz}* run)
 		// not if that pushes a line past the limit
 		foreach (k : *run)
 		{
-			if (target + text_width(self.src.toks[k].text, 0, self.cfg.tab_width) > self.cfg.max_line_length
-				&& self.prefix(k) + 1 < target) return;
+			// (the whole rest of the line moves: measure up to its last token)
+			sz last = k;
+			while (last + 1 < self.src.len() && self.out[last + 1].nl == 0) last++;
+			if (self.after[last] + target - self.prefix(k) > self.cfg.max_line_length && self.prefix(k) + 1 < target) return;
 		}
 	}
 	foreach (k : *run) self.set_spacing(k, spaces(target - self.prefix(k)));

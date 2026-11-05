@@ -118,7 +118,7 @@ fn void Fmt.brace_breaks(&self, sz o)
 	{
 		if (self.out[o].nl == 0) self.out[o].nl = 1;
 	}
-	else if (self.out[o].nl > 0 && !is_comment_type(s.toks[o - 1].type))
+	else if (self.out[o].nl > 0 && !is_comment_type(s.toks[o - 1].type) && !s.starts_statement(o))
 	{
 		self.out[o].nl = 0;
 	}

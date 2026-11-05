@@ -124,6 +124,7 @@ fn void Src.init(&self, String text)
 		self.toks[i - 1].next = last;
 		if (self.toks[i - 1].code) last = i - 1;
 	}
+	self.keep_cut_contracts();
 	// here, in the caller's scope (temp memory of a wrap's @pool would not outlive it)
 	self.init_memo();
 	self.match_brackets();
@@ -132,6 +133,69 @@ fn void Src.init(&self, String text)
 	self.mark_labels();
 	self.mark_ternaries();
 	self.mark_off_regions();
+}
+
+// c3c reads a contract from its first `@name` line on as code, so its closing `*>` inside a
+// string there does not end it, while the lexer ends it there and lexes the rest as code: such
+// a contract, and the tokens made of the rest of it, are kept as written.
+fn void Src.keep_cut_contracts(&self)
+{
+	for (sz i = 0; i < self.len(); i++)
+	{
+		if (self.toks[i].type != CONTRACT || self.toks[i].unterminated) continue;
+		sz end = contract_end(self.text, self.toks[i].start);
+		if (end <= self.end(i)) continue;
+		sz k = i;
+		while (k + 1 < self.len() && self.toks[k + 1].start < end) k++;
+		self.keep_range(i, k + 1);
+		i = k;
+	}
+}
+
+<* Where c3c ends the contract that starts at `from` (with its `<*`). *>
+fn sz contract_end(String s, sz from) @local
+{
+	bool code;
+	bool line_start = true;
+	sz k = from + 2;
+	while (k < s.len)
+	{
+		char c = s[k];
+		if (c == '*' && k + 1 < s.len && s[k + 1] == '>') return k + 2;
+		if (code && (c == '"' || c == '\'' || c == '`'))
+		{
+			k = literal_end(s, k);
+			line_start = false;
+			continue;
+		}
+		if (line_start && c == '@' && k + 1 < s.len && s[k + 1] >= 'a' && s[k + 1] <= 'z') code = true;
+		line_start = c == '\n' || (line_start && (c == ' ' || c == '\t' || c == '\r'));
+		k++;
+	}
+	return s.len;
+}
+
+<* The end of the string, char or raw string literal at k ("…" and '…' end at the line's end). *>
+fn sz literal_end(String s, sz k) @local
+{
+	char q = s[k++];
+	while (k < s.len)
+	{
+		char c = s[k];
+		if (q != '`' && c == '\\')
+		{
+			k += 2;
+			continue;
+		}
+		if (q != '`' && c == '\n') return k;
+		if (c == q)
+		{
+			if (q != '`' || k + 1 >= s.len || s[k + 1] != '`') return k + 1;
+			k++;   // `` in a raw string
+		}
+		k++;
+	}
+	return k;
 }
 
 fn sz Src.len(&self) @inline => self.toks.len();
@@ -268,7 +332,7 @@ fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
 			if (pt.type != EQ && pt.type != COMMA && pt.type != LPAREN) return BODY;
 		case FUNC: case MACRO:
 			// the body of a function, whatever ends its header (`@inline`, `<Type>`, `@Attr`); not `=> expr`
-			bool generic_args = pt.type == TYPE_IDENT || pt.type == IDENT || pt.type == AT_TYPE_IDENT;   // `fn List{int} f()`
+			bool generic_args = (pt.type == TYPE_IDENT || pt.type == IDENT || pt.type == AT_TYPE_IDENT) && !self.after_params(i);   // `fn List{int} f()`
 			if (self.toks[i].encl == NO && !generic_args && pt.type != EQ && pt.type != COMMA && !self.after_implies(i)) return BLOCK;
 		default:
 	}
@@ -276,17 +340,17 @@ fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
 	{
 		case RPAREN:
 			if (pt.match == NO) return INIT;
-			TokenType bt = self.type_at(self.prev_code(pt.match));
+			TokenType bt = self.type_at(self.before_label(self.prev_code(pt.match)));
 			switch (bt)
 			{
-				case IF: case WHILE: case FOR: case FOREACH: case FOREACH_R: case SWITCH:
+				case IF: case WHILE: case FOR: case FOREACH: case FOREACH_R: case SWITCH: case DEFER:
 				case IDENT: case AT_IDENT: case FUNC: case RBRACE: case RBRACKET: case HASH_IDENT:
 				case CT_IDENT: case CONST_IDENT:
 					return BLOCK;
-				case STAR:
-					// `fn int*(int x) {` returns a pointer; `a * (Type){ … }` is a value
+				case STAR: case QUESTION:
+					// `fn int*(int x) {`, `fn int?() {` return a pointer, an optional; `a * (Type){ … }` is a value
 					sz k = self.prev_code(pt.match);
-					while (self.type_at(k) == STAR) k = self.prev_code(k);
+					while (self.type_at(k) == STAR || self.type_at(k) == QUESTION) k = self.prev_code(k);
 					return is_type_token(self.type_at(k)) ? BLOCK : INIT;
 				default:
 					return is_type_token(bt) ? BLOCK : INIT;
@@ -301,11 +365,37 @@ fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
 		case EOS: case LBRACE:
 			return enclosing == BLOCK || enclosing == NONE ? BLOCK : INIT;
 		case TYPE_IDENT: case AT_TYPE_IDENT: case IDENT:
+			if (pt.type == IDENT && pt.text == "excuse" && self.stmt_start(i) == p) return BODY;   // `excuse { A, B }`
 			// `List{int}`, `foo{int}(x)`: an initializer never follows a name (since C3 0.7)
 			return GENERIC;
 		default:
 			return pt.label ? BLOCK : INIT;
 	}
+}
+
+<* `while LOOP: (` : the keyword before a label (k is the token before the '('). *>
+fn sz Src.before_label(&self, sz k)
+{
+	if (self.type_at(k) != COLON) return k;
+	sz l = self.prev_code(k);
+	return self.type_at(l) == CONST_IDENT ? self.prev_code(l) : k;
+}
+
+<* Is there a parameter list in the statement before token i (`fn int f(int n) @Hot {`)? *>
+fn bool Src.after_params(&self, sz i)
+{
+	for (sz k = self.stmt_start(i); k < i; k++)
+	{
+		if (self.toks[k].type == LPAREN && self.toks[k].encl == self.toks[i].encl) return true;
+	}
+	return false;
+}
+
+<* Is the '{' at o a bare block (after `;`, `{`, `}`, `$else` or `$endif`)? *>
+fn bool Src.starts_statement(&self, sz o)
+{
+	TokenType p = self.type_at(self.prev_code(o));
+	return p == INVALID || p == EOS || p == LBRACE || p == RBRACE || p == CT_ELSE || is_ct_end(p);
 }
 
 <* Is the '{' at o the body of a function or macro (`fn void f() {`, also after `@attr` or `<Type>`)? *>
@@ -322,6 +412,7 @@ fn bool Src.is_lambda_body(&self, sz o)
 	sz p = self.prev_code(o);
 	if (self.type_at(p) != RPAREN || self.toks[p].match == NO) return false;
 	sz b = self.prev_code(self.toks[p].match);
+	while (self.type_at(b) == STAR || self.type_at(b) == QUESTION) b = self.prev_code(b);   // `fn int?() {`
 	if (self.type_at(b) == FUNC) return true;
 	return b != NO && is_type_token(self.toks[b].type) && self.type_at(self.prev_code(b)) == FUNC;
 }
@@ -357,8 +448,17 @@ fn void Src.classify_braces(&self)
 		if (t.brace == BLOCK && p != NO)
 		{
 			Tok* pt = &self.toks[p];
+			// `switch (x) @jump {`, `switch LABEL: (x) {`
+			while (true)
+			{
+				bool call = pt.type == RPAREN && pt.match != NO && self.type_at(self.prev_code(pt.match)) == AT_IDENT;
+				sz a = pt.type == AT_IDENT ? p : call ? self.prev_code(pt.match) : NO;
+				if (a == NO || self.prev_code(a) == NO) break;
+				p = self.prev_code(a);
+				pt = &self.toks[p];
+			}
 			t.is_switch = pt.type == SWITCH
-				|| (pt.type == RPAREN && pt.match != NO && self.type_at(self.prev_code(pt.match)) == SWITCH);
+				|| (pt.type == RPAREN && pt.match != NO && self.type_at(self.before_label(self.prev_code(pt.match))) == SWITCH);
 			if (pt.type == ASM && t.match != NO) self.keep_range(i + 1, t.match);
 		}
 	}

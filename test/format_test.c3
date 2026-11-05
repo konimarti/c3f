@@ -490,3 +490,21 @@ fn void fourth_review_regressions() @test
 	(void)lf.set("end_of_line", "lf");
 	check("/* a\r\n b */\r\nint x;\r\n", "/* a\n b */\nint x;\n", &lf);
 }
+
+fn void fifth_review_regressions() @test
+{
+	// a string in a contract's code may hold the contract's end: c3c reads on, so it is kept
+	String contract = "<*\n @require x > 0 : \"need x *\x3e 0 (got a=b)\"\n*>\nfn int f(int x) => x;\n";
+	check(contract, contract);
+	// labelled loops and switches, `defer (catch e)` and `excuse` are blocks and bodies
+	c3f::Config knr = c3f::defaults();
+	(void)knr.set("c3f_style", "knr");
+	check("fn void g(int n)\n{\n\twhile OUTER: (n > 0)\n\t{\n\t\tn--;\n\t}\n\tswitch SW: (n)\n\t{\n\t\tcase 1:\n\t\t\tbreak SW;\n\t}\n}\n",
+	      "fn void g(int n) {\n\twhile OUTER: (n > 0) {\n\t\tn--;\n\t}\n\tswitch SW: (n) {\n\t\tcase 1:\n\t\t\tbreak SW;\n\t}\n}\n", &knr);
+	check("fn void g()\n{\n\tdefer (catch e)\n\t{\n\t\tx();\n\t}\n}\n", "fn void g() {\n\tdefer (catch e) {\n\t\tx();\n\t}\n}\n", &knr);
+	// a bare block is not joined onto the statement before it
+	check("fn void g()\n{\n\tint a = 1;\n\t{\n\t\tx();\n\t}\n}\n", "fn void g() {\n\tint a = 1;\n\t{\n\t\tx();\n\t}\n}\n", &knr);
+	c3f::Config strict = c3f::defaults();
+	(void)strict.set("c3f_style", "strict");
+	check("excuse{A, B}\nexcuse {C, D}\n", "excuse { A, B }\nexcuse { C, D }\n", &strict);
+}
