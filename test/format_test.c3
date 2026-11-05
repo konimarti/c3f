@@ -273,6 +273,16 @@ fn void ternary_and_slice_colons() @test
 	check(src, "fn void f()\n{\n\tx = a ? x.y : e;\n\ty = foo(n: 1);\n\tswitch (q)\n\t{\n\t\tcase 1: w = t ? (b ? c : d) : z;\n\t}\n\tv = s[1:2];\n}\n", &c);
 }
 
+fn void strict_mode() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_style", "strict");
+	// a statement after a control header, `$assert`'s message, pointers before a type name,
+	// generic arguments (also as a return type), one-line bodies
+	check("fn List{ int } f()\n{\n\tforeach (&o : x) *o = 1;\n\tif (a)(void)b;\n\t$assert X: \"m\";\n}\nfn Tok *Fmt.tok(&self) => null;\nstruct G {int a; }\n",
+	      "fn List{int} f()\n{\n\tforeach (&o : x) *o = 1;\n\tif (a) (void)b;\n\t$assert X : \"m\";\n}\nfn Tok* Fmt.tok(&self) => null;\nstruct G { int a; }\n", &c);
+}
+
 fn void import_sorting() @test
 {
 	c3f::Config c = c3f::defaults();

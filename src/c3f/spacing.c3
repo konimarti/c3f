@@ -47,7 +47,7 @@ fn Rule GapKey.cell(&self, char level)
 
 fn ulong GapKey.pack(&self, char level) => self.cell(level).pack();
 
-fn GapKey Rule.key(&self) => { self.p2, self.p1, self.nx, self.co, self.cb };
+fn GapKey Rule.key(&self) => {self.p2, self.p1, self.nx, self.co, self.cb};
 
 fn ulong Rule.pack(&self) => pack(self.level, self.p2, self.p1, self.nx, self.co, self.cb);
 
@@ -215,6 +215,27 @@ fn bool Src.ternary_colon_uncached(&self, sz i)
 	return false;
 }
 
+<* Is the ')' at r the end of the header of `if`, `while`, `for`, `foreach`, `foreach_r` or `switch`? *>
+fn bool Src.is_header_close(&self, sz r)
+{
+	Tok* t = &self.toks[r];
+	if (t.type != RPAREN || t.match == NO) return false;
+	switch (self.type_at(self.prev_code(t.match)))
+	{
+		case IF: case WHILE: case FOR: case FOREACH: case FOREACH_R: case SWITCH: return true;
+		default: return false;
+	}
+}
+
+<* Is the ':' at i the one before the message of `$assert cond : "message"`? *>
+fn bool Src.is_assert_colon(&self, sz i)
+{
+	Tok* t = &self.toks[i];
+	if (t.type != COLON || t.label || t.encl != NO && self.toks[t.encl].type != LBRACE) return false;
+	sz start = self.stmt_start(i);
+	return self.toks[start].type == CT_ASSERT || self.toks[start].type == CT_ERROR;
+}
+
 <* Is the ':' at i the separator of a slice `s[a:b]`? *>
 fn bool Src.is_slice_colon(&self, sz i)
 {
@@ -249,7 +270,7 @@ fn bool Src.type_star_uncached(&self, sz s)
 	switch (self.toks[s + 1].type)
 	{
 		case IDENT: case CT_IDENT: case HASH_IDENT: case RPAREN: case COMMA: case STAR: case EOS: case RBRACKET:
-		case LBRACKET: case CT_TYPE_IDENT:
+		case LBRACKET: case CT_TYPE_IDENT: case TYPE_IDENT:   // `Foo* Bar.method()`
 			return true;
 		default:
 			return false;
@@ -329,7 +350,8 @@ fn bool Src.is_unary(&self, sz o)
 		case RETURN: case CASE: case ASSERT:
 			return true;
 		case RPAREN:
-			return self.is_cast_close(o - 1);
+			// after a cast, or at the start of the statement of `if (…)`, `foreach (…)`, …
+			return self.is_cast_close(o - 1) || self.is_header_close(o - 1);
 		case BANG: case BANGBANG: case BIT_NOT: case PLUSPLUS: case MINUSMINUS:
 			// postfix after an operand (`foo()! + 1`, `i++ - 1`): then o is binary
 			return o < 2 || !is_operand_end(self.toks[o - 2].type);
@@ -383,6 +405,26 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	Tok* next = &self.toks[i];
 	// `a ? b : c`: the ':' has a space on both sides (it is not a label, slice or named argument)
 	if ((next.type == COLON && self.is_ternary_colon(i)) || (prev.type == COLON && self.is_ternary_colon(i - 1))) return ONE;
+	// strict: generic arguments are tight, `List{Table[3]}` (the stdlib also writes `HashMap { K, V }`)
+	if (cfg.spacing == STRICT)
+	{
+		if (prev.type == LBRACE && prev.brace == GENERIC && next.type != RBRACE) return NONE;
+		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == GENERIC && prev.type != LBRACE) return NONE;
+	}
+	// strict: a one-line block or body is spaced inside, as the stdlib writes `{ return x; }`
+	if (cfg.spacing == STRICT)
+	{
+		if (prev.type == LBRACE && (prev.brace == BLOCK || prev.brace == BODY) && next.type != RBRACE) return ONE;
+		if (next.type == RBRACE && next.match != NO && prev.type != LBRACE)
+		{
+			BraceKind k = self.toks[next.match].brace;
+			if (k == BLOCK || k == BODY) return ONE;
+		}
+	}
+	// `$assert cond : "message"`
+	if ((next.type == COLON && self.is_assert_colon(i)) || (prev.type == COLON && self.is_assert_colon(i - 1))) return ONE;
+	// `if (x) y;`: the statement after a control header is spaced off
+	if (prev.type == RPAREN && self.is_header_close(i - 1) && next.type != EOS && next.type != LBRACE) return ONE;
 	// `s[a:b]`: in strict mode a slice's ':' sits tight (the stdlib writes both `[a:b]` and `[a : b]`)
 	if (cfg.spacing == STRICT && ((next.type == COLON && self.is_slice_colon(i)) || (prev.type == COLON && self.is_slice_colon(i - 1)))) return NONE;
 	if (prev.type == RPAREN && self.is_cast_close(i - 1)) return cfg.space_after_cast ? Space.ONE : Space.NONE;
@@ -392,7 +434,7 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	}
 	else
 	{
-		bool ident_after = next.type == IDENT || next.type == CT_IDENT || next.type == HASH_IDENT;
+		bool ident_after = next.type == IDENT || next.type == CT_IDENT || next.type == HASH_IDENT || next.type == TYPE_IDENT;
 		if (next.type == STAR && self.is_type_star(i))
 		{
 			if (prev.type == STAR) return NONE;

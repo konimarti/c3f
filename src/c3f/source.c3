@@ -226,7 +226,8 @@ fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
 			if (pt.type != EQ && pt.type != COMMA && pt.type != LPAREN) return BODY;
 		case FUNC: case MACRO:
 			// the body of a function, whatever ends its header (`@inline`, `<Type>`, `@Attr`); not `=> expr`
-			if (self.toks[i].encl == NO && pt.type != EQ && pt.type != COMMA && !self.after_implies(i)) return BLOCK;
+			bool generic_args = pt.type == TYPE_IDENT || pt.type == IDENT || pt.type == AT_TYPE_IDENT;   // `fn List{int} f()`
+			if (self.toks[i].encl == NO && !generic_args && pt.type != EQ && pt.type != COMMA && !self.after_implies(i)) return BLOCK;
 		default:
 	}
 	switch (pt.type)
@@ -433,7 +434,7 @@ fn bool is_directive(String comment, String word)
 	String s = comment.trim();
 	if (!s.starts_with("//")) return false;
 	s = s[2..].trim();
-	foreach (tool : (String[]){ "c3f ", "c3fmt " })
+	foreach (tool : (String[]) {"c3f ", "c3fmt "})
 	{
 		if (s.starts_with(tool)) return s[tool.len..].trim() == word;
 	}
