@@ -108,7 +108,7 @@ c3f -w --exclude 'gen/*' .  # skip paths matching a glob (repeatable)
 found changes, 2 usage or I/O error, 3 a place was kept as written (with `-w` or `--check`;
 printing the result or the diff succeeds, with the notes on stderr). In directories, the
 files ending in `.c3`, `.c3i` and `.c3t` are formatted; hidden directories and those named
-`build` or `lib` are skipped, and linked directories are not followed.
+`build` or `lib` are skipped, and links are not followed (a file named on the command line is).
 
 ## Format on save, in CI, before every commit
 

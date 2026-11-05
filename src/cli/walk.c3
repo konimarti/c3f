@@ -61,8 +61,9 @@ fn bool walk(List{String}* files, String dir, String rel, List{String}* excludes
 			// a linked directory is not followed (it can loop, or lead out of the tree)
 			if (!skipped_dir(name) && !is_link(full)) ok &= walk(files, full, sub, excludes);
 		}
-		else if (is_source(name))
+		else if (is_source(name) && !is_link(full))
 		{
+			// (a linked file can lead out of the tree, like a linked directory)
 			files.push(full);
 		}
 	}

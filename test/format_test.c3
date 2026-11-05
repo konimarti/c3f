@@ -463,6 +463,11 @@ fn void later_wrap_passes_settle() @test
 	String call = "fn void f()\n{\n\tx = aaaa(bbbbbbbbbbbbbbbb, cccccccccccccccccccccccccccccccc, dddddddddd(eeeeeeeeeeeeeeee, ffffffffffffffff, gggggggggggggggg, hhhhhhhhhhhhhh));\n}\n";
 	stable_with(call, {"max_line_length", "50", "c3f_line_breaks", "long", "c3f_continuation", "tab"});
 	stable_with(call, {"max_line_length", "60", "c3f_line_breaks", "long", "c3f_continuation", "align"});
+	// an aligned gap before a name does not move the continuation lines that align after its '('
+	stable_with("fn int\tget_value(char r,\n\tint b)\n{\n\treturn 1;\n}\n", {"c3f_continuation", "align"});
+	// a compile-time header over two lines: the body is judged by the line after its ':'
+	check("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", "fn void f()\n{\n\t$if $a &&\n\t$b:\n\t\tfoo();\n\t$endif\n}\n");
+	stable_with("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", {"c3f_continuation", "tab"});
 	// several statements on one line are not wrapped (each pass would settle only one more)
 	stable_with("const Foo A = { 0x4c5c32ff, 0xbb9d, 0x43b0, x\"b5b42d72e54eaaa4\" };  const Foo B = { 0xb7bede81, 0xdf94, 0x4682, x\"a7d857a52620b86f\" };  const Foo C = { 0xA63293E8, 0x664E, 0x48DB, x\"A079DF759E0509F7\" };\n",
 		{"max_line_length", "40", "c3f_line_breaks", "long"});

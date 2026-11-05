@@ -124,14 +124,13 @@ fn Status run(Options* opt, String name, String src, c3f::Config* cfg)
 			if (r.changed) io::printn(name);
 			return worst(s, r.changed ? Status.CHANGED : Status.OK);
 		case DIFF:
-			if (r.changed) io::print(c3f::unified_diff(tmem, name, src, r.text));
+			if (r.changed && !print_out(c3f::unified_diff(tmem, name, src, r.text))) return ERROR;
 			return OK;
 		case WRITE:
 			if (r.changed && !write_atomic(name, r.text)) return ERROR;
 		default:
 			// printed (for an editor: the whole file; the notes went to stderr)
-			io::print(r.text);
-			return OK;
+			return print_out(r.text) ? Status.OK : Status.ERROR;
 	}
 	return s;
 }
@@ -173,6 +172,8 @@ fn bool write_atomic(String path, String text)
 		}
 	$endif
 	String tmp = path.tconcat(".c3f~");
+	// a file (or a planted link) of that name goes first: deleting a link does not follow it
+	(void)file::delete(tmp);
 	if (catch file::save(tmp, text))
 	{
 		io::eprintfn("c3f: %s: cannot write", tmp);
@@ -195,6 +196,16 @@ fn bool write_atomic(String path, String text)
 		return false;
 	}
 	return true;
+}
+
+<* Print to stdout: false (and a message) if it could not be written, e.g. on a full disk. *>
+fn bool print_out(String text)
+{
+	File* out = io::stdout();
+	// (File.flush drops the result of fflush, which is where a full disk shows)
+	if (try out.write(text) && libc::fflush(out.file) == 0) return true;
+	io::eprintn("c3f: cannot write the output");
+	return false;
 }
 
 fn void print_config(String name, c3f::Config* cfg)

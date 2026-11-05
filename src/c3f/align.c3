@@ -151,7 +151,7 @@ fn void Fmt.align(&self)
 		{
 			sz? k = at.get(at_key(l, c));
 			if (catch k) break;
-			if (!self.alike(a, k) || !self.next_line(k, edge)) break;
+			if (!self.alike(a, k) || !self.next_line(k, edge) || self.continues(k, edge)) break;
 			group.push(k);
 			edge = k;
 		}
@@ -161,7 +161,7 @@ fn void Fmt.align(&self)
 		{
 			sz? k = at.get(at_key(l, c));
 			if (catch k) break;
-			if (!self.alike(a, k) || !self.next_line(edge, k)) break;
+			if (!self.alike(a, k) || !self.next_line(edge, k) || self.continues(edge, k)) break;
 			group.push(k);
 			edge = k;
 		}
@@ -181,6 +181,17 @@ fn void Fmt.align(&self)
 	}
 	if (self.cfg.align == DECLS) self.align_decls();
 	if (self.cfg.align_comments == ALWAYS) self.align_trailing_comments();
+}
+
+<*
+ Is the line of token `down` inside a bracket opened on the line of token `up`? Then its
+ indentation can depend on columns of that line (`c3f_continuation = align`): aligning the two
+ would move it again on every run.
+*>
+fn bool Fmt.continues(&self, sz up, sz down)
+{
+	sz o = self.src.toks[self.out[down].line_tok].encl;
+	return o != NO && self.out[o].line_tok == self.out[up].line_tok;
 }
 
 enum DeclKind : char @local { NONE, NAME, ASSIGN, ARROW }

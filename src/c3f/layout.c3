@@ -300,9 +300,18 @@ fn Indent Fmt.ct_content(&self, sz h, Indent line)
 		case FLUSH: return line;
 		case KEEP:
 			Src* s = self.src;
+			// the body starts after the header's ':' (a header may go on over lines)
+			sz body = h + 1;
+			for (sz k = h + 1; k < s.len() && k != s.toks[h].match; k++)
+			{
+				Tok* t = &s.toks[k];
+				if (t.encl != s.toks[h].encl) continue;
+				if (t.label) body = k + 1;
+				if (t.label || t.type == EOS || t.type == LBRACE) break;
+			}
 			// the first source line of the body at the header's own level (a line inside a
 			// bracket opened in the body is indented by that bracket)
-			for (sz k = h + 1; k < s.len() && k != s.toks[h].match; k++)
+			for (sz k = body; k < s.len() && k != s.toks[h].match; k++)
 			{
 				Tok* t = &s.toks[k];
 				if (is_opener(t.type) && t.match != NO && t.src_nl == 0)
