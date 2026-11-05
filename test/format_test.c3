@@ -350,4 +350,14 @@ fn void wrapping() @test
 	(void)c.set("c3f_line_breaks", "fit");
 	check("fn void f()\n{\n\tFoo x = { .alpha = compute_value(1, 2), .beta = other_value(3) };\n}\n",
 	      "fn void f()\n{\n\tFoo x = { .alpha = compute_value(1, 2),\n\t\t.beta = other_value(3) };\n}\n", &c);
+	// the arguments see the text glued after them; a macro call breaks like a call, an attribute stays whole
+	c = c3f::defaults();
+	(void)c.set("max_line_length", "60");
+	(void)c.set("c3f_line_breaks", "long");
+	check("fn void f()\n{\n\tif (spawn_actions(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN~;\n"
+	      "\treturn @atomic_exchange(ptr, value, AtomicOrdering.RELAXED, $alignment);\n}\n"
+	      "extern fn int get_path(WString name, ulong len, Char16* buffer) @cname(\"GetPath\");\n",
+	      "fn void f()\n{\n\tif (spawn_actions(&actions, stdoutfd[1],\n\t\tlibc::STDOUT_FD)) return FAILED_TO_OPEN~;\n"
+	      "\treturn @atomic_exchange(ptr, value,\n\t\tAtomicOrdering.RELAXED, $alignment);\n}\n"
+	      "extern fn int get_path(WString name, ulong len,\n\tChar16* buffer) @cname(\"GetPath\");\n", &c);
 }

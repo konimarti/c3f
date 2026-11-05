@@ -35,6 +35,7 @@ struct Seq @local
 	sz          depth;      // continuation level of lines broken inside it
 	bool        magic;      // a trailing comma: one item per line
 	bool        frozen;     // inside a one-line block: never breaks
+	sz          tail;       // width of the text that has to follow it on its last line
 }
 
 enum Layout : char @local { INLINE, HANG, STACK }
@@ -138,6 +139,59 @@ fn sz Wrap.build(&self, sz a, sz b, sz depth)
 	return index;
 }
 
+<*
+ What follows a span on its line until the sequence around it can break: a span chooses its
+ breaks for itself, so it has to see that text (`f(a, b)) return x;` breaks inside the
+ arguments when the `return` does not fit).
+*>
+fn void Wrap.set_tails(&self, sz seq, sz tail)
+{
+	self.seqs[seq].tail = tail;
+	sz n = self.seqs[seq].elems.len();
+	for (sz j = 0; j < n; j++)
+	{
+		Elem* el = &self.elems[self.seqs[seq].elems[j]];
+		if (el.kind != SPAN) continue;
+		sz after;
+		bool to_end = true;
+		for (sz k = j + 1; k < n; k++)
+		{
+			Seq* q = &self.seqs[seq];
+			Point p = q.points[k];
+			if (!q.frozen && p != NONE && (p != CLOSE || q.magic))
+			{
+				to_end = false;
+				break;
+			}
+			Elem* next = &self.elems[q.elems[k]];
+			after += self.join_w[next.first - self.first];
+			if (next.kind == RUN)
+			{
+				after += next.width;
+				continue;
+			}
+			// a span right after (`f(a)[i]`): its opener is certain, the rest may break
+			after += text_width(self.f.src.toks[next.first].text, 0, self.f.cfg.tab_width);
+			if (!self.seqs[next.seq].frozen)
+			{
+				to_end = false;
+				break;
+			}
+			after += self.span_width(next.first) - text_width(self.f.src.toks[next.first].text, 0, self.f.cfg.tab_width);
+		}
+		self.set_tails(el.seq, to_end ? after + tail : after);
+	}
+}
+
+<* Width of the span opened at token `open` written on one line. *>
+fn sz Wrap.span_width(&self, sz open)
+{
+	Src* s = self.f.src;
+	sz w = text_width(s.toks[open].text, 0, self.f.cfg.tab_width);
+	for (sz k = open + 1; k <= s.toks[open].match; k++) w += self.join_w[k - self.first] + text_width(s.toks[k].text, 0, self.f.cfg.tab_width);
+	return w;
+}
+
 fn bool Wrap.opens_span(&self, sz k, sz b)
 {
 	Tok* t = &self.f.src.toks[k];
@@ -156,9 +210,22 @@ fn bool Wrap.blocked(&self, sz k)
 		// generic arguments, block bodies, index brackets and attribute arguments stay on one line
 		if (o.type == LBRACE && o.brace != INIT) return true;
 		if (o.type == LBRACKET || o.type == LVEC) return true;
-		if (o.type == LPAREN && e > 0 && (s.toks[e - 1].type == AT_IDENT || s.toks[e - 1].type == AT_TYPE_IDENT)) return true;
+		if (o.type == LPAREN && e > 0 && is_attribute(s, e - 1)) return true;
 	}
 	return false;
+}
+
+<* Is token k the name of an attribute (`@cname("x")` after a declaration), not a macro call (`return @m(x)`)? *>
+fn bool is_attribute(Src* s, sz k) @local
+{
+	if (s.toks[k].type != AT_IDENT && s.toks[k].type != AT_TYPE_IDENT) return false;
+	switch (s.type_at(s.prev_code(k)))
+	{
+		case IDENT: case TYPE_IDENT: case CONST_IDENT: case RPAREN: case RBRACKET: case AT_IDENT: case AT_TYPE_IDENT:
+			return true;
+		default:
+			return false;
+	}
 }
 
 <* A break after this comma starts a new element of the list the statement is in (enum values, table rows). *>
@@ -412,6 +479,8 @@ fn Table Wrap.solve(&self, sz seq, Layout l)
 				sz rest_end = end;
 				char brk;
 				if (i < n - 1) cost += self.continue_after(q, &steps, i, l, end, &rest_end, &brk);
+				// the text glued to the end of the span counts in the choice (the parent pays for it again)
+				if (i == n - 1 && q.tail) cost += self.text_cost(end, q.tail);
 				if (cost < t.cost[c])
 				{
 					t.cost[c] = cost;
@@ -424,7 +493,16 @@ fn Table Wrap.solve(&self, sz seq, Layout l)
 	// keep the steps for reading the layout back
 	self.steps_of(seq, l).clear();
 	foreach (st : steps) self.steps_of(seq, l).push(st);
-	return steps[0];
+	if (!q.tail) return steps[0];
+	// the parent lays the tail out itself: hand it the cost without it
+	Table out = self.new_table();
+	for (sz c = 0; c <= self.w; c++)
+	{
+		out.end[c] = steps[0].end[c];
+		out.pick[c] = steps[0].pick[c];
+		out.cost[c] = steps[0].cost[c] - self.text_cost(steps[0].end[c], q.tail);
+	}
+	return out;
 }
 
 fn List{Table}* Wrap.steps_of(&self, sz seq, Layout l) => &self.steps[seq * 3 + l.ordinal];
@@ -545,6 +623,7 @@ fn void Wrap.init(&self, Fmt* f, sz a, sz b)
 	self.elems.tinit();
 	self.seqs.tinit();
 	self.top = self.build(a, b, 0);
+	self.set_tails(self.top, 0);
 	self.span_done.tinit();
 	self.span_layouts.tinit();
 	self.steps.tinit();
