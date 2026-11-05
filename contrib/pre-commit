@@ -5,9 +5,11 @@
 command -v c3f > /dev/null || { echo "c3f: not found in PATH; skipping the format check" >&2; exit 0; }
 status=0
 for f in $(git diff --cached --name-only --diff-filter=ACM -- '*.c3' '*.c3i'); do
-	if ! git show ":$f" | c3f --check --stdin-filename "$f" - > /dev/null; then
-		echo "c3f: $f is not formatted (run: c3f -w $f)" >&2
-		status=1
-	fi
+	git show ":$f" | c3f --check --stdin-filename "$f" - > /dev/null
+	case $? in
+		0) ;;
+		3) echo "c3f: $f could not be fully formatted (see above)" >&2; status=1 ;;
+		*) echo "c3f: $f is not formatted (run: c3f -w $f)" >&2; status=1 ;;
+	esac
 done
 exit $status

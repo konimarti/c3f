@@ -113,6 +113,13 @@ fn void damaged_code_is_kept() @test
 {
 	// the unclosed '(' keeps the rest of the file as written; the part before it is formatted
 	check("fn void f()\n{\n    int a=1;\n    foo(  1,\n}\n", "fn void f()\n{\n\tint a = 1;\n\tfoo(  1,\n}\n");
+	// and says so: the note names the line of the bracket
+	c3f::Config d = c3f::defaults();
+	c3f::FormatResult r = c3f::format(tmem, "fn void f()\n{\n\tfoo(1,\n}\nfn void g() {}\n", &d);
+	assert(r.fallback);
+	assert(r.notes.len() == 1 && r.notes[0].line == 3);
+	r = c3f::format(tmem, "fn void f()\n{\n\tfoo(1);\n}\n", &d);
+	assert(!r.fallback);
 }
 
 fn void line_endings() @test

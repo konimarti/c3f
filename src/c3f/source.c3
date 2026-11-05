@@ -40,6 +40,7 @@ struct Src
 	bool       crlf;
 	bool       bom;
 	List{char} memo;          // cached answers of is_cast_close / is_type_star
+	List{sz}   unbalanced;    // brackets without a partner: their span is kept as written
 }
 
 fn bool is_comment_type(TokenType t) => t == LINE_COMMENT || t == BLOCK_COMMENT || t == CONTRACT;
@@ -175,12 +176,14 @@ fn void Src.match_brackets(&self)
 		if (k < 0)
 		{
 			// stray closer: keep the enclosing span (or everything around it at top level)
+			self.unbalanced.push(i);
 			self.keep_range(stack.len() ? stack[^1] + 1 : 0, self.len() - 1);
 			continue;
 		}
 		while ((sz)stack.len() - 1 > k)
 		{
 			sz o = stack.pop()!!;
+			self.unbalanced.push(o);
 			self.keep_range(o + 1, i);
 		}
 		sz o = stack.pop()!!;
@@ -190,6 +193,7 @@ fn void Src.match_brackets(&self)
 	while (stack.len())
 	{
 		sz o = stack.pop()!!;
+		self.unbalanced.push(o);
 		self.keep_range(o + 1, self.len() - 1);
 	}
 }

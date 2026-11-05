@@ -147,6 +147,13 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	Src s;
 	s.init(input);
 	if (s.len() == 0) return input.trim().len == 0 ? "" : input;
+	sort::quicksort(&s.unbalanced);
+	foreach (b : s.unbalanced)
+	{
+		r.fallback = true;
+		String what = is_opener(s.toks[b].type) ? "unclosed" : "unopened";
+		r.notes.push({s.toks[b].line, string::format(a, "%s '%s'; the code it encloses was kept as written", what, s.toks[b].text)});
+	}
 	Fmt f;
 	f.init(&s, cfg);
 	List{String} texts;
