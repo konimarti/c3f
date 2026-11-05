@@ -1,0 +1,104 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+env:
+  C3C_RELEASE: v0.8.5_1
+  C3L_RELEASE: v2.1.0
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, target: linux-x64, c3c: c3-linux.tar.gz, c3l: c3l-linux-x64.tar.gz }
+          - { os: macos-14, target: macos-aarch64, c3c: c3-macos.zip, c3l: c3l-macos-aarch64.tar.gz }
+          - { os: windows-2022, target: windows-x64, c3c: c3-windows.zip, c3l: c3l-windows-x64.zip }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install c3c and c3l
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP"
+          gh release download "$C3C_RELEASE" -R c3lang/c3c -p '${{ matrix.c3c }}'
+          gh release download "$C3L_RELEASE" -R konimarti/c3l -p '${{ matrix.c3l }}'
+          for archive in '${{ matrix.c3c }}' '${{ matrix.c3l }}'; do
+            case "$archive" in
+              *.tar.gz) tar xzf "$archive" ;;
+              *) if [ "$RUNNER_OS" = Windows ]; then 7z x -y -bd "$archive" >/dev/null; else unzip -q "$archive"; fi ;;
+            esac
+          done
+          echo "$RUNNER_TEMP/c3" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/c3l-${{ matrix.target }}" >> "$GITHUB_PATH"
+
+      - name: Dependencies (c3l.lock)
+        run: c3l sync --frozen
+
+      # a single executable on Windows, with the C runtime linked in
+      - name: Build
+        run: if [ "$RUNNER_OS" = Windows ]; then c3c build c3f --wincrt=static; else c3c build c3f; fi
+
+      - name: Unit tests
+        run: c3c test
+
+      - name: c3f's own sources are formatted
+        run: build/c3f --check src test tools
+
+      # the standard library of the c3c release: formatted with nothing kept as written
+      # (exit 0, not 3), and a second run changes nothing
+      - name: Format the C3 standard library
+        run: |
+          cp -r "$RUNNER_TEMP/c3/lib/std" "$RUNNER_TEMP/std"
+          build/c3f -w "$RUNNER_TEMP/std"
+          build/c3f --check "$RUNNER_TEMP/std"
+
+      - name: Tag matches the version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: test "c3f ${GITHUB_REF_NAME#v}" = "$(build/c3f --version | tr -d '\r')"
+
+      - name: Package
+        run: |
+          dir=c3f-${{ matrix.target }}
+          mkdir "$dir"
+          cp README.md LICENSE "$dir"/
+          if [ "$RUNNER_OS" = Windows ]; then
+            cp build/c3f.exe "$dir"/
+            7z a -bd "$dir.zip" "$dir" >/dev/null
+          else
+            cp build/c3f "$dir"/
+            tar czf "$dir.tar.gz" "$dir"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: c3f-${{ matrix.target }}
+          path: c3f-${{ matrix.target }}.*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha256sum c3f-*.tar.gz c3f-*.zip > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --generate-notes c3f-*.tar.gz c3f-*.zip SHA256SUMS
