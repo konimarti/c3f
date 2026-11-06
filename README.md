@@ -1,7 +1,19 @@
 # c3f
 
-A formatter for [C3](https://c3-lang.org). It only changes the whitespace between tokens.
+A formatter for [C3](https://c3-lang.org). It only changes the whitespace between tokens, and it
+checks that: fast, and correct.
 
+- **Correct: your code is never changed.** After formatting a file, c3f lexes the result
+  again and compares it, token by token, with the original. If anything differs, that place is
+  kept as written and a note names the line; the file is never written with a changed token.
+  Formatting the whole standard library changes no code or comment (the only text that moves
+  is the indentation of the inner lines of multi-line comments), and c3c's unit tests still
+  pass afterwards.
+- **Stable: a second run changes nothing.** Formatted code is a fixed point: formatting it
+  again gives the same bytes, so `c3f --check` in CI or a git hook does not flap and editors do
+  not fight a format-on-save. On the standard library, 0 of 364 files change on a second run,
+  in every style and at several line widths (CI checks this). Only rare, odd input (such as
+  unbalanced `$if` directives) may need a second run to settle.
 - **Format on save, even mid-edit.** c3f reads tokens, not a C3 grammar, so half-written
   code, syntax errors and new syntax do not stop it: the code inside an unclosed bracket is
   left as written, the rest of the file is formatted, and a note names the line. Setups for
@@ -13,7 +25,7 @@ A formatter for [C3](https://c3-lang.org). It only changes the whitespace betwee
   dynamic-programming algorithm of [A New Approach to Optimal Code Formatting](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf)
   (Yelland, the algorithm of Google's rfmt): it weighs the ways to break each statement
   against a layout cost, instead of filling one line after the other.
-- **Fast.** c3f formats the whole standard library in 0.14 s, and in 0.32 s while wrapping
+- **Fast, too.** c3f formats the whole standard library in 0.14 s, and in 0.32 s while wrapping
   it at 120 columns. Its time grows in step with the size of a file: a table of 4,000
   numbers takes under 5 ms.
 
