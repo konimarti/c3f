@@ -21,7 +21,7 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-22.04, target: linux-x64, c3c: c3-linux.tar.gz, c3l: c3l-linux-x64.tar.gz }
-          - { os: macos-14, target: macos-aarch64, c3c: c3-macos.zip, c3l: c3l-macos-aarch64.tar.gz }
+          - { os: macos-15, target: macos-aarch64, c3c: c3-macos.zip, c3l: c3l-macos-aarch64.tar.gz }
           - { os: windows-2022, target: windows-x64, c3c: c3-windows.zip, c3l: c3l-windows-x64.zip }
     runs-on: ${{ matrix.os }}
     steps:
