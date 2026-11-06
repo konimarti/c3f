@@ -85,7 +85,7 @@ statements with a comment inside (14).
 
 Download a binary for Linux, macOS or Windows from the
 [releases](https://github.com/konimarti/c3f/releases), or build it; that needs
-[c3c](https://github.com/c3lang/c3c) 0.8.6 and [c3l](https://github.com/konimarti/c3l):
+[c3c](https://github.com/c3lang/c3c) 0.8.5 or later and [c3l](https://github.com/konimarti/c3l):
 
 ```sh
 git clone https://github.com/konimarti/c3f && cd c3f
