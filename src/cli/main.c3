@@ -1,5 +1,5 @@
 module c3f::cli;
-import c3f, std::io, std::io::path, std::collections::list, libc;
+import c3f, libc, std::collections::list, std::io, std::io::path;
 
 const String VERSION = "0.1.0";
 

@@ -1,5 +1,5 @@
 module c3f::cli;
-import std::io, std::io::path, std::collections::list, std::sort;
+import std::collections::list, std::io, std::io::path, std::sort;
 
 fn bool is_source(String p) => p.ends_with(".c3") || p.ends_with(".c3i") || p.ends_with(".c3t");
 

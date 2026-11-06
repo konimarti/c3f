@@ -222,7 +222,8 @@ c3f_sort_imports = lines
 - `knr`: `stdlib` with K&R braces, also for functions (`c3f_brace_style = linux` keeps those on
   their own line), and `} else {`.
 - `strict`: `stdlib` with spacing made uniform even where the stdlib varies: `Foo* p`, padded
-  initializer braces (`{ 1, 2 }`) and unpadded brackets, and tight slices `s[a:b]`.
+  initializer braces (`{ 1, 2 }`) and unpadded brackets, tight slices `s[a:b]`, and sorted
+  imports (`c3f_sort_imports = all`; an explicit `c3f_sort_imports` wins).
 
 **stdlib or strict?** Both format everything: indentation, braces, blank lines and the spacing
 between tokens (`a=b+c` → `a = b + c`, `if(x)` → `if (x)`, `foo( a ,b )` → `foo(a, b)`). The

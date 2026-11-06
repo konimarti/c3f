@@ -655,3 +655,12 @@ fn void multi_line_faultdef_members_are_indented() @test
 	// a comment between the members goes in with them
 	check("faultdef X,\n// a comment\nY;\n", "faultdef X,\n\t// a comment\n\tY;\n");
 }
+
+fn void strict_sorts_imports() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_style", "strict");
+	check("import std::math, std::io;\nimport std::core;\nimport a::b;\n", "import a::b;\nimport std::core;\nimport std::io, std::math;\n", &c);
+	(void)c.set("c3f_sort_imports", "off");
+	check("import std::math;\nimport std::io;\n", "import std::math;\nimport std::io;\n", &c);
+}

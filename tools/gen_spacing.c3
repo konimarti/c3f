@@ -1,7 +1,7 @@
 // Writes src/c3f/spacing_table.c3 from a corpus (the C3 standard library):
 //   build/gen-spacing $(find <c3c>/lib/std -name '*.c3') > src/c3f/spacing_table.c3
 module gen_spacing;
-import c3f, c3::lexer, std::io, std::collections::map, std::collections::list, std::sort;
+import c3::lexer, c3f, std::collections::list, std::collections::map, std::io, std::sort;
 
 const uint MIN_COUNT = 5;
 

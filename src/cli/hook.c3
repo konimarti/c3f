@@ -1,5 +1,5 @@
 module c3f::cli;
-import std::io, std::io::path, std::os::process, std::os::env, libc;
+import libc, std::io, std::io::path, std::os::env, std::os::process;
 
 // the pre-commit hook, built into the binary
 const char[*] HOOK = $embed("../../contrib/pre-commit");

@@ -1,5 +1,5 @@
 module c3f::cli;
-import std::io, std::collections::list;
+import std::collections::list, std::io;
 
 faultdef UNKNOWN_FLAG, MISSING_VALUE, USAGE;
 

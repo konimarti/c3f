@@ -1,5 +1,5 @@
 module c3f;
-import std::io, std::io::path, std::collections::list, std::core::ascii;
+import std::collections::list, std::core::ascii, std::io, std::io::path;
 
 faultdef BAD_CONFIG;
 

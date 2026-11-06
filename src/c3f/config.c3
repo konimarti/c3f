@@ -1,5 +1,5 @@
 module c3f;
-import std::io, std::collections::list, std::math;
+import std::collections::list, std::io, std::math;
 
 faultdef UNKNOWN_KEY, BAD_VALUE;
 
@@ -134,8 +134,10 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	{
 		self.spacing = STRICT;
 		self.pointer_style = TYPE;
+		self.sort_imports = ALL;
 		self.origin[Key.SPACING.ordinal] = from;
 		self.origin[Key.POINTER_STYLE.ordinal] = from;
+		self.origin[Key.SORT_IMPORTS.ordinal] = from;
 	}
 	self.origin[Key.STYLE.ordinal] = origin;
 	return true;

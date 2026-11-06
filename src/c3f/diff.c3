@@ -1,5 +1,5 @@
 module c3f;
-import std::io, std::collections::list;
+import std::collections::list, std::io;
 
 enum Edit : char @local { SAME, DEL, ADD }
 
