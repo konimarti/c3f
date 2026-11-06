@@ -236,7 +236,8 @@ fn void Fmt.layout(&self)
 			col = text_width(o.verbatim ? s.gap(i) : o.spacing, col, c.tab_width);
 		}
 		o.col = col;
-		col = text_width(self.token_text(i), col, c.tab_width);   // as written: a comment's lines may move
+		// as written: the lines of a comment may move
+		col = text_width(t.type == BLOCK_COMMENT || t.type == CONTRACT ? self.token_text(i) : t.text, col, c.tab_width);
 
 		// frames that start at this token
 		Indent line = self.out[o.line_tok].indent;

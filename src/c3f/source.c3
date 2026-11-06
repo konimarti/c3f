@@ -24,8 +24,8 @@ struct Tok
 	sz      match;       // matching bracket, $end keyword or $if of an $else; NO if none
 	sz      encl;        // innermost bracket open at the gap before this token (a closer: its own opener); NO at top level
 	sz      parent;      // for case/default and $case/$default: the switch '{' or $switch; else NO
-	sz      prev, next;  // the nearest code tokens before and after (comments skipped); NO if none
-	sz      row;         // the first token of its source line
+	int     prev, next;  // the nearest code tokens before and after (comments skipped); NO if none
+	int     row;         // the first token of its source line
 	BraceKind brace;
 	bool      is_switch;   // '{' of a switch, or a $switch
 	bool      label;       // ':' that ends a case label or a compile-time header
@@ -103,26 +103,20 @@ fn void Src.init(&self, String text)
 	}
 	Lexer lx;
 	lx.init(text);
+	sz last_code = NO;
 	while (try t = lx.next())
 	{
 		if (t.type == EOF) break;
+		sz i = self.toks.len();
+		bool code = !is_comment_type(t.type);
 		self.toks.push({
 			.type = t.type, .text = t.text, .start = t.offset, .line = t.ln, .nl = t.nl_before, .src_nl = t.nl_before,
-			.match = NO, .encl = NO, .parent = NO, .code = !is_comment_type(t.type),
-			.unterminated = t.unterminated});
-	}
-	sz last = NO;
-	foreach (i, &t : self.toks)
-	{
-		t.prev = last;
-		if (t.code) last = i;
-		t.row = i == 0 || t.src_nl > 0 ? i : self.toks[i - 1].row;
-	}
-	last = NO;
-	for (sz i = self.len(); i > 0; i--)
-	{
-		self.toks[i - 1].next = last;
-		if (self.toks[i - 1].code) last = i - 1;
+			.match = NO, .encl = NO, .parent = NO, .code = code, .unterminated = t.unterminated,
+			.prev = (int)last_code, .next = (int)NO, .row = (int)(i == 0 || t.nl_before > 0 ? i : self.toks[i - 1].row)});
+		if (!code) continue;
+		// this is the next code token of the last one and of the comments after it
+		for (sz k = last_code == NO ? 0 : last_code; k < i; k++) self.toks[k].next = (int)i;
+		last_code = i;
 	}
 	self.keep_cut_contracts();
 	// here, in the caller's scope (temp memory of a wrap's @pool would not outlive it)
@@ -585,51 +579,54 @@ fn void Src.mark_labels(&self)
 
 <*
  Pair the '?' and ':' of each ternary like brackets, in one pass: a ':' that is not a label
- closes the nearest open '?' at its bracket level. A ',' or ';' or a block or body '{' at that
- level ends the open ones (the '?' of `int? x;` or `fn int? f() {` belongs to a type).
+ closes the nearest open '?' of its bracket. A ',' or ';' ends the open ones of its bracket, and
+ so does a function or struct body (the '?' of `int? x;` or `fn int? f() {` belongs to a type);
+ the '?' of a bracket that has been left ends there.
 *>
 fn void Src.mark_ternaries(&self)
 {
-	List{sz} open;       // '?' still waiting for their ':'
+	List{sz} open;   // '?' still waiting for their ':', the innermost last
 	open.tinit();
-	List{Level} levels;  // the open brackets, innermost last
-	levels.tinit();
-	levels.push({NO, 0});
 	for (sz i = 0; i < self.len(); i++)
 	{
 		Tok* t = &self.toks[i];
-		// the brackets closed since the last token take their unanswered '?' with them
-		while (levels.len() > 1 && levels[^1].bracket != t.encl) cut(&open, levels.pop()!!.open);
 		if (!t.code) continue;
+		if (open.len())
+		{
+			// the brackets that were left take their '?' with them
+			while (open.len() && !self.inside(t.encl, self.toks[open[^1]].encl)) (void)open.pop();
+		}
+		else if (t.type != QUESTION && t.type != CT_TERNARY)
+		{
+			continue;
+		}
 		switch (t.type)
 		{
-			case EOS: case COMMA: cut(&open, levels[^1].open);
+			case EOS: case COMMA: self.drop_open(&open, t.encl);
 			case QUESTION: case CT_TERNARY: open.push(i);
 			case COLON:
-				if (t.label || open.len() == levels[^1].open) break;
+				if (t.label || !open.len() || self.toks[open[^1]].encl != t.encl) break;
 				t.ternary = true;
 				self.toks[open.pop()!!].ternary = true;
+			case LBRACE:
+				// (not the body of a lambda or the block of a call inside an expression: `a ? fn void() { … } : b`)
+				if (t.brace == BODY || (t.brace == BLOCK && self.is_function_body(i))) self.drop_open(&open, t.encl);
 			default:
-		}
-		if (is_opener(t.type))
-		{
-			// (not the body of a lambda or the block of a call inside an expression: `a ? fn void() { … } : b`)
-			if (t.brace == BODY || (t.brace == BLOCK && self.is_function_body(i))) cut(&open, levels[^1].open);
-			levels.push({i, open.len()});
 		}
 	}
 }
 
-struct Level @local
+<* Is bracket `inner` the bracket `outer` or inside it? (NO: the top level) *>
+fn bool Src.inside(&self, sz inner, sz outer)
 {
-	sz bracket;   // the opener (NO: top level)
-	sz open;      // how many '?' were open before it
+	for (sz b = inner; b != outer; b = self.toks[b].encl) if (b == NO) return false;
+	return true;
 }
 
-<* Drop the last entries of a stack, down to n. *>
-fn void cut(List{sz}* l, sz n) @local
+<* The '?' still open in bracket `b` end here. *>
+fn void Src.drop_open(&self, List{sz}* open, sz b)
 {
-	while (l.len() > n) (void)l.pop();
+	while (open.len() && self.toks[(*open)[^1]].encl == b) (void)open.pop();
 }
 
 fn bool is_directive(String comment, String word)
