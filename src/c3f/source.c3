@@ -31,6 +31,7 @@ struct Tok
 	bool      label;       // ':' that ends a case label or a compile-time header
 	bool      ternary;     // the '?' (or '???') and ':' of a ternary `c ? a : b`
 	bool      message;     // the ':' before the message of `$assert cond : "message"`
+	bool      fault_member; // part of a `faultdef … ;` statement: its members are indented
 	bool      keep;        // the gap before this token is copied as written
 	bool      code;        // not a comment or contract
 	bool      unterminated;
@@ -104,15 +105,18 @@ fn void Src.init(&self, String text)
 	Lexer lx;
 	lx.init(text);
 	sz last_code = NO;
+	bool in_faultdef;
 	while (try t = lx.next())
 	{
 		if (t.type == EOF) break;
 		sz i = self.toks.len();
 		bool code = !is_comment_type(t.type);
+		if (t.type == FAULTDEF) in_faultdef = true;
 		self.toks.push({
 			.type = t.type, .text = t.text, .start = t.offset, .line = t.ln, .nl = t.nl_before, .src_nl = t.nl_before,
-			.match = NO, .encl = NO, .parent = NO, .code = code, .unterminated = t.unterminated,
+			.match = NO, .encl = NO, .parent = NO, .code = code, .unterminated = t.unterminated, .fault_member = in_faultdef,
 			.prev = (int)last_code, .next = (int)NO, .row = (int)(i == 0 || t.nl_before > 0 ? i : self.toks[i - 1].row) });
+		if (t.type == EOS) in_faultdef = false;
 		if (!code) continue;
 		// this is the next code token of the last one and of the comments after it
 		for (sz k = last_code == NO ? 0 : last_code; k < i; k++) self.toks[k].next = (int)i;

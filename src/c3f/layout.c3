@@ -397,6 +397,8 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 	Indent base = f.has_head ? f.head : f.content;
 	if (t.type == LBRACE && (t.brace == BLOCK || t.brace == BODY) && i == j) return base;
 	self.out[i].cont = true;
+	// the members of a multi-line `faultdef` are one level in, like those of an enum body
+	if (t.fault_member) return base.deeper();
 	switch (self.cfg.continuation)
 	{
 		case KEEP:

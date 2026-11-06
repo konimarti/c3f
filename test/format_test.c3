@@ -637,3 +637,21 @@ fn void variadics_and_type_declaration_lists() @test
 	check(list_in, list_out, &d);
 	check(list_in, list_out, &strict);
 }
+
+fn void multi_line_faultdef_members_are_indented() @test
+{
+	// one level, whatever the source had, in every continuation mode; a one-line faultdef is untouched
+	String want = "faultdef\n\tALREADY_EXISTS,\n\tBUSY;\nfaultdef A, B;\nfn void f() {}\n";
+	String[] sources = { "faultdef\nALREADY_EXISTS,\nBUSY;\nfaultdef A,B;\nfn void f(){}\n", "faultdef\n\t\tALREADY_EXISTS,\n  BUSY;\nfaultdef A, B;\nfn void f() {}\n" };
+	foreach (src : sources)
+	{
+		foreach (mode : (String[]){ "keep", "tab", "align" })
+		{
+			c3f::Config c = c3f::defaults();
+			(void)c.set("c3f_continuation", mode);
+			check(src, want, &c);
+		}
+	}
+	// a comment between the members goes in with them
+	check("faultdef X,\n// a comment\nY;\n", "faultdef X,\n\t// a comment\n\tY;\n");
+}
