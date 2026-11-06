@@ -60,7 +60,9 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 		// the notes are about the input; a later pass that cannot be verified is not used
 		FormatResult later;
 		later.notes.tinit();
-		for (int pass = 1; pass < WRAP_PASSES; pass++)
+		// (the lines a split string adds can move what was wrapped before: one more pass)
+		int passes = settled.line_breaks == WRAP_STRINGS ? WRAP_PASSES + 1 : WRAP_PASSES;
+		for (int pass = 1; pass < passes; pass++)
 		{
 			memo.wrapped = 0;
 			String again = format_text(text, &settled, &later, tmem, &memo, attempts: 1);
@@ -107,6 +109,7 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 		f.layout();
 		f.wrap();
 		f.align();
+		f.split_strings();
 		String output = f.emit(&texts);
 		sz bad = f.verify(output, &texts);
 		if (bad == NO) return output;

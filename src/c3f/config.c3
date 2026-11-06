@@ -15,7 +15,7 @@ enum BracketPadding : char { KEEP, NONE, SPACE }
 enum DeclSpacing : char { KEEP, ONE }
 enum AlignMode : char { PRESERVE, DECLS, OFF }
 enum CommentAlign : char { PRESERVE, ALWAYS, OFF }
-enum LineBreaks : char { PRESERVE, WRAP, REFLOW }
+enum LineBreaks : char { PRESERVE, WRAP, WRAP_STRINGS, REFLOW }
 enum SortImports : char { OFF, LINES, LISTS, ALL, SPLIT }
 enum CtIndent : char { KEEP, INDENT, FLUSH }
 
@@ -143,6 +143,9 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	return true;
 }
 
+<* `wrap` and `wrap-strings`: only the statements with a line over the limit are broken. *>
+fn bool Config.wraps_only(&self) => self.line_breaks == WRAP || self.line_breaks == WRAP_STRINGS;
+
 <*
  Settle values that depend on each other, as in .editorconfig: `indent_size = tab` uses
  tab_width, and tab_width follows indent_size unless it was set itself.
@@ -179,7 +182,7 @@ macro parse_enum($Type, String v)
 	$Type? r = BAD_VALUE~;
 	foreach (e : $Type::values)
 	{
-		if (string::tformat("%s", e).to_lower_tcopy() == v)
+		if (enum_text(e) == v.treplace("-", "_"))
 		{
 			r = e;
 			break;
@@ -302,7 +305,7 @@ macro String enum_names($Type)
 	foreach (i, e : $Type::values)
 	{
 		if (i) d.append(", ");
-		d.append(string::tformat("%s", e).to_lower_tcopy());
+		d.append(enum_text(e));
 	}
 	return d.str_view();
 }

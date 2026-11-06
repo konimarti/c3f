@@ -175,7 +175,7 @@ c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay mult
 | Option | What it does |
 |---|---|
 | `c3f_style` | `stdlib` (default): tabs, Allman braces, the standard library's spacing. `knr`: K&R braces. `strict`: one form where the stdlib itself varies (`Foo* p`, `{ 1, 2 }`, `s[a:b]`), and sorted imports. |
-| `max_line_length`, `c3f_line_breaks` | `preserve` (default) never moves your line breaks; `wrap` breaks only the statements with a line over the limit; `reflow` also lays out multi-line statements again. |
+| `max_line_length`, `c3f_line_breaks` | `preserve` (default) never moves your line breaks; `wrap` breaks only the statements with a line over the limit; `reflow` also lays out multi-line statements again; `wrap_strings` is `wrap` plus splitting a string that is still too long into `"a " "b"`, which the compiler joins (the one value that changes more than whitespace; the joined value is checked). |
 | `indent_style`, `indent_size`, `tab_width` | `tab`, 4, 4. |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all`, `split` (one module per `import`). |
 | `c3f_align`, `c3f_align_comments` | Keep (`preserve`), apply (`decls`, `always`) or remove (`off`) alignment of declarations and trailing comments. |

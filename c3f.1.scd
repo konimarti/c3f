@@ -103,12 +103,17 @@ Values are given with their default first.
 *max_line_length* = off
 	*off*, or 1 to 10000. The column limit used by wrapping and alignment.
 
-*c3f_line_breaks* = preserve | wrap | reflow
+*c3f_line_breaks* = preserve | wrap | wrap_strings | reflow
 	What *c3f* may do with line breaks. It needs a *max_line_length*. *preserve* never
 	moves them; *wrap* breaks the statements that have a line over the limit; *reflow*
 	also lays out again every statement that spans several lines, so a break made by hand
 	is joined if the statement fits on one line. A statement on one line that fits is
-	never touched.
+	never touched. *wrap_strings* is *wrap*, and in addition a string literal that still runs
+	past the limit is written as several literals, which the compiler joins: "a b c" becomes
+	"a " "b c". It cuts after a space if it can, never inside an escape sequence, a UTF-8
+	character or a *printf* conversion, and not in an attribute, an *assert* or a compile-time
+	directive. The value of every piece is checked to be the original's. This is the only
+	option that changes tokens, not just whitespace. (*wrap-strings* is accepted too.)
 
 *c3f_brace_style* = allman | knr | linux
 	Where the opening brace goes. *linux* is *knr* with the braces of functions on their

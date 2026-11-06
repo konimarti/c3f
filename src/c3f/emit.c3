@@ -97,6 +97,19 @@ fn String Fmt.emit(&self, List{String}* texts)
 		String text = self.token_text(i);
 		// the line breaks inside a comment follow end_of_line too (a string's are its value)
 		if (is_comment_type(s.toks[i].type)) text = self.convert_eol(text);
+		if (o.pieces.len)
+		{
+			// a string written as several literals, each after the first on a line of its own
+			texts.push(o.pieces[0]);
+			d.append(o.pieces[0]);
+			foreach (p : o.pieces[1..])
+			{
+				self.newlines(&d, 1, i);
+				d.append(self.indent_text(o.piece_indent));
+				d.append(p);
+			}
+			continue;
+		}
 		texts.push(text);
 		d.append(text);
 	}
@@ -133,6 +146,24 @@ fn sz Fmt.verify(&self, String output, List{String}* texts)
 	{
 		if (t.type == EOF) break;
 		if (k >= s.len()) return s.len() - 1;
+		String[] pieces = self.out[k].pieces;
+		if (pieces.len)
+		{
+			// one source string, several literals: they must stand for the same bytes
+			if (!same_value(s.toks[k].text, pieces)) return k;
+			foreach (i, p : pieces)
+			{
+				if (i > 0)
+				{
+					Token? more = lx.next();
+					if (catch more) return k;
+					t = more;
+				}
+				if (t.type != STRING || t.text != p) return k;
+			}
+			k++;
+			continue;
+		}
 		if (t.type != s.toks[k].type || t.text != (*texts)[k]) return k;
 		k++;
 	}

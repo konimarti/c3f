@@ -615,6 +615,46 @@ fn void a_lone_underscore_is_spaced_like_a_name() @test
 	      "fn void f() { foo(a, _); foo(_, a); x = _; int _ = 3; y = b[_] + _; foreach (_, x : y) {} }\n", &c);
 }
 
+fn void wrap_strings_splits_a_long_literal_at_spaces() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("max_line_length", "40");
+	(void)c.set("c3f_line_breaks", "wrap_strings");
+	String src = "fn void f()\n{\n\tString s = \"one two three four five six seven eight nine ten\";\n}\n";
+	check(src, "fn void f()\n{\n\tString s =\n\t\t\"one two three four five \"\n\t\t\"six seven eight nine ten\";\n}\n", &c);
+	// plain wrap never splits a literal
+	(void)c.set("c3f_line_breaks", "wrap");
+	check(src, "fn void f()\n{\n\tString s =\n\t\t\"one two three four five six seven eight nine ten\";\n}\n", &c);
+}
+
+fn void wrap_strings_keeps_escapes_conversions_and_utf8_whole() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("max_line_length", "30");
+	(void)c.set("c3f_line_breaks", "wrap_strings");
+	// the only places to cut are inside a `%08x`, a `\x41`, a `\n` and a two-byte character
+	String src = "fn void f()\n{\n\tx = \"aaaaaaaa%08xbbbbbbbb\\x41cccccccc\\ndddddd\xC3\xA9\xC3\xA9eeeeeeee\";\n}\n";
+	String got = fmt_with(src, &c);
+	foreach (piece : got.tsplit("\n"))
+	{
+		assert(!piece.contains("%\"") && !piece.contains("%0\"") && !piece.contains("%08\""), "split a conversion: %s", got);
+		assert(!piece.contains("\\\"") && !piece.contains("\\x\"") && !piece.contains("\\x4\""), "split an escape: %s", got);
+	}
+	assert(got.contains("%08x") && got.contains("\\x41") && got.contains("\\n") && got.contains("\xC3\xA9\xC3\xA9"));
+	assert(fmt_with(got, &c) == got);
+}
+
+fn void wrap_strings_leaves_assert_attributes_and_messages_alone() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("max_line_length", "30");
+	(void)c.set("c3f_line_breaks", "wrap_strings");
+	String assertion = "fn void f()\n{\n\tassert(x == \"aaaa bbbb cccc dddd eeee ffff gggg\");\n}\n";
+	String attr = "fn void f() @export(\"aaaa_bbbb cccc dddd eeee ffff gggg\") {}\n";
+	assert(!fmt_with(assertion, &c).contains("\"\n"));
+	assert(!fmt_with(attr, &c).contains("\"\n"));
+}
+
 fn void strict_pads_initializer_braces() @test
 {
 	c3f::Config strict = c3f::defaults();

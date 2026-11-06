@@ -317,6 +317,8 @@ fn Point Wrap.point_before(&self, sz k)
 		return e != NO && s.toks[e].type == LPAREN ? Point.NONE : Point.ASSIGN;
 	}
 	if (s.is_binary(k) && !is_assign(s.toks[k].type)) return OPERATOR;
+	// strings written one after another (split by `wrap-strings`) stay where they are
+	if (prev == STRING && s.toks[k].type == STRING && self.f.cfg.line_breaks == WRAP_STRINGS) return OPERATOR;
 	return NONE;
 }
 
@@ -650,7 +652,7 @@ fn bool Fmt.wants_wrap(&self, sz a, sz b)
 		bool eol = k == b || self.out[k + 1].nl > 0;
 		if (eol && self.end_col(k) > c.max_line_length) too_long = true;
 	}
-	if (c.line_breaks == WRAP && !too_long) return false;
+	if (c.wraps_only() && !too_long) return false;
 	return too_long || c.soft_max_line_length != 0 || !self.fits_as_is(a, b);
 }
 
