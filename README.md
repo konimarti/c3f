@@ -61,7 +61,7 @@ standard library of c3c c23910038 (0.8.6, 2026-11-04).
 |---|---|---|---|---|
 | Time (median of 5 runs) | 0.14 s | 0.32 s | 2.4 s ⁴ | 99 s ² |
 | Peak memory | 10 MB | 17 MB | 78 MB | 17 MB |
-| Lines changed | 1,857 | 2,909 | 14,069 | 14,854 |
+| Lines changed | 1,858 | 2,910 | 14,069 | 14,854 |
 | Lines over 120 columns left (1,329 before) | 1,325 | 317 ³ | 522 | 738 |
 | Files whose code or comments changed | 0 ¹ | 0 ¹ | 77 | 110 |
 | Files that change again on a second run | 0 | 0 | 31 | 5 |
@@ -80,6 +80,17 @@ one-line blocks and bodies (28), aligned rows (17), lines that hold several stat
 statements with a comment inside (14).
 
 ⁴ The same when it runs on one core.
+
+**The IDE plugin.** The C3 plugin for IntelliJ and CLion ([c3lang/c3intellij](https://github.com/c3lang/c3intellij))
+formats inside the IDE, so it is not in the table. It and c3f write the same tabs of width 4,
+Allman braces (K&R as an option), spaces around binary operators, `if (x)`, casts without a
+space, `case` indented under `switch`, `int... x` and `struct Foo (Bar)`; c3f's `strict` style
+also writes `int* a` and padded initializer braces, `{ .x = 0 }`. Where they differ: in its own
+tests the plugin expands one-line blocks, puts every statement on its own line, indents
+compile-time bodies and has no spacing options. c3f keeps the line breaks you wrote unless
+asked (`c3f_one_line_blocks = expand`, `c3f_ct_indent = indent`; it does not split statements),
+and it works outside an IDE: any editor, CI, a git hook, `.editorconfig`, line wrapping to a
+column limit, alignment and import sorting.
 
 ## Install
 
@@ -158,6 +169,27 @@ or Helix (`languages.toml`):
 name = "c3"
 formatter = { command = "c3f", args = ["-"] }
 auto-format = true
+```
+
+or a JetBrains IDE (IntelliJ IDEA, CLion, ...): add c3f as an external tool (*Settings | Tools |
+External Tools*, **+**) with Program the full path of `c3f`, Arguments `-w $FilePath$`, Working
+directory `$FileDir$`, and *Synchronize files after execution* ticked so that the editor loads
+the result. Give it a shortcut under *Settings | Keymap | External Tools*. Save the file first:
+c3f formats what is on disk. *Code | Reformat Code* still runs the C3 plugin's own formatter, and
+the IDE reads the same `.editorconfig` for indentation.
+
+For format on save, use the *File Watchers* plugin (*Settings | Tools | File Watchers*; IntelliJ
+IDEA needs the Ultimate edition): the C3 file type, Scope *Project Files*, Program `c3f-save`,
+Arguments `$FilePath$`, Output paths to refresh `$FilePath$`, *Auto-save edited files to trigger
+the watcher* cleared and *Trigger the watcher regardless of syntax errors* ticked. The IDE
+disables a watcher whose program fails, and `c3f -w` exits with 3 when it keeps a place as
+written (an unclosed bracket, for example), so point it at this script, `c3f-save` on your PATH
+(Linux, macOS):
+
+```sh
+#!/bin/sh
+c3f -w "$1"
+case $? in 0|3) exit 0 ;; *) exit 1 ;; esac
 ```
 
 **CI.** Fail the build if anything is not formatted:
