@@ -213,6 +213,26 @@ fn bool Src.closes_call(&self, sz r)
 	}
 }
 
+<* Can a variadic `...` follow this token as `Type... name` (the types the learned table has no cells for)? *>
+fn bool ends_type(TokenType t) => is_base_type(t) || t == STAR || t == QUESTION;
+
+<* Is the '(' at i the list of a declaration like `struct Foo (Bar)`: after its name, before any '=' or body? *>
+fn bool Src.is_type_header_paren(&self, sz i)
+{
+	sz start = self.stmt_start(i);
+	switch (self.toks[start].type)
+	{
+		case STRUCT: case UNION: case TYPEDEF: case ENUM: break;
+		default: return false;
+	}
+	for (sz k = start + 1; k < i; k++)
+	{
+		TokenType t = self.toks[k].type;
+		if (t == EQ || t == FUNC || t == LBRACE) return false;
+	}
+	return true;
+}
+
 <* Is the ')' at r the end of the header of `if`, `while`, `for`, `foreach`, `foreach_r` or `switch`? *>
 fn bool Src.is_header_close(&self, sz r)
 {
@@ -419,6 +439,11 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	Tok* next = &self.toks[i];
 	// `a ? b : c`: the '?' and ':' have a space on both sides (`???` is left to the table)
 	if ((next.ternary && next.type != CT_TERNARY) || (prev.ternary && prev.type != CT_TERNARY)) return ONE;
+	// `Type... name`: the ellipsis hugs the type (the stdlib: always, as in `args...`), the name follows after a space
+	if (next.type == ELLIPSIS && ends_type(prev.type)) return NONE;
+	if (prev.type == ELLIPSIS && i >= 2 && ends_type(self.toks[i - 2].type) && (next.type == IDENT || next.type == CT_IDENT || next.type == HASH_IDENT)) return ONE;
+	// the list after the name of a type declaration is spaced off it: `struct Foo (Bar)`, `enum E : int (String name)` (the stdlib: 98%)
+	if (next.type == LPAREN && next.encl == NO && (prev.type == TYPE_IDENT || is_base_type(prev.type)) && self.is_type_header_paren(i)) return ONE;
 	// strict: generic arguments are tight, `List{Table[3]}` (the stdlib also writes `HashMap { K, V }`)
 	if (cfg.spacing == STRICT)
 	{

@@ -607,3 +607,20 @@ fn void the_readme_example_is_what_c3f_prints() @test
 	(void)c.set("c3f_line_breaks", "wrap");
 	check(input, want, &c);
 }
+
+fn void variadics_and_type_declaration_lists() @test
+{
+	c3f::Config strict = c3f::defaults();
+	(void)strict.set("c3f_style", "strict");
+	// `Type... name` hugs the ellipsis in both styles; a splat and `args...` stay as they are
+	c3f::Config d = c3f::defaults();
+	String variadics_in = "fn void a(int ...x, int * ... p, Foo ... r, String fmt, args...);\nfn void b() { c(a, ...arr, ...); }\n";
+	String variadics_out = "fn void a(int... x, int*... p, Foo... r, String fmt, args...);\nfn void b() { c(a, ...arr, ...); }\n";
+	check(variadics_in, variadics_out, &d);
+	check(variadics_in, variadics_out, &strict);
+	// the list after a type declaration's name is spaced off it; a function type stays tight
+	String list_in = "struct Socket(InStream, OutStream) { int x; }\ntypedef Nano(Printable) = long;\nenum Opt : char(CInt value) { A }\ntypedef Fn = fn Bar(int);\n";
+	String list_out = "struct Socket (InStream, OutStream) { int x; }\ntypedef Nano (Printable) = long;\nenum Opt : char (CInt value) { A }\ntypedef Fn = fn Bar(int);\n";
+	check(list_in, list_out, &d);
+	check(list_in, list_out, &strict);
+}
