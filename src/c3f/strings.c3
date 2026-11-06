@@ -1,7 +1,7 @@
 module c3f;
 import c3::lexer, std::collections::list, std::sort;
 
-// `c3f_line_breaks = wrap-strings`: a string literal that still runs past the limit after the
+// `c3f_line_breaks = wrap-fit`: a string literal that still runs past the limit after the
 // statement was wrapped is written as several literals, which the compiler joins:
 // "a long text" becomes "a long " "text". The split is chosen by a line-breaking
 // dynamic program over the characters of the literal, like the one for statements but with its
@@ -278,7 +278,7 @@ fn Indent Fmt.piece_indent(&self, sz k, sz t)
 <* Write the strings that still run past the limit as several literals. *>
 fn void Fmt.split_strings(&self)
 {
-	if (self.cfg.line_breaks != WRAP_STRINGS || self.cfg.max_line_length == 0) return;
+	if (self.cfg.line_breaks != WRAP_FIT || self.cfg.max_line_length == 0) return;
 	Src* s = self.src;
 	Config* c = self.cfg;
 	sz tw = c.tab_width;

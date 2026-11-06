@@ -15,7 +15,7 @@ enum BracketPadding : char { KEEP, NONE, SPACE }
 enum DeclSpacing : char { KEEP, ONE }
 enum AlignMode : char { PRESERVE, DECLS, OFF }
 enum CommentAlign : char { PRESERVE, ALWAYS, OFF }
-enum LineBreaks : char { PRESERVE, WRAP, WRAP_STRINGS, REFLOW }
+enum LineBreaks : char { PRESERVE, WRAP, WRAP_FIT, REFLOW }
 enum SortImports : char { OFF, LINES, LISTS, ALL, SPLIT }
 enum CtIndent : char { KEEP, INDENT, FLUSH }
 
@@ -143,8 +143,8 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	return true;
 }
 
-<* `wrap` and `wrap-strings`: only the statements with a line over the limit are broken. *>
-fn bool Config.wraps_only(&self) => self.line_breaks == WRAP || self.line_breaks == WRAP_STRINGS;
+<* `wrap` and `wrap-fit`: only the statements with a line over the limit are broken. *>
+fn bool Config.wraps_only(&self) => self.line_breaks == WRAP || self.line_breaks == WRAP_FIT;
 
 <*
  Settle values that depend on each other, as in .editorconfig: `indent_size = tab` uses

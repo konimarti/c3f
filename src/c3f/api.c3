@@ -47,11 +47,38 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	}
 	Config settled = *cfg;
 	settled.finish();
+	// `wrap_fit`: a body that cannot move to the next line without braces gets them first, so wrapping
+	// lays out the braced body (measured on the text as formatted without wrapping)
+	String source = input;
+	if (settled.line_breaks == WRAP_FIT && settled.max_line_length != 0)
+	{
+		FormatResult probe;
+		probe.notes.tinit();
+		Config flat = settled;
+		flat.line_breaks = PRESERVE;
+		String plain = format_text(input, &flat, &probe, tmem, null);
+		if (!probe.fallback) source = brace_long_bodies(plain, &settled);
+	}
+	String text = format_pass(&r, a, source, &settled);
+	if (r.fallback && source != input)
+	{
+		// something in the braced text could not be formatted: start again from the file as it is
+		while (r.notes.len() > 0) free_note(r.notes.pop()!!, a);
+		r.fallback = false;
+		text = format_pass(&r, a, input, &settled);
+	}
+	r.text = text.copy(a);
+	r.changed = r.text != input;
+	return r;
+}
+
+fn String format_pass(FormatResult* r, Allocator a, String input, Config* settled) @local
+{
 	bool wraps = settled.line_breaks != PRESERVE && settled.max_line_length != 0;
 	WrapMemo memo;
 	if (wraps) memo.init();
 	defer if (wraps) memo.free();
-	String text = format_text(input, &settled, &r, a, wraps ? &memo : null);
+	String text = format_text(input, settled, r, a, wraps ? &memo : null);
 	// wrapping can turn one statement into several (a '{' that now ends a line opens a block),
 	// which the next run may wrap again: repeat until nothing changes, so a second run never does
 	// (if the first pass wrapped nothing, the text is formatted as without wrapping: one run is enough)
@@ -61,19 +88,17 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 		FormatResult later;
 		later.notes.tinit();
 		// (the lines a split string adds can move what was wrapped before: one more pass)
-		int passes = settled.line_breaks == WRAP_STRINGS ? WRAP_PASSES + 1 : WRAP_PASSES;
+		int passes = settled.line_breaks == WRAP_FIT ? WRAP_PASSES + 1 : WRAP_PASSES;
 		for (int pass = 1; pass < passes; pass++)
 		{
 			memo.wrapped = 0;
-			String again = format_text(text, &settled, &later, tmem, &memo, attempts: 1);
+			String again = format_text(text, settled, &later, tmem, &memo, attempts: 1);
 			if (again == text) break;
 			text = again;
 			if (!memo.wrapped) break;   // (it may still have re-indented what was wrapped before)
 		}
 	}
-	r.text = text.copy(a);
-	r.changed = r.text != input;
-	return r;
+	return text;
 }
 
 <* Format once; a place whose result cannot be verified is kept as written and the rest is tried again. *>
