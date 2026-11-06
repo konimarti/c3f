@@ -323,7 +323,7 @@ fn Point Wrap.point_before(&self, sz k)
 // Break cost multipliers (times c3f_wrap_cost_break): per level of nesting, after an opener or
 // before a closer, after '=', before an operator (plus per precedence rank: `||` is cheaper than `*`).
 const float DEPTH_COST = 0.5f;
-const float BRACKET_COST = 1.5f;
+const float BRACKET_COST = 2.5f;
 const float ASSIGN_COST = 1.5f;
 const float OPERATOR_COST = 0.5f;
 const float PRECEDENCE_COST = 0.25f;

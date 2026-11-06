@@ -537,3 +537,13 @@ fn void sixth_review_regressions() @test
 	(void)sorted.set("c3f_sort_imports", "lines");
 	check("// header\nimport std::io;\nimport std::a;\n", "// header\nimport std::a;\nimport std::io;\n", &sorted);
 }
+
+fn void wrapping_prefers_the_operator_to_the_opener() @test
+{
+	// the outer operator is the place to break, not the '(' of its second operand
+	c3f::Config w = c3f::defaults();
+	(void)w.set("max_line_length", "80");
+	(void)w.set("c3f_line_breaks", "long");
+	check("fn ulong f(ulong w)\n{\n\treturn ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL) | ((w >> 12) & (ulong)0x000F000F000F000FULL);\n}\n",
+	      "fn ulong f(ulong w)\n{\n\treturn ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL)\n\t\t| ((w >> 12) & (ulong)0x000F000F000F000FULL);\n}\n", &w);
+}
