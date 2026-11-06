@@ -353,7 +353,7 @@ fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
 				default:
 					return is_type_token(bt) ? BLOCK : INIT;
 			}
-		case ELSE: case DO: case DEFER: case SWITCH: case AT_IDENT: case AT_INLINE: case AT_PURE: case AT_NOINLINE:
+		case ELSE: case DO: case DEFER: case SWITCH: case AT_IDENT:
 		case ASM: case TRY: case CATCH:
 			return BLOCK;
 		case RBRACE:

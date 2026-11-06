@@ -6,7 +6,7 @@ A fast, verified formatter for [C3](https://c3-lang.org). It changes only whites
   Anything that differs is kept as written, so your code is never changed.
 - **Stable.** Formatting twice gives the same bytes: no flapping in CI, no fights with format-on-save.
 - **Stdlib style.** Spacing rules learned from the C3 standard library itself.
-- **Fast.** The whole standard library in 0.14 s, and in 0.32 s wrapped at 120 columns with an
+- **Fast.** The whole standard library in 0.13 s, and in 0.30 s wrapped at 120 columns with an
   optimal layout ([Yelland](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf), as in Google's rfmt).
 
 It works on tokens, not a grammar, so half-typed code and new syntax do not stop it. Format on save,
@@ -47,7 +47,7 @@ standard library c23910038 (0.8.6).
 
 | | c3f | c3f, 120 columns | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
 |---|---|---|---|---|
-| Time (median of 5 runs) | 0.14 s | 0.32 s | 2.4 s ⁴ | 99 s ² |
+| Time (median of 5 runs) | 0.13 s | 0.30 s | 2.4 s ⁴ | 99 s ² |
 | Peak memory | 10 MB | 17 MB | 78 MB | 17 MB |
 | Lines changed | 1,858 | 2,910 | 14,069 | 14,854 |
 | Lines over 120 columns left (1,329 before) | 1,325 | 317 ³ | 522 | 738 |

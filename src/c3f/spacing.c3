@@ -14,15 +14,18 @@ struct Rule
 <* Context of the gap before token i. *>
 struct GapKey { TokenType p2, p1, nx, co, cb; }
 
+<* A lone `_` is spaced like any other name (the stdlib has too few of them to learn it). *>
+fn TokenType name_of(TokenType t) @inline => t == UNDERSCORE ? IDENT : t;
+
 fn GapKey Src.gap_key(&self, sz i)
 {
 	sz o = self.toks[i].encl;
 	return {
-		.p2 = i >= 2 ? self.toks[i - 2].type : INVALID,
-		.p1 = self.toks[i - 1].type,
-		.nx = self.toks[i].type,
+		.p2 = i >= 2 ? name_of(self.toks[i - 2].type) : INVALID,
+		.p1 = name_of(self.toks[i - 1].type),
+		.nx = name_of(self.toks[i].type),
 		.co = o == NO ? TokenType.INVALID : self.toks[o].type,
-		.cb = o == NO || o == 0 ? TokenType.INVALID : self.toks[o - 1].type,
+		.cb = o == NO || o == 0 ? TokenType.INVALID : name_of(self.toks[o - 1].type),
 	};
 }
 
@@ -118,7 +121,7 @@ fn bool is_operand_start(TokenType t)
 {
 	switch (t)
 	{
-		case IDENT: case CONST_IDENT: case INTEGER: case REAL: case STRING: case CHAR_LITERAL: case BYTES:
+		case IDENT: case UNDERSCORE: case CONST_IDENT: case INTEGER: case REAL: case STRING: case CHAR_LITERAL: case BYTES:
 		case TYPE_IDENT: case CT_TYPE_IDENT:
 		case LPAREN: case AT_IDENT: case HASH_IDENT: case CT_IDENT: case NULL: case TRUE: case FALSE:
 		case AMP: case STAR: case BANG: case BIT_NOT: case MINUS: case BUILTIN: case CT_VAARG:
@@ -156,7 +159,7 @@ fn bool Src.cast_close_uncached(&self, sz r)
 	if (before == RPAREN && self.is_header_close(bi)) before = INVALID;   // `if (x) (void)f();`
 	switch (before)
 	{
-		case IDENT: case AT_IDENT: case CONST_IDENT: case RPAREN: case RBRACKET: case RBRACE: case IF:
+		case IDENT: case UNDERSCORE: case AT_IDENT: case CONST_IDENT: case RPAREN: case RBRACKET: case RBRACE: case IF:
 		case WHILE: case FOR: case FOREACH: case FOREACH_R: case SWITCH: case HASH_IDENT: case CT_IDENT:
 		case CATCH: case TRY: case FUNC: case MACRO: case CT_TYPEOF: case CT_REFLECT: case CT_DEFINED:
 		case CT_EVAL: case CT_FEAT: case CT_TYPEFROM: case CT_STRINGIFY: case CT_ASSERT: case CT_ERROR:
@@ -206,7 +209,7 @@ fn bool Src.closes_call(&self, sz r)
 	if (t.type != RPAREN || t.match == NO) return false;
 	switch (self.type_at(self.prev_code(t.match)))
 	{
-		case IDENT: case AT_IDENT: case CONST_IDENT: case HASH_IDENT: case CT_IDENT: case RPAREN: case RBRACKET: case BUILTIN:
+		case IDENT: case UNDERSCORE: case AT_IDENT: case CONST_IDENT: case HASH_IDENT: case CT_IDENT: case RPAREN: case RBRACKET: case BUILTIN:
 			return true;
 		default:
 			return false;
@@ -273,7 +276,7 @@ fn bool Src.type_star_uncached(&self, sz s)
 	if (!typed) return false;
 	switch (self.toks[s + 1].type)
 	{
-		case IDENT: case CT_IDENT: case HASH_IDENT: case RPAREN: case COMMA: case STAR: case EOS: case RBRACKET:
+		case IDENT: case UNDERSCORE: case CT_IDENT: case HASH_IDENT: case RPAREN: case COMMA: case STAR: case EOS: case RBRACKET:
 		case LBRACKET: case CT_TYPE_IDENT: case TYPE_IDENT:   // `Foo* Bar.method()`
 			return true;
 		default:

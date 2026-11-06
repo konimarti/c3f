@@ -608,6 +608,13 @@ fn void the_readme_example_is_what_c3f_prints() @test
 	check(input, want, &c);
 }
 
+fn void a_lone_underscore_is_spaced_like_a_name() @test
+{
+	c3f::Config c = c3f::defaults();
+	check("fn void f(){ foo(a,_); foo(_,a); x=_; int _=3; y=b[_]+_; foreach(_,x:y){} }\n",
+	      "fn void f() { foo(a, _); foo(_, a); x = _; int _ = 3; y = b[_] + _; foreach (_, x : y) {} }\n", &c);
+}
+
 fn void strict_pads_initializer_braces() @test
 {
 	c3f::Config strict = c3f::defaults();
