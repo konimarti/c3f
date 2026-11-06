@@ -250,13 +250,17 @@ spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is
 | `c3f_wrap_cost_hard`, `c3f_wrap_cost_break` | wrapping costs: 100 per column past `max_line_length`, 2 per line break |
 | `c3f_soft_max_line_length`, `c3f_wrap_cost_soft` | a second, soft limit (0: off), and 0.05 per column past it |
 | `c3f_wrap_budget` | 2000: statements of more tokens are not wrapped |
-| `c3f_sort_imports` | `off`, `lines`, `lists`, `all` |
+| `c3f_sort_imports` | `off`, `lines`, `lists`, `all`, `split` |
 
 `c3f_line_breaks` (it needs a `max_line_length`) decides what c3f may do with your line breaks:
 `preserve` never moves them; `wrap` breaks the statements that have a line over the limit and
 leaves all others as written; `reflow` also lays out again every statement that spans several
 lines (or ends in a trailing comma), so a break you made by hand is joined if the statement fits
 on one line. A statement that is on one line and fits is never touched.
+
+`c3f_sort_imports` reorders imports: `lines` the statements of a run, `lists` the modules inside one
+statement, `all` both, and `split` also writes one module per statement (`import a, b;` becomes
+`import a;` and `import b;`; a statement with a comment is only sorted). `strict` uses `all`.
 
 ## License
 

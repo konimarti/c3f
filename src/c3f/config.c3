@@ -16,7 +16,7 @@ enum DeclSpacing : char { KEEP, ONE }
 enum AlignMode : char { PRESERVE, DECLS, OFF }
 enum CommentAlign : char { PRESERVE, ALWAYS, OFF }
 enum LineBreaks : char { PRESERVE, WRAP, REFLOW }
-enum SortImports : char { OFF, LINES, LISTS, ALL }
+enum SortImports : char { OFF, LINES, LISTS, ALL, SPLIT }
 enum CtIndent : char { KEEP, INDENT, FLUSH }
 
 struct Config

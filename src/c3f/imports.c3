@@ -63,7 +63,8 @@ fn bool Src.has_keep(&self, sz a, sz b)
 
 <*
  Sort imports: `lines` reorders the import statements of a run (no blank
- line between them), `lists` sorts the modules inside one statement. Comments directly
+ line between them), `lists` sorts the modules inside one statement, `split` sorts all and
+ writes one module per statement (a statement with a comment is only sorted). Comments directly
  above a statement and after it on the same line move with it. Returns the new text.
 *>
 fn String sort_imports(String text, SortImports mode)
@@ -112,21 +113,36 @@ fn String sort_imports(String text, SortImports mode)
 		// a run: statements separated by exactly one line break
 		sz r2 = r;
 		while (r2 + 1 < stmts.len() && stmts[r2 + 1].first == stmts[r2].last + 1 && s.toks[stmts[r2 + 1].first].nl == 1) r2++;
+		// the pieces that move: statements, or single modules when splitting
 		List{Unit} run;
 		run.tinit();
-		for (sz k = r; k <= r2; k++) run.push(stmts[k]);
 		List{String} texts;
 		texts.tinit();
-		foreach (k, u : run)
+		for (sz k = r; k <= r2; k++)
 		{
+			Unit u = stmts[k];
+			if (mode == SPLIT)
+			{
+				List{Unit} items = list_items(&s, &u);
+				if (items.len() > 0 && s.toks[u.first].type == IMPORT && s.toks[u.last].type == EOS)
+				{
+					foreach (it : items)
+					{
+						run.push({ .first = u.first, .last = u.last, .key = it.key });
+						texts.push("import ".tconcat(s.span_text(it.first, it.last)).tconcat(";"));
+					}
+					continue;
+				}
+			}
 			String body = s.span_text(u.first, u.last);
-			if (mode == LISTS || mode == ALL) body = sort_list(&s, &run[k], body);
+			if (mode != LINES) body = sort_list(&s, &u, body);
+			run.push(u);
 			texts.push(body);
 		}
 		List{sz} order;
 		order.tinit();
 		for (sz k = 0; k < run.len(); k++) order.push(k);
-		if ((mode == LINES || mode == ALL) && run.len() > 1)
+		if ((mode == LINES || mode == ALL || mode == SPLIT) && run.len() > 1)
 		{
 			sort::mergesort(&order, fn int(sz a, sz b, List{Unit}* run) => compare_units((*run)[a], (*run)[b]), &run);
 		}
@@ -134,7 +150,7 @@ fn String sort_imports(String text, SortImports mode)
 		out.append(text[copied:s.toks[run[0].first].start - copied]);
 		foreach (k, o : order)
 		{
-			if (k > 0) out.append(s.gap(run[k].first));
+			if (k > 0) out.append(mode == SPLIT ? (text.contains("\r\n") ? "\r\n" : "\n") : s.gap(run[k].first));
 			out.append(texts[o]);
 		}
 		copied = s.end(run[^1].last);
@@ -144,8 +160,8 @@ fn String sort_imports(String text, SortImports mode)
 	return out.str_view();
 }
 
-<* `import b, a @attr;` → `import a, b @attr;`; each module moves with its own attributes. *>
-fn String sort_list(Src* s, Unit* u, String body) @local
+<* The modules of a list statement (`import a, b @attr;`), or none if it is not a list or holds a comment. *>
+fn List{Unit} list_items(Src* s, Unit* u) @local
 {
 	List{Unit} items;
 	items.tinit();
@@ -153,18 +169,27 @@ fn String sort_list(Src* s, Unit* u, String body) @local
 	sz imp = u.first;
 	while (s.toks[imp].type != IMPORT) imp++;
 	sz from = imp + 1;
-	sz stmt_end = imp;
-	while (s.toks[stmt_end].type != EOS) stmt_end++;
-	for (sz k = from; k <= stmt_end; k++)
+	for (sz k = from; k < s.len(); k++)
 	{
 		Tok* t = &s.toks[k];
-		if (!t.code) return body;   // a comment inside: leave the list alone
+		if (!t.code) break;
 		if (t.type != COMMA && t.type != EOS) continue;
-		if (k == from) return body;
+		if (k == from) break;
 		items.push({ .first = from, .last = k - 1, .key = s.path_at(from) });
+		if (t.type == EOS) return items.len() < 2 ? {} : items;
 		from = k + 1;
 	}
+	items.clear();
+	return items;
+}
+
+<* `import b, a @attr;` → `import a, b @attr;`; each module moves with its own attributes. *>
+fn String sort_list(Src* s, Unit* u, String body) @local
+{
+	List{Unit} items = list_items(s, u);
 	if (items.len() < 2) return body;
+	sz imp = u.first;
+	while (s.toks[imp].type != IMPORT) imp++;
 	List{Unit} sorted;
 	sorted.tinit();
 	foreach (it : items) sorted.push(it);

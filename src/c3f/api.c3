@@ -81,7 +81,7 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	if (cfg.sort_imports != OFF)
 	{
 		String sorted = sort_imports(original, cfg.sort_imports);
-		if (sorted != original && same_tokens(original, sorted)) input = sorted;
+		if (sorted != original && same_tokens(original, sorted, cfg.sort_imports == SPLIT)) input = sorted;
 	}
 	Src s;
 	s.init(input);
@@ -125,11 +125,14 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	}
 }
 
-<* Do a and b hold the same tokens, in any order? (A reordering must not lose or add any.) *>
-fn bool same_tokens(String a, String b) @local
+<*
+ Do a and b hold the same tokens, in any order? (A reordering must not lose or add any.)
+ Splitting import lists changes the number of `import`, `,` and `;`, so those are left out then.
+*>
+fn bool same_tokens(String a, String b, bool split) @local
 {
-	List{String} ta = token_texts(a);
-	List{String} tb = token_texts(b);
+	List{String} ta = token_texts(a, split);
+	List{String} tb = token_texts(b, split);
 	if (ta.len() != tb.len()) return false;
 	sort::mergesort(&ta, fn int(String x, String y) => x.compare_to(y));
 	sort::mergesort(&tb, fn int(String x, String y) => x.compare_to(y));
@@ -137,7 +140,7 @@ fn bool same_tokens(String a, String b) @local
 	return true;
 }
 
-fn List{String} token_texts(String text) @local
+fn List{String} token_texts(String text, bool split) @local
 {
 	List{String} l;
 	l.tinit();
@@ -146,6 +149,7 @@ fn List{String} token_texts(String text) @local
 	while (try t = lx.next())
 	{
 		if (t.type == EOF) break;
+		if (split && (t.type == IMPORT || t.type == COMMA || t.type == EOS)) continue;
 		l.push(t.text);
 	}
 	return l;

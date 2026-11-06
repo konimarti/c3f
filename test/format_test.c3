@@ -664,3 +664,12 @@ fn void strict_sorts_imports() @test
 	(void)c.set("c3f_sort_imports", "off");
 	check("import std::math;\nimport std::io;\n", "import std::math;\nimport std::io;\n", &c);
 }
+
+fn void split_writes_one_module_per_import() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_sort_imports", "split");
+	check("import std::math, std::io @public;\nimport a::b;\n", "import a::b;\nimport std::io @public;\nimport std::math;\n", &c);
+	check("import b, a; // x\nimport c;\n", "import a, b; // x\nimport c;\n", &c);
+	check("import b, a;\r\nimport c;\r\n", "import a;\r\nimport b;\r\nimport c;\r\n", &c);
+}
