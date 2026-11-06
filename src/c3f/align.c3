@@ -125,7 +125,7 @@ fn void Fmt.align(&self)
 		if (!self.same_line_gap(i) || s.gap(i).len == 0) continue;
 		sz col = src_col[i];
 		at.set(at_key(s.toks[i].line, col), i);
-		if (self.out[i].anchor) anchors.push({i, col});
+		if (self.out[i].anchor) anchors.push({ i, col });
 	}
 	// left columns first, so that the prefix of a later column is final
 	sort::mergesort(&anchors, fn int(Anchor x, Anchor y) => (int)(x.col - y.col));

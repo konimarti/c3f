@@ -47,7 +47,7 @@ fn Rule GapKey.cell(&self, char level)
 
 fn ulong GapKey.pack(&self, char level) => self.cell(level).pack();
 
-fn GapKey Rule.key(&self) => {self.p2, self.p1, self.nx, self.co, self.cb};
+fn GapKey Rule.key(&self) => { self.p2, self.p1, self.nx, self.co, self.cb };
 
 fn ulong Rule.pack(&self) => pack(self.level, self.p2, self.p1, self.nx, self.co, self.cb);
 
@@ -459,6 +459,13 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 			BraceKind k = self.toks[next.match].brace;
 			if (k == BLOCK || k == BODY) return ONE;
 		}
+	}
+	// strict: an initializer list is padded inside, `{ 1, 2 }` (the stdlib: 92 to 98%; the table splits it by
+	// what follows the brace, which leaves `{{ 1 }, { 2 }}` and `{&x}` lopsided); c3f_bracket_padding wins
+	if (cfg.spacing == STRICT && cfg.bracket_padding == KEEP)
+	{
+		if (prev.type == LBRACE && prev.brace == INIT && next.type != RBRACE) return ONE;
+		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == INIT && prev.type != LBRACE) return ONE;
 	}
 	// strict: a compound literal hugs its type, `(Foo){ … }` (the stdlib: 40 to 7)
 	if (cfg.spacing == STRICT && next.type == LBRACE && next.brace == INIT && prev.type == RPAREN) return NONE;

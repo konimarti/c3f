@@ -43,7 +43,7 @@ fn String? hooks_dir(String root)
 fn String configured_hooks(String root)
 {
 	char[4096] buf;
-	String? out = process::run_capture_stdout(&buf, {"git", "-C", root, "config", "--get", "core.hooksPath"}, INHERIT_ENV);
+	String? out = process::run_capture_stdout(&buf, { "git", "-C", root, "config", "--get", "core.hooksPath" }, INHERIT_ENV);
 	if (catch out) return "";
 	String dir = out.trim();
 	if (!dir.len) return "";

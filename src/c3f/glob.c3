@@ -18,7 +18,7 @@ fn bool glob_match(String pattern, String text) => @pool()
 			// one memo at a time: up to MAX_ALTERNATIVES of them would not all fit
 			char[] memo = mem::talloc_array(char, (alt.len + 1) * (text.len + 1));
 			memo[..] = 0;
-			Glob g = {alt, text, memo};
+			Glob g = { alt, text, memo };
 			if (g.at(0, 0)) return true;
 		};
 	}

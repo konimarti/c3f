@@ -41,7 +41,7 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	{
 		if (c != '\r' || (i + 1 < input.len && input[i + 1] == '\n')) continue;
 		r.fallback = true;
-		r.notes.push({input[:i].count("\n") + 1, "carriage return without a newline; the file was kept as written".copy(a)});
+		r.notes.push({ input[:i].count("\n") + 1, "carriage return without a newline; the file was kept as written".copy(a) });
 		r.text = input.copy(a);
 		return r;
 	}
@@ -93,7 +93,7 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 		Tok* t = &s.toks[d.tok];
 		String what = is_opener(t.type) ? "unclosed" : "unopened";
 		String upto = d.last == s.len() - 1 ? "to the end of the file" : string::tformat("up to line %d", s.toks[d.last].line);
-		r.notes.push({t.line, string::format(a, "%s '%s'; kept as written %s", what, t.text, upto)});
+		r.notes.push({ t.line, string::format(a, "%s '%s'; kept as written %s", what, t.text, upto) });
 	}
 	Fmt f;
 	f.init(&s, cfg);
@@ -116,11 +116,11 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 			// the places noted so far are part of the file, which is kept as a whole
 			while (r.notes.len() > noted) free_note(r.notes.pop()!!, a);
 			r.fallback = true;
-			r.notes.push({s.toks[bad].line, "could not be formatted safely; the file was kept as written".copy(a)});
+			r.notes.push({ s.toks[bad].line, "could not be formatted safely; the file was kept as written".copy(a) });
 			return original;
 		}
 		r.fallback = true;
-		r.notes.push({s.toks[bad].line, "could not be formatted safely; kept as written".copy(a)});
+		r.notes.push({ s.toks[bad].line, "could not be formatted safely; kept as written".copy(a) });
 		s.keep_range(bad > 0 ? bad - 1 : 0, bad + 1);
 	}
 }

@@ -112,7 +112,7 @@ fn void Src.init(&self, String text)
 		self.toks.push({
 			.type = t.type, .text = t.text, .start = t.offset, .line = t.ln, .nl = t.nl_before, .src_nl = t.nl_before,
 			.match = NO, .encl = NO, .parent = NO, .code = code, .unterminated = t.unterminated,
-			.prev = (int)last_code, .next = (int)NO, .row = (int)(i == 0 || t.nl_before > 0 ? i : self.toks[i - 1].row)});
+			.prev = (int)last_code, .next = (int)NO, .row = (int)(i == 0 || t.nl_before > 0 ? i : self.toks[i - 1].row) });
 		if (!code) continue;
 		// this is the next code token of the last one and of the comments after it
 		for (sz k = last_code == NO ? 0 : last_code; k < i; k++) self.toks[k].next = (int)i;
@@ -259,13 +259,13 @@ fn void Src.match_brackets(&self)
 		}
 		// the openers left inside it are unclosed; their spans nest, so the outermost is kept
 		if ((sz)stack.len() - 1 > k) self.keep_range(stack[k + 1] + 1, i);
-		while ((sz)stack.len() - 1 > k) self.unbalanced.push({stack.pop()!!, i});
+		while ((sz)stack.len() - 1 > k) self.unbalanced.push({ stack.pop()!!, i });
 		sz o = stack.pop()!!;
 		t.match = o;
 		self.toks[o].match = i;
 	}
 	if (stack.len()) self.keep_range(stack[0] + 1, self.len() - 1);
-	while (stack.len()) self.unbalanced.push({stack.pop()!!, self.len() - 1});
+	while (stack.len()) self.unbalanced.push({ stack.pop()!!, self.len() - 1 });
 	// a stray closer: the span around it is kept (at top level, its line)
 	sz kept_to = NO;   // the end of the range kept for the stray closer before
 	foreach (i : strays)
@@ -273,7 +273,7 @@ fn void Src.match_brackets(&self)
 		if (kept_to != NO && i <= kept_to)
 		{
 			// in the same span or on the same line as the one before: the same range
-			self.unbalanced.push({i, kept_to});
+			self.unbalanced.push({ i, kept_to });
 			continue;
 		}
 		sz e = self.toks[i].encl;
@@ -288,7 +288,7 @@ fn void Src.match_brackets(&self)
 		{
 			to = self.len() - 1;
 		}
-		self.unbalanced.push({i, to});
+		self.unbalanced.push({ i, to });
 		self.keep_range(from, to);
 		kept_to = to;
 	}
@@ -634,7 +634,7 @@ fn bool is_directive(String comment, String word)
 	String s = comment.trim();
 	if (!s.starts_with("//")) return false;
 	s = s[2..].trim();
-	foreach (tool : (String[]){"c3f ", "c3fmt "})
+	foreach (tool : (String[]){ "c3f ", "c3fmt " })
 	{
 		if (s.starts_with(tool)) return s[tool.len..].trim() == word;
 	}

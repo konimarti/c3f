@@ -461,18 +461,18 @@ fn void later_wrap_passes_settle() @test
 {
 	// a pass that wraps nothing may still re-indent what was wrapped (tab and align continuations)
 	String call = "fn void f()\n{\n\tx = aaaa(bbbbbbbbbbbbbbbb, cccccccccccccccccccccccccccccccc, dddddddddd(eeeeeeeeeeeeeeee, ffffffffffffffff, gggggggggggggggg, hhhhhhhhhhhhhh));\n}\n";
-	stable_with(call, {"max_line_length", "50", "c3f_line_breaks", "wrap", "c3f_continuation", "tab"});
-	stable_with(call, {"max_line_length", "60", "c3f_line_breaks", "wrap", "c3f_continuation", "align"});
+	stable_with(call, { "max_line_length", "50", "c3f_line_breaks", "wrap", "c3f_continuation", "tab" });
+	stable_with(call, { "max_line_length", "60", "c3f_line_breaks", "wrap", "c3f_continuation", "align" });
 	// an aligned gap before a name does not move the continuation lines that align after its '('
-	stable_with("fn int\tget_value(char r,\n\tint b)\n{\n\treturn 1;\n}\n", {"c3f_continuation", "align"});
+	stable_with("fn int\tget_value(char r,\n\tint b)\n{\n\treturn 1;\n}\n", { "c3f_continuation", "align" });
 	// an aligned line that opens a bracket continued below keeps its place (the continuation was put under it)
-	stable_with("fn void f()\n{\n\tp[i,j]    = 1;\n\tvalue     = call(a,\n\t                 b);\n}\n", {"c3f_continuation", "align"});
+	stable_with("fn void f()\n{\n\tp[i,j]    = 1;\n\tvalue     = call(a,\n\t                 b);\n}\n", { "c3f_continuation", "align" });
 	// a compile-time header over two lines: the body is judged by the line after its ':'
 	check("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", "fn void f()\n{\n\t$if $a &&\n\t$b:\n\t\tfoo();\n\t$endif\n}\n");
-	stable_with("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", {"c3f_continuation", "tab"});
+	stable_with("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", { "c3f_continuation", "tab" });
 	// several statements on one line are not wrapped (each pass would settle only one more)
 	stable_with("const Foo A = { 0x4c5c32ff, 0xbb9d, 0x43b0, x\"b5b42d72e54eaaa4\" };  const Foo B = { 0xb7bede81, 0xdf94, 0x4682, x\"a7d857a52620b86f\" };  const Foo C = { 0xA63293E8, 0x664E, 0x48DB, x\"A079DF759E0509F7\" };\n",
-		{"max_line_length", "40", "c3f_line_breaks", "wrap"});
+		{ "max_line_length", "40", "c3f_line_breaks", "wrap" });
 }
 
 fn void fourth_review_regressions() @test
@@ -509,7 +509,7 @@ fn void fifth_review_regressions() @test
 	check("excuse{A, B}\nexcuse {C, D}\n", "excuse { A, B }\nexcuse { C, D }\n", &strict);
 	// align continuations do not follow a trailing comment after the opener (aligning moves it)
 	stable_with("fn void f()\n{\n\tmain(            //\n\t     a: \"x\", //\n\t     b: 30\n\t     );\n}\n",
-		{"c3f_continuation", "align", "c3f_align_comments", "always"});
+		{ "c3f_continuation", "align", "c3f_align_comments", "always" });
 }
 
 fn void sixth_review_regressions() @test
@@ -521,7 +521,7 @@ fn void sixth_review_regressions() @test
 	// a prefix operator before a type name is tight; braces after a name hug it on both sides
 	check("fn void f()\n{\n\ty = -Foo.x;\n\tz = *Foo{}.t();\n\talias Y = Bar{n };\n}\n", "fn void f()\n{\n\ty = -Foo.x;\n\tz = *Foo{}.t();\n\talias Y = Bar{n};\n}\n");
 	// strict: a compound literal hugs its type
-	check("fn void f()\n{\n\tx = (Foo) { 1 };\n}\n", "fn void f()\n{\n\tx = (Foo){1};\n}\n", &strict);
+	check("fn void f()\n{\n\tx = (Foo) { 1 };\n}\n", "fn void f()\n{\n\tx = (Foo){ 1 };\n}\n", &strict);
 	// a cast is not broken inside its parentheses
 	c3f::Config w = c3f::defaults();
 	(void)w.set("max_line_length", "40");
@@ -606,6 +606,19 @@ fn void the_readme_example_is_what_c3f_prints() @test
 	(void)c.set("max_line_length", "72");
 	(void)c.set("c3f_line_breaks", "wrap");
 	check(input, want, &c);
+}
+
+fn void strict_pads_initializer_braces() @test
+{
+	c3f::Config strict = c3f::defaults();
+	(void)strict.set("c3f_style", "strict");
+	// strict pads initializer braces, in every shape the learned table alone left lopsided
+	check("Foo a = {};\nFoo b = {1};\nFoo c = {{1, 2}, {3}};\nFoo d = {.x = {1}, .y = 2};\nFoo e = {&x, &y};\nx = a[ i ];\n",
+	      "Foo a = {};\nFoo b = { 1 };\nFoo c = { { 1, 2 }, { 3 } };\nFoo d = { .x = { 1 }, .y = 2 };\nFoo e = { &x, &y };\nx = a[i];\n", &strict);
+	// ... unless the padding is set explicitly
+	c3f::Config tight = strict;
+	(void)tight.set("c3f_bracket_padding", "none");
+	check("Foo c = { { 1, 2 }, { 3 } };\n", "Foo c = {{1, 2}, {3}};\n", &tight);
 }
 
 fn void variadics_and_type_declaration_lists() @test

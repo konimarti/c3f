@@ -189,15 +189,15 @@ c3f_sort_imports = lines
 - `stdlib` (default): the standard library's style: tabs, Allman braces, `else` on its own line.
 - `knr`: `stdlib` with K&R braces, also for functions (`c3f_brace_style = linux` keeps those on
   their own line), and `} else {`.
-- `strict`: `stdlib` with spacing made uniform even where the stdlib varies, `Foo* p`, no
-  padding inside brackets and initializer braces (`{1, 2}`), and tight slices `s[a:b]`.
+- `strict`: `stdlib` with spacing made uniform even where the stdlib varies: `Foo* p`, padded
+  initializer braces (`{ 1, 2 }`) and unpadded brackets, and tight slices `s[a:b]`.
 
 **stdlib or strict?** Both format everything: indentation, braces, blank lines and the spacing
 between tokens (`a=b+c` → `a = b + c`, `if(x)` → `if (x)`, `foo( a ,b )` → `foo(a, b)`). The
 difference is in the few places where the standard library itself writes both forms, such as
-`Foo* p` and `Foo *p`, `[1, 2]` and `[ 1, 2 ]`, `s[a:b]` and `s[a : b]`: about 0.2% of the
+`Foo* p` and `Foo *p`, `{1, 2}` and `{ 1, 2 }`, `s[a:b]` and `s[a : b]`: about 0.2% of the
 spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is stdlib style;
-`strict` always writes one form: the more common one, but no padding inside brackets and braces.
+`strict` always writes one form: the more common one.
 
 | Option | Values (default first) |
 |---|---|

@@ -8,7 +8,7 @@ struct Indent
 	String extra;
 }
 
-fn Indent Indent.deeper(self, sz by = 1) => {self.levels + by, self.extra};
+fn Indent Indent.deeper(self, sz by = 1) => { self.levels + by, self.extra };
 
 <* What is written in the gap before a token. *>
 struct Out
@@ -51,7 +51,7 @@ struct Fmt
 
 fn void Fmt.init(&self, Src* src, Config* cfg)
 {
-	*self = {.src = src, .cfg = cfg};
+	*self = { .src = src, .cfg = cfg };
 	self.out.tinit();
 	self.frames.tinit();
 }
@@ -67,7 +67,7 @@ fn void Fmt.breaks(&self)
 	self.out.clear();
 	// every attempt starts from the source's line breaks (wrapping changes Tok.nl)
 	foreach (&t : s.toks) t.nl = t.src_nl;
-	for (sz i = 0; i < s.len(); i++) self.out.push({.nl = i == 0 ? 0 : s.toks[i].nl});
+	for (sz i = 0; i < s.len(); i++) self.out.push({ .nl = i == 0 ? 0 : s.toks[i].nl });
 	for (sz i = 1; i < s.len(); i++)
 	{
 		Tok* t = &s.toks[i];
@@ -173,7 +173,7 @@ fn void Fmt.layout(&self)
 	Src* s = self.src;
 	Config* c = self.cfg;
 	self.frames.clear();
-	self.frames.push({.kind = ROOT, .opener = NO, .owner = NO, .anchor = NO});
+	self.frames.push({ .kind = ROOT, .opener = NO, .owner = NO, .anchor = NO });
 	sz col;
 	for (sz i = 0; i < s.len(); i++)
 	{
@@ -209,7 +209,7 @@ fn void Fmt.layout(&self)
 			o.line_tok = i;
 			if (o.verbatim)
 			{
-				o.indent = {0, s.line_indent(t.line)};
+				o.indent = { 0, s.line_indent(t.line) };
 			}
 			else if (self.flush_directive(i))
 			{
@@ -248,22 +248,22 @@ fn void Fmt.layout(&self)
 		else if (t.type == LBRACE && t.match != NO && self.opens_lines(i))
 		{
 			Indent content = t.is_switch && !c.case_indent ? line : line.deeper();
-			self.frames.push({.kind = BRACE, .opener = i, .owner = NO, .anchor = i, .base = line, .content = content});
+			self.frames.push({ .kind = BRACE, .opener = i, .owner = NO, .anchor = i, .base = line, .content = content });
 		}
 		else if (is_ct_open(t.type) && t.match != NO)
 		{
 			// a column-0 directive inside a block adds no level
 			Indent content = self.flush_directive(i) ? f.content : self.ct_content(i, line);
 			// the header line is the frame's head: its own continuation lines indent from it
-			self.frames.push({.kind = CT, .opener = i, .owner = NO, .anchor = f.anchor, .base = line, .content = content,
-				.head = line, .head_src = s.indent_of(i), .has_head = true});
+			self.frames.push({ .kind = CT, .opener = i, .owner = NO, .anchor = f.anchor, .base = line, .content = content,
+				.head = line, .head_src = s.indent_of(i), .has_head = true });
 		}
 		else if (case_line)
 		{
 			bool ct = t.type == CT_CASE || t.type == CT_DEFAULT;
 			Indent content = ct ? self.ct_content(i, line) : line.deeper();
-			self.frames.push({.kind = CASE, .opener = i, .owner = t.parent, .anchor = f.anchor, .base = line,
-				.content = content, .head = line, .head_src = s.indent_of(i), .has_head = true});
+			self.frames.push({ .kind = CASE, .opener = i, .owner = t.parent, .anchor = f.anchor, .base = line,
+				.content = content, .head = line, .head_src = s.indent_of(i), .has_head = true });
 		}
 	}
 }
@@ -402,7 +402,7 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 		case KEEP:
 			// relative to the line the statement started on (none: one level, as `tab` does)
 			if (!f.has_head) nextcase TAB;
-			return {base.levels, base.extra.tconcat(self.relative(s.indent_of(i), f.head_src))};
+			return { base.levels, base.extra.tconcat(self.relative(s.indent_of(i), f.head_src)) };
 		case ALIGN:
 			sz o = t.encl;
 			// (under the first token after the opener; not under a comment there, which aligning moves)
@@ -411,7 +411,7 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 			{
 				Indent line = self.out[self.out[o].line_tok].indent;
 				sz pad = self.out[o + 1].col - self.indent_width(line);
-				if (pad > 0) return {line.levels, line.extra.tconcat(spaces(pad))};
+				if (pad > 0) return { line.levels, line.extra.tconcat(spaces(pad)) };
 			}
 			nextcase TAB;
 		case TAB:

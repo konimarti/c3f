@@ -108,7 +108,7 @@ fn sz Wrap.build(&self, sz a, sz b, sz depth)
 {
 	Src* s = self.f.src;
 	sz index = self.seqs.len();
-	self.seqs.push({.depth = depth});
+	self.seqs.push({ .depth = depth });
 	self.seqs[index].elems.tinit();
 	self.seqs[index].points.tinit();
 	self.seqs[index].mults.tinit();
@@ -119,7 +119,7 @@ fn sz Wrap.build(&self, sz a, sz b, sz depth)
 		if (self.opens_span(k, b))
 		{
 			sz inner = self.build_span(k, depth + 1);
-			self.elems.push({.kind = SPAN, .first = k, .seq = inner});
+			self.elems.push({ .kind = SPAN, .first = k, .seq = inner });
 			k = t.match + 1;
 		}
 		else
@@ -132,7 +132,7 @@ fn sz Wrap.build(&self, sz a, sz b, sz depth)
 				r++;
 				width += self.join_w[r - self.first] + text_width(s.toks[r].text, 0, self.f.cfg.tab_width);
 			}
-			self.elems.push({.kind = RUN, .first = k, .width = width});
+			self.elems.push({ .kind = RUN, .first = k, .width = width });
 			k = r + 1;
 		}
 		sz e = self.elems.len() - 1;   // the element just added (a span's inside was added before it)
@@ -270,8 +270,8 @@ fn sz Wrap.build_span(&self, sz open, sz depth)
 	Src* s = self.f.src;
 	sz close = s.toks[open].match;
 	sz index = self.seqs.len();
-	self.seqs.push({.depth = depth, .magic = self.f.cfg.magic_comma && s.toks[close - 1].type == COMMA && close > open + 1,
-		.frozen = self.blocked(open + 1)});
+	self.seqs.push({ .depth = depth, .magic = self.f.cfg.magic_comma && s.toks[close - 1].type == COMMA && close > open + 1,
+		.frozen = self.blocked(open + 1) });
 	Seq* q = &self.seqs[index];
 	q.elems.tinit();
 	q.points.tinit();
@@ -296,7 +296,7 @@ fn sz Wrap.build_span(&self, sz open, sz depth)
 fn void Wrap.push_run(&self, sz seq, sz tok, Point p, sz depth)
 {
 	sz e = self.elems.len();
-	self.elems.push({.kind = RUN, .first = tok, .width = text_width(self.f.src.toks[tok].text, 0, self.f.cfg.tab_width)});
+	self.elems.push({ .kind = RUN, .first = tok, .width = text_width(self.f.src.toks[tok].text, 0, self.f.cfg.tab_width) });
 	self.seqs[seq].elems.push(e);
 	self.seqs[seq].points.push(p);
 	self.seqs[seq].mults.push(self.mult(p, tok, depth));
@@ -390,7 +390,7 @@ fn Table Wrap.new_table(&self)
 {
 	self.cells += self.w + 1;
 	if (self.cells > MAX_CELLS) self.overflow = true;
-	Table t = {mem::talloc_array(float, self.w + 1), mem::talloc_array(uint, self.w + 1), mem::talloc_array(ushort, self.w + 1), mem::talloc_array(char, self.w + 1)};
+	Table t = { mem::talloc_array(float, self.w + 1), mem::talloc_array(uint, self.w + 1), mem::talloc_array(ushort, self.w + 1), mem::talloc_array(char, self.w + 1) };
 	t.pick[..] = 0;
 	return t;
 }
@@ -728,20 +728,20 @@ fn String Wrap.model_key(&self, sz start)
 {
 	DString d;
 	d.tinit();
-	put(&d, {start, self.w, self.base.levels, self.top, self.elems.len(), self.seqs.len()});
+	put(&d, { start, self.w, self.base.levels, self.top, self.elems.len(), self.seqs.len() });
 	d.append(self.base.extra);
 	d.append('|');
 	foreach (el : self.elems)
 	{
 		sz rel = el.first - self.first;
 		bool list = rel > 0 && self.list_comma(el.first);   // (only asked of a point: never the first token)
-		put(&d, {el.kind.ordinal, rel, el.width, el.seq, self.join_w[rel], list ? 1 : 0});
+		put(&d, { el.kind.ordinal, rel, el.width, el.seq, self.join_w[rel], list ? 1 : 0 });
 	}
 	foreach (&q : self.seqs)
 	{
 		bool brace = q.elems.len() && self.f.src.toks[self.elems[q.elems[0]].first].type == LBRACE;
-		put(&d, {q.elems.len(), q.tail, q.magic ? 1 : 0, q.frozen ? 1 : 0, brace ? 1 : 0});
-		foreach (j, e : q.elems) put(&d, {e, q.points[j].ordinal, (sz)bitcast(q.mults[j], uint)});
+		put(&d, { q.elems.len(), q.tail, q.magic ? 1 : 0, q.frozen ? 1 : 0, brace ? 1 : 0 });
+		foreach (j, e : q.elems) put(&d, { e, q.points[j].ordinal, (sz)bitcast(q.mults[j], uint) });
 	}
 	return d.str_view();
 }

@@ -58,37 +58,37 @@ struct Config
 <* Every option, by its .editorconfig / --set name. *>
 enum Key : char (String name)
 {
-	STYLE                {"c3f_style"},
-	INDENT_STYLE         {"indent_style"},
-	INDENT_SIZE          {"indent_size"},
-	TAB_WIDTH            {"tab_width"},
-	END_OF_LINE          {"end_of_line"},
-	INSERT_FINAL_NEWLINE {"insert_final_newline"},
-	MAX_LINE_LENGTH      {"max_line_length"},
-	BRACE_STYLE          {"c3f_brace_style"},
-	ELSE_STYLE           {"c3f_else_style"},
-	ONE_LINE_BLOCKS      {"c3f_one_line_blocks"},
-	CASE_INDENT          {"c3f_case_indent"},
-	CT_INDENT            {"c3f_ct_indent"},
-	CONTINUATION         {"c3f_continuation"},
-	SPACING              {"c3f_spacing"},
-	SPACE_AFTER_CAST     {"c3f_space_after_cast"},
-	POINTER_STYLE        {"c3f_pointer_style"},
-	BRACKET_PADDING      {"c3f_bracket_padding"},
-	MAX_BLANK_LINES      {"c3f_max_blank_lines"},
-	TRIM_BLOCK_BLANKS    {"c3f_trim_block_blanks"},
-	DECL_SPACING         {"c3f_decl_spacing"},
-	ALIGN                {"c3f_align"},
-	ALIGN_COMMENTS       {"c3f_align_comments"},
-	TRAILING_COMMENT_SPACES {"c3f_trailing_comment_spaces"},
-	LINE_BREAKS          {"c3f_line_breaks"},
-	MAGIC_COMMA          {"c3f_magic_comma"},
-	SOFT_MAX_LINE_LENGTH {"c3f_soft_max_line_length"},
-	WRAP_COST_SOFT       {"c3f_wrap_cost_soft"},
-	WRAP_COST_HARD       {"c3f_wrap_cost_hard"},
-	WRAP_COST_BREAK      {"c3f_wrap_cost_break"},
-	WRAP_BUDGET          {"c3f_wrap_budget"},
-	SORT_IMPORTS         {"c3f_sort_imports"},
+	STYLE                { "c3f_style" },
+	INDENT_STYLE         { "indent_style" },
+	INDENT_SIZE          { "indent_size" },
+	TAB_WIDTH            { "tab_width" },
+	END_OF_LINE          { "end_of_line" },
+	INSERT_FINAL_NEWLINE { "insert_final_newline" },
+	MAX_LINE_LENGTH      { "max_line_length" },
+	BRACE_STYLE          { "c3f_brace_style" },
+	ELSE_STYLE           { "c3f_else_style" },
+	ONE_LINE_BLOCKS      { "c3f_one_line_blocks" },
+	CASE_INDENT          { "c3f_case_indent" },
+	CT_INDENT            { "c3f_ct_indent" },
+	CONTINUATION         { "c3f_continuation" },
+	SPACING              { "c3f_spacing" },
+	SPACE_AFTER_CAST     { "c3f_space_after_cast" },
+	POINTER_STYLE        { "c3f_pointer_style" },
+	BRACKET_PADDING      { "c3f_bracket_padding" },
+	MAX_BLANK_LINES      { "c3f_max_blank_lines" },
+	TRIM_BLOCK_BLANKS    { "c3f_trim_block_blanks" },
+	DECL_SPACING         { "c3f_decl_spacing" },
+	ALIGN                { "c3f_align" },
+	ALIGN_COMMENTS       { "c3f_align_comments" },
+	TRAILING_COMMENT_SPACES { "c3f_trailing_comment_spaces" },
+	LINE_BREAKS          { "c3f_line_breaks" },
+	MAGIC_COMMA          { "c3f_magic_comma" },
+	SOFT_MAX_LINE_LENGTH { "c3f_soft_max_line_length" },
+	WRAP_COST_SOFT       { "c3f_wrap_cost_soft" },
+	WRAP_COST_HARD       { "c3f_wrap_cost_hard" },
+	WRAP_COST_BREAK      { "c3f_wrap_cost_break" },
+	WRAP_BUDGET          { "c3f_wrap_budget" },
+	SORT_IMPORTS         { "c3f_sort_imports" },
 }
 
 <* The style of the C3 standard library. *>
@@ -134,10 +134,8 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	{
 		self.spacing = STRICT;
 		self.pointer_style = TYPE;
-		self.bracket_padding = NONE;
 		self.origin[Key.SPACING.ordinal] = from;
 		self.origin[Key.POINTER_STYLE.ordinal] = from;
-		self.origin[Key.BRACKET_PADDING.ordinal] = from;
 	}
 	self.origin[Key.STYLE.ordinal] = origin;
 	return true;
