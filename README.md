@@ -1,39 +1,18 @@
 # c3f
 
-A fast, verified formatter for [C3](https://c3-lang.org). It changes only the whitespace between
-tokens, and proves it: every result is checked against your original tokens, and formatting
-it again changes nothing.
+A fast, verified formatter for [C3](https://c3-lang.org). It changes only whitespace, and proves it.
 
-- **Correct: your code is never changed.** After formatting a file, c3f lexes the result
-  again and compares it, token by token, with the original. If anything differs, that place is
-  kept as written and a note names the line; the file is never written with a changed token.
-  Formatting the whole standard library changes no code or comment (the only text that moves
-  is the indentation of the inner lines of multi-line comments), and c3c's unit tests still
-  pass afterwards.
-- **Stable: a second run changes nothing.** Formatted code is a fixed point: formatting it
-  again gives the same bytes, so `c3f --check` in CI or a git hook does not flap and editors do
-  not fight a format-on-save. On the standard library, 0 of 364 files change on a second run,
-  in every style and at several line widths (CI checks this). Only rare, odd input (such as
-  unbalanced `$if` directives) may need a second run to settle.
-- **Format on save, even mid-edit.** c3f reads tokens, not a C3 grammar, so half-written
-  code, syntax errors and new syntax do not stop it: the code inside an unclosed bracket is
-  left as written, the rest of the file is formatted, and a note names the line. Setups for
-  Vim, Neovim and Helix are below.
-- **Stdlib style.** c3f writes code in the style of the C3 standard library: its spacing
-  rules are learned from the standard library itself, so formatted code reads like the
-  stdlib, and the rules can be regenerated as the stdlib evolves.
-- **Optimal wrapping.** With a line limit set, c3f lays out each statement with the
-  dynamic-programming algorithm of [A New Approach to Optimal Code Formatting](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf)
-  (Yelland, the algorithm of Google's rfmt): it weighs the ways to break each statement
-  against a layout cost, instead of filling one line after the other.
-- **Fast, too.** c3f formats the whole standard library in 0.14 s, and in 0.32 s while wrapping
-  it at 120 columns. Its time grows in step with the size of a file: a table of 4,000
-  numbers takes under 5 ms.
+- **Verified.** Every result is lexed again and compared, token by token, with your original.
+  Anything that differs is kept as written, so your code is never changed.
+- **Stable.** Formatting twice gives the same bytes: no flapping in CI, no fights with format-on-save.
+- **Stdlib style.** Spacing rules learned from the C3 standard library itself.
+- **Fast.** The whole standard library in 0.14 s, and in 0.32 s wrapped at 120 columns with an
+  optimal layout ([Yelland](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf), as in Google's rfmt).
 
-Also: `.editorconfig` support, presets, import sorting, alignment of declarations and
-comments, and CI and git-hook integration.
+It works on tokens, not a grammar, so half-typed code and new syntax do not stop it. Format on save,
+`.editorconfig`, presets, import sorting and a git hook are included.
 
-For example, with `max_line_length = 72` and `c3f_line_breaks = wrap`,
+With `max_line_length = 72` and `c3f_line_breaks = wrap`,
 
 ```c3
 fn void main(){
@@ -62,13 +41,9 @@ fn void main()
 
 ## How it compares
 
-Formatting the C3 standard library (364 files), with every tool built with `-O3` and
-wrapping at 120 columns: c3fmt by default, c3tools with `--width=120 --indent=t` (as its
-README suggests for the stdlib), and c3f with `max_line_length = 120` and
-`c3f_line_breaks = wrap` (wrap the lines over the limit, with the optimal layout). c3f's
-default, which does not wrap, is shown too. c3f runs on one thread; c3fmt starts one per
-core (28 here). Versions: c3fmt c74d563 (2026-11-01), c3tools 32b5f03 (2026-09-06), and the
-standard library of c3c c23910038 (0.8.6, 2026-11-04).
+The C3 standard library (364 files), every tool built with `-O3` and wrapping at 120 columns.
+c3f runs on one thread; c3fmt uses all 28 cores. Versions: c3fmt c74d563, c3tools 32b5f03,
+standard library c23910038 (0.8.6).
 
 | | c3f | c3f, 120 columns | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
 |---|---|---|---|---|
@@ -82,33 +57,19 @@ standard library of c3c c23910038 (0.8.6, 2026-11-04).
 | c3c's unit tests still pass afterwards | yes | yes | yes | no (does not compile) |
 | Formats a file with a syntax error (e.g. while typing) | yes | yes | no | no |
 
-¹ Two files have multi-line comments whose inner lines moved along with the comment's
-indentation; their text is otherwise unchanged.
+¹ Two files: the indentation of the inner lines of multi-line comments moved with the comment.<br>
+² Nearly all on the 69 files it fails on, about 1.4 s each.<br>
+³ Mostly comments, contract text and long strings; also one-line blocks, aligned rows and lines with several statements.<br>
+⁴ The same on one core.
 
-² Nearly all of it on the 69 files it fails on, each about 1.4 s before it stops; the
-others take a few milliseconds each.
-
-³ Mostly comments, contract text and long strings (243); then what c3f keeps on one line:
-one-line blocks and bodies (28), aligned rows (17), lines that hold several statements (15),
-statements with a comment inside (14).
-
-⁴ The same when it runs on one core.
-
-**The IDE plugin.** The C3 plugin for IntelliJ and CLion ([c3lang/c3intellij](https://github.com/c3lang/c3intellij))
-formats inside the IDE, so it is not in the table. It and c3f write the same tabs of width 4,
-Allman braces (K&R as an option), spaces around binary operators, `if (x)`, casts without a
-space, `case` indented under `switch`, `int... x` and `struct Foo (Bar)`; c3f's `strict` style
-also writes `int* a` and padded initializer braces, `{ .x = 0 }`. Where they differ: in its own
-tests the plugin expands one-line blocks, puts every statement on its own line, indents
-compile-time bodies and has no spacing options. c3f keeps the line breaks you wrote unless
-asked (`c3f_one_line_blocks = expand`, `c3f_ct_indent = indent`; it does not split statements),
-and it works outside an IDE: any editor, CI, a git hook, `.editorconfig`, line wrapping to a
-column limit, alignment and import sorting.
+The C3 plugin for IntelliJ and CLion ([c3lang/c3intellij](https://github.com/c3lang/c3intellij))
+formats inside the IDE, so it is not in the table. The default styles largely agree; c3f also works
+in any editor, in CI and in a git hook, reads `.editorconfig`, wraps to a column limit and sorts imports.
 
 ## Install
 
 Download a binary for Linux, macOS or Windows from the
-[releases](https://github.com/konimarti/c3f/releases), or build it; that needs
+[releases](https://github.com/konimarti/c3f/releases), or build it with
 [c3c](https://github.com/c3lang/c3c) 0.8.5 or later and [c3l](https://github.com/konimarti/c3l):
 
 ```sh
@@ -117,9 +78,7 @@ c3l sync
 c3c build c3f        # → build/c3f
 ```
 
-or `make` and `make install` (`PREFIX=/usr/local`, `DESTDIR` supported), which also installs the
-man page, `man c3f`. The page is built from `c3f.1.scd` with [scdoc](https://sr.ht/~sircmpwn/scdoc/)
-(`make doc`); the built `c3f.1` is committed.
+`make install` builds and installs `c3f` and its man page (`PREFIX`, `DESTDIR`).
 
 ## Use
 
@@ -130,23 +89,17 @@ c3f --check src/           # list files that would change (exit 1 if any)
 c3f --diff src/            # show the changes as a unified diff
 c3f - < file.c3            # stdin → stdout (--stdin-filename for the config lookup)
 c3f --print-config file.c3 # the options in effect, and where they come from
-c3f -w --exclude 'gen/*' .  # skip paths matching a glob (repeatable)
+c3f -w --exclude 'gen/*' .  # skip paths matching a glob
 ```
 
-`// c3f off` … `// c3f on` leaves a region untouched. Exit status: 0 ok, 1 `--check`
-found changes, 2 usage or I/O error, 3 a place was kept as written (with `-w` or `--check`;
-printing the result or the diff succeeds, with the notes on stderr). In directories, the
-files ending in `.c3`, `.c3i` and `.c3t` are formatted; hidden directories and those named
-`build` or `lib` are skipped, and links are not followed (a file named on the command line is).
-An `--exclude` glob is matched against the path below the directory you give, and against each
-part of it that starts after a `/`: `gen/*` skips `src/gen/a.c3` as well.
+`// c3f off` … `// c3f on` leaves a region untouched. Exit status: 0 ok, 1 `--check` found
+changes, 2 usage or I/O error, 3 a place was kept as written (`man c3f` has the details).
 
 ## Format on save, in CI, before every commit
 
-**Editors.** Pipe the buffer through `c3f --stdin-filename <path> -`: the formatted file
-comes out on stdout, notes (such as an unclosed bracket) on stderr, and the path is used to
-find `.editorconfig`. For example, Vim (`~/.vim/after/ftplugin/c3.vim`, or your `.vimrc`);
-the buffer is only replaced if c3f succeeds, and the notes are shown as warnings:
+**Editors.** Pipe the buffer through `c3f --stdin-filename <path> -`: the formatted file comes
+out on stdout, notes (such as an unclosed bracket) on stderr. Vim (`.vimrc`); the buffer is only
+replaced if c3f succeeds, and the notes are shown as warnings:
 
 ```vim
 function! C3fFormat() abort
@@ -166,9 +119,6 @@ endfunction
 autocmd BufWritePre *.c3,*.c3i call C3fFormat()
 ```
 
-Feeling bold? `:%!c3f -` formats the buffer in one go, but it replaces the buffer with
-whatever c3f prints, notes and error messages included (`u` undoes it).
-
 Neovim with [conform.nvim](https://github.com/stevearc/conform.nvim):
 
 ```lua
@@ -179,7 +129,7 @@ require("conform").setup({
 })
 ```
 
-or Helix (`languages.toml`):
+Helix (`languages.toml`):
 
 ```toml
 [[language]]
@@ -188,20 +138,12 @@ formatter = { command = "c3f", args = ["-"] }
 auto-format = true
 ```
 
-or a JetBrains IDE (IntelliJ IDEA, CLion, ...): add c3f as an external tool (*Settings | Tools |
-External Tools*, **+**) with Program the full path of `c3f`, Arguments `-w $FilePath$`, Working
-directory `$FileDir$`, and *Synchronize files after execution* ticked so that the editor loads
-the result. Give it a shortcut under *Settings | Keymap | External Tools*. Save the file first:
-c3f formats what is on disk. *Code | Reformat Code* still runs the C3 plugin's own formatter, and
-the IDE reads the same `.editorconfig` for indentation.
-
-For format on save, use the *File Watchers* plugin (*Settings | Tools | File Watchers*; IntelliJ
-IDEA needs the Ultimate edition): the C3 file type, Scope *Project Files*, Program `c3f-save`,
-Arguments `$FilePath$`, Output paths to refresh `$FilePath$`, *Auto-save edited files to trigger
-the watcher* cleared and *Trigger the watcher regardless of syntax errors* ticked. The IDE
-disables a watcher whose program fails, and `c3f -w` exits with 3 when it keeps a place as
-written (an unclosed bracket, for example), so point it at this script, `c3f-save` on your PATH
-(Linux, macOS):
+JetBrains IDEs (IntelliJ IDEA, CLion, ...): add an external tool (*Settings | Tools | External
+Tools*) with Program the full path of `c3f`, Arguments `-w $FilePath$`, Working directory `$FileDir$`
+and *Synchronize files after execution* ticked. For format on save use the *File Watchers* plugin
+(IntelliJ IDEA: Ultimate) with the C3 file type, Program `c3f-save`, Arguments `$FilePath$`, and
+*Trigger the watcher regardless of syntax errors* ticked. The IDE disables a watcher whose program
+fails, and `c3f -w` exits with 3 when it keeps a place as written, so `c3f-save` (on your PATH) maps that to 0:
 
 ```sh
 #!/bin/sh
@@ -215,69 +157,30 @@ case $? in 0|3) exit 0 ;; *) exit 1 ;; esac
 - run: c3f --check .
 ```
 
-**Git hook.** Run `c3f --git-hook` inside a repository to install a pre-commit hook that
-refuses commits whose staged C3 files are not formatted ([`contrib/pre-commit`](contrib/pre-commit)).
-An existing hook is left as it is.
+**Git hook.** `c3f --git-hook` installs a pre-commit hook that refuses commits whose staged C3 files
+are not formatted ([`contrib/pre-commit`](contrib/pre-commit)). An existing hook is left as it is.
 
 ## Configure
 
-Options are read from `.editorconfig` (nearest file wins, `root = true` stops the
-search) and can be overridden with `--set key=value`:
+Options come from `.editorconfig` (the nearest file wins) and `--set key=value`:
 
 ```ini
 [*.c3]
-c3f_style = stdlib            # or knr, strict
+c3f_style = strict            # stdlib (default), knr or strict
 indent_style = tab
-max_line_length = 100         # wraps only with c3f_line_breaks; alignment never goes past it
-c3f_line_breaks = wrap        # break the lines longer than that (reflow: lay multi-line statements out again)
-c3f_sort_imports = lines
+max_line_length = 100
+c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay multi-line statements out again)
 ```
 
-`c3f_style` picks a preset; the options below then change single settings:
-
-- `stdlib` (default): the standard library's style: tabs, Allman braces, `else` on its own line.
-- `knr`: `stdlib` with K&R braces, also for functions (`c3f_brace_style = linux` keeps those on
-  their own line), and `} else {`.
-- `strict`: `stdlib` with spacing made uniform even where the stdlib varies: `Foo* p`, padded
-  initializer braces (`{ 1, 2 }`) and unpadded brackets, tight slices `s[a:b]`, and sorted
-  imports (`c3f_sort_imports = all`; an explicit `c3f_sort_imports` wins).
-
-**stdlib or strict?** Both format everything: indentation, braces, blank lines and the spacing
-between tokens (`a=b+c` → `a = b + c`, `if(x)` → `if (x)`, `foo( a ,b )` → `foo(a, b)`). The
-difference is in the few places where the standard library itself writes both forms, such as
-`Foo* p` and `Foo *p`, `{1, 2}` and `{ 1, 2 }`, `s[a:b]` and `s[a : b]`: about 0.2% of the
-spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is stdlib style;
-`strict` always writes one form: the more common one.
-
-| Option | Values (default first) |
+| Option | What it does |
 |---|---|
-| `indent_style`, `indent_size`, `tab_width` | `tab`, 4, 4 |
-| `end_of_line`, `insert_final_newline` | keep the file's, `true` |
-| `max_line_length`, `c3f_line_breaks` | `off`; `preserve`, `wrap`, `reflow` (see below) |
-| `c3f_brace_style`, `c3f_else_style` | `allman`, `knr`, `linux` (function bodies Allman, the rest K&R); `follow`, `own_line`, `cuddle` |
-| `c3f_one_line_blocks` | `keep`, `expand` |
-| `c3f_case_indent`, `c3f_ct_indent` | `indent`, `flush`; `keep`, `indent`, `flush` |
-| `c3f_continuation` | `keep`, `tab`, `align` |
-| `c3f_spacing` | `stdlib`, `strict` |
-| `c3f_space_after_cast`, `c3f_pointer_style`, `c3f_bracket_padding` | `false`; `keep`, `type`, `name`; `keep`, `none`, `space` |
-| `c3f_max_blank_lines`, `c3f_trim_block_blanks`, `c3f_decl_spacing` | 2; `true`; `keep`, `1` |
-| `c3f_align`, `c3f_align_comments` | `preserve`, `decls` (names, `=` and `=>` of consecutive lines), `off`; `preserve`, `always`, `off` |
-| `c3f_trailing_comment_spaces` | `keep`, or the number of spaces before a trailing `//` comment |
-| `c3f_magic_comma` | `true` (a trailing comma keeps one item per line when wrapping) |
-| `c3f_wrap_cost_hard`, `c3f_wrap_cost_break` | wrapping costs: 100 per column past `max_line_length`, 2 per line break |
-| `c3f_soft_max_line_length`, `c3f_wrap_cost_soft` | a second, soft limit (0: off), and 0.05 per column past it |
-| `c3f_wrap_budget` | 2000: statements of more tokens are not wrapped |
-| `c3f_sort_imports` | `off`, `lines`, `lists`, `all`, `split` |
+| `c3f_style` | `stdlib` (default): tabs, Allman braces, the standard library's spacing. `knr`: K&R braces. `strict`: one form where the stdlib itself varies (`Foo* p`, `{ 1, 2 }`, `s[a:b]`), and sorted imports. |
+| `max_line_length`, `c3f_line_breaks` | `preserve` (default) never moves your line breaks; `wrap` breaks only the statements with a line over the limit; `reflow` also lays out multi-line statements again. |
+| `indent_style`, `indent_size`, `tab_width` | `tab`, 4, 4. |
+| `c3f_sort_imports` | `off`, `lines`, `lists`, `all`, `split` (one module per `import`). |
+| `c3f_align`, `c3f_align_comments` | Keep (`preserve`), apply (`decls`, `always`) or remove (`off`) alignment of declarations and trailing comments. |
 
-`c3f_line_breaks` (it needs a `max_line_length`) decides what c3f may do with your line breaks:
-`preserve` never moves them; `wrap` breaks the statements that have a line over the limit and
-leaves all others as written; `reflow` also lays out again every statement that spans several
-lines (or ends in a trailing comma), so a break you made by hand is joined if the statement fits
-on one line. A statement that is on one line and fits is never touched.
-
-`c3f_sort_imports` reorders imports: `lines` the statements of a run, `lists` the modules inside one
-statement, `all` both, and `split` also writes one module per statement (`import a, b;` becomes
-`import a;` and `import b;`; a statement with a comment is only sorted). `strict` uses `all`.
+All options and their values are in the man page: `man c3f` (source: [`c3f.1.scd`](c3f.1.scd)).
 
 ## License
 
