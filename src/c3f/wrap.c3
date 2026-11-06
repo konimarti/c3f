@@ -216,6 +216,7 @@ fn bool Wrap.blocked(&self, sz k)
 		if (o.type == LBRACE && o.brace != INIT) return true;
 		if (o.type == LBRACKET || o.type == LVEC) return true;
 		if (o.type == LPAREN && e > 0 && is_attribute(s, e - 1)) return true;
+		if (o.type == LPAREN && o.match != NO && s.is_cast_close(o.match)) return true;   // `(Type)x`
 	}
 	return false;
 }

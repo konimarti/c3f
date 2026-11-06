@@ -636,7 +636,7 @@ fn bool is_directive(String comment, String word)
 	String s = comment.trim();
 	if (!s.starts_with("//")) return false;
 	s = s[2..].trim();
-	foreach (tool : (String[]) {"c3f ", "c3fmt "})
+	foreach (tool : (String[]){"c3f ", "c3fmt "})
 	{
 		if (s.starts_with(tool)) return s[tool.len..].trim() == word;
 	}

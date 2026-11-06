@@ -93,6 +93,7 @@ fn String sort_imports(String text, SortImports mode)
 			if (!same_line && !own_line_above) break;
 			u.first--;
 		}
+		if (u.first == 0) u.first = i;   // comments that open the file are its header: they stay on top
 		// and a comment after it, if that comment ends the line
 		bool ends_line = end + 2 >= s.len() || s.toks[end + 2].nl > 0;
 		if (end + 1 < s.len() && !s.toks[end + 1].code && s.toks[end + 1].nl == 0 && ends_line) u.last = end + 1;

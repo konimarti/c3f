@@ -304,7 +304,7 @@ fn void Fmt.pad_to_common_column(&self, List{sz}* run)
 	if (run.len() < 2) return;
 	sz target;
 	sz gap = self.src.toks[(*run)[0]].type == LINE_COMMENT ? max(self.cfg.trailing_comment_spaces, 1) : 1;
-	foreach (k : *run) target = max(target, self.prefix(k) + gap);
+	foreach (k : *run) target = max(target, self.prefix(k) + gap - self.slack(k));
 	if (self.cfg.max_line_length)
 	{
 		// not if that pushes a line past the limit
@@ -316,5 +316,16 @@ fn void Fmt.pad_to_common_column(&self, List{sz}* run)
 			if (self.after[last] + target - self.prefix(k) > self.cfg.max_line_length && self.prefix(k) + 1 < target) return;
 		}
 	}
-	foreach (k : *run) self.set_spacing(k, spaces(target - self.prefix(k)));
+	foreach (k : *run) self.set_spacing(self.lead(k), spaces(target - self.prefix(k) + self.slack(k)));
 }
+
+<* The token padded to align token k: the `*` of `int *p` (spaced off its type, glued to the name) moves with the name. *>
+fn sz Fmt.lead(&self, sz k)
+{
+	sz l = k;
+	while (self.src.toks[l - 1].type == STAR && self.out[l].spacing.len == 0 && self.out[l].nl == 0 && self.src.is_type_star(l - 1)) l--;
+	return l != k && self.out[l].spacing.len > 0 && self.out[l].nl == 0 ? l : k;
+}
+
+<* The spacing before lead(k) that alignment may take back (it is part of prefix(k)). *>
+fn sz Fmt.slack(&self, sz k) @inline => self.lead(k) == k ? 0 : self.out[self.lead(k)].spacing.len;

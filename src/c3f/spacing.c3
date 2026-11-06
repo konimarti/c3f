@@ -119,6 +119,7 @@ fn bool is_operand_start(TokenType t)
 	switch (t)
 	{
 		case IDENT: case CONST_IDENT: case INTEGER: case REAL: case STRING: case CHAR_LITERAL: case BYTES:
+		case TYPE_IDENT: case CT_TYPE_IDENT:
 		case LPAREN: case AT_IDENT: case HASH_IDENT: case CT_IDENT: case NULL: case TRUE: case FALSE:
 		case AMP: case STAR: case BANG: case BIT_NOT: case MINUS: case BUILTIN: case CT_VAARG:
 		case CT_TYPEOF: case CT_REFLECT: case CT_EVAL: case PLUSPLUS: case MINUSMINUS:
@@ -152,6 +153,7 @@ fn bool Src.cast_close_uncached(&self, sz r)
 	sz bi = self.prev_code(q);
 	TokenType before = self.type_at(bi);
 	if (before == RPAREN && self.toks[bi].match != NO && self.is_cast_close(bi)) before = INVALID;   // (A)(B)x
+	if (before == RPAREN && self.is_header_close(bi)) before = INVALID;   // `if (x) (void)f();`
 	switch (before)
 	{
 		case IDENT: case AT_IDENT: case CONST_IDENT: case RPAREN: case RBRACKET: case RBRACE: case IF:
@@ -281,14 +283,16 @@ fn Space Src.space_rule(&self, sz i, Config* cfg)
 	// the inside of a one-line `{ … }` is padded alike on both ends
 	sz open = self.toks[i - 1].type == LBRACE ? i - 1 : self.toks[i].type == RBRACE ? self.toks[i].match : NO;
 	// (both inner gaps on the line: a `{ … }` that was wrapped keeps the padding it had on one line)
-	if (open != NO && self.toks[open].brace != GENERIC && self.toks[open].match > open + 1
+	if (open != NO && self.toks[open].match > open + 1
 		&& self.toks[open + 1].nl == 0 && self.toks[self.toks[open].match].nl == 0)
 	{
 		sz close = self.toks[open].match;
 		Space a = self.gap_rule(open + 1, cfg);
 		Space b = self.gap_rule(close, cfg);
-		// the sides disagree, or one follows the source: a symmetric source stays, a lopsided one gets spaces
-		if (a == KEEP || b == KEEP || a != b) return (self.gap(open + 1).len > 0) == (self.gap(close).len > 0) ? Space.KEEP : Space.ONE;
+		// the sides disagree, or one follows the source: a symmetric source stays, a lopsided one gets
+		// spaces (generic arguments: none, `List{int}`)
+		Space lopsided = self.toks[open].brace == GENERIC ? Space.NONE : Space.ONE;
+		if (a == KEEP || b == KEEP || a != b) return (self.gap(open + 1).len > 0) == (self.gap(close).len > 0) ? Space.KEEP : lopsided;
 	}
 	if (rule == KEEP) return KEEP;
 	if (is_operator_text(self.toks[i].text) && self.same_line(i + 1))
@@ -375,7 +379,7 @@ fn bool is_binary_op(TokenType t)
 	switch (t)
 	{
 		case STAR: case DIV: case MOD: case PLUS: case MINUS: case AMP: case BIT_OR: case BIT_XOR: case SHL_OP:
-		case SHR_OP: case EQEQ: case NOT_EQUAL: case LESS_EQ: case GREATER_EQ:
+		case SHR_OP: case EQEQ: case NOT_EQUAL: case LESS_EQ: case GREATER_EQ: case LESS: case GREATER:
 		case AND: case OR: case QUESTQUEST: case ELVIS: case EQ: case PLUS_ASSIGN: case MINUS_ASSIGN: case DOTDOT:
 		case MULT_ASSIGN: case DIV_ASSIGN: case MOD_ASSIGN: case SHL_ASSIGN: case SHR_ASSIGN:
 		case BIT_AND_ASSIGN: case BIT_OR_ASSIGN: case BIT_XOR_ASSIGN: case CT_AND_OP: case CT_OR_OP: case CT_CONCAT_OP:
@@ -394,6 +398,18 @@ fn bool Src.is_binary(&self, sz o)
 	if (p == RPAREN && self.is_cast_close(o - 1)) return false;
 	// `if (x) *p = 1;`: what follows a control header starts a statement
 	if (p == RPAREN && self.is_header_close(o - 1)) return false;
+	// `module m <SIZE>;`, `struct Foo <Type>`, `fn void f() <Type>`: generic parameters of a declaration
+	if ((self.toks[o].type == LESS || self.toks[o].type == GREATER) && self.toks[o].encl == NO)
+	{
+		switch (self.type_at(self.stmt_start(o)))
+		{
+			case MODULE: case STRUCT: case UNION: case BITSTRUCT: case ALIAS: case INTERFACE: case ENUM: case TYPEDEF:
+				return false;
+			case FUNC: case MACRO:
+				if (!self.after_implies(o)) return false;
+			default:
+		}
+	}
 	return !self.is_type_star(o);
 }
 
@@ -419,6 +435,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 			if (k == BLOCK || k == BODY) return ONE;
 		}
 	}
+	// strict: a compound literal hugs its type, `(Foo){ … }` (the stdlib: 40 to 7)
+	if (cfg.spacing == STRICT && next.type == LBRACE && next.brace == INIT && prev.type == RPAREN) return NONE;
 	// a block or body is spaced off what it belongs to: `fn void f() {`, `enum E {`, `else {`
 	if (next.type == LBRACE && (next.brace == BLOCK || next.brace == BODY)) return ONE;
 	// a binary operator after a call is spaced, `f(x) * y` (the table also counts `(Foo)*p`)

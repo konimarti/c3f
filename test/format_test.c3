@@ -511,3 +511,29 @@ fn void fifth_review_regressions() @test
 	stable_with("fn void f()\n{\n\tmain(            //\n\t     a: \"x\", //\n\t     b: 30\n\t     );\n}\n",
 		{"c3f_continuation", "align", "c3f_align_comments", "always"});
 }
+
+fn void sixth_review_regressions() @test
+{
+	c3f::Config strict = c3f::defaults();
+	(void)strict.set("c3f_style", "strict");
+	// '<' and '>' are binary operators (but not the generic parameters of a declaration)
+	check("fn void f()\n{\n\tx = a <b;\n\ty = c> d;\n}\nstruct Foo <T> { int a; }\n", "fn void f()\n{\n\tx = a < b;\n\ty = c > d;\n}\nstruct Foo <T> { int a; }\n");
+	// a prefix operator before a type name is tight; braces after a name hug it on both sides
+	check("fn void f()\n{\n\ty = -Foo.x;\n\tz = *Foo{}.t();\n\talias Y = Bar{n };\n}\n", "fn void f()\n{\n\ty = -Foo.x;\n\tz = *Foo{}.t();\n\talias Y = Bar{n};\n}\n");
+	// strict: a compound literal hugs its type
+	check("fn void f()\n{\n\tx = (Foo) { 1 };\n}\n", "fn void f()\n{\n\tx = (Foo){1};\n}\n", &strict);
+	// a cast is not broken inside its parentheses
+	c3f::Config w = c3f::defaults();
+	(void)w.set("max_line_length", "40");
+	(void)w.set("c3f_line_breaks", "fit");
+	String cast = fmt_with("fn void f()\n{\n\tx = compute_something_long((int)another_long_function_name(a, b));\n}\n", &w);
+	assert(cast.contains("(int)another_long_function_name"), "%s", cast);
+	// aligned declarations keep a '*' with its name
+	c3f::Config decls = c3f::defaults();
+	(void)decls.set("c3f_align", "decls");
+	check("struct S\n{\n\tNode *first;\n\tint count;\n\tchar **argv;\n}\n", "struct S\n{\n\tNode  *first;\n\tint    count;\n\tchar **argv;\n}\n", &decls);
+	// import sorting leaves the comments that open the file on top
+	c3f::Config sorted = c3f::defaults();
+	(void)sorted.set("c3f_sort_imports", "lines");
+	check("// header\nimport std::io;\nimport std::a;\n", "// header\nimport std::a;\nimport std::io;\n", &sorted);
+}

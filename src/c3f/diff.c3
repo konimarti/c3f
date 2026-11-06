@@ -110,7 +110,7 @@ fn List{Op} edit_script(Lines* x, Lines* y) @local
 			yi--;
 			rev.push({SAME, xi, yi});
 		}
-		rev.push(down ? (Op) {ADD, px, py} : (Op) {DEL, px, py});
+		rev.push(down ? (Op){ADD, px, py} : (Op){DEL, px, py});
 		xi = px;
 		yi = py;
 	}
