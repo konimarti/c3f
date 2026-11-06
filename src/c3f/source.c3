@@ -613,7 +613,8 @@ fn void Src.mark_ternaries(&self)
 		}
 		if (is_opener(t.type))
 		{
-			if (t.brace == BLOCK || t.brace == BODY) cut(&open, levels[^1].open);
+			// (not the body of a lambda or the block of a call inside an expression: `a ? fn void() { … } : b`)
+			if (t.brace == BODY || (t.brace == BLOCK && self.is_function_body(i))) cut(&open, levels[^1].open);
 			levels.push({i, open.len()});
 		}
 	}

@@ -83,7 +83,11 @@ fn String Fmt.emit(&self, List{String}* texts)
 		Out* o = &self.out[i];
 		switch
 		{
-			case o.verbatim: d.append(self.convert_eol(s.gap(i)));   // (never the first token)
+			case o.verbatim:
+				String g = self.convert_eol(s.gap(i));   // (never the first token)
+				// a token that kept its '\r' (an unterminated string) already ends the line half way
+				if (g.starts_with("\r\n") && s.toks[i - 1].text.ends_with("\r")) g = g[1..];
+				d.append(g);
 			case i == 0: d.append(self.indent_text(o.indent));
 			case o.nl > 0:
 				self.newlines(&d, o.nl, i - 1);

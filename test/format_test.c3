@@ -547,3 +547,39 @@ fn void wrapping_prefers_the_operator_to_the_opener() @test
 	check("fn ulong f(ulong w)\n{\n\treturn ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL) | ((w >> 12) & (ulong)0x000F000F000F000FULL);\n}\n",
 	      "fn ulong f(ulong w)\n{\n\treturn ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL)\n\t\t| ((w >> 12) & (ulong)0x000F000F000F000FULL);\n}\n", &w);
 }
+
+fn void seventh_review_regressions() @test
+{
+	c3f::Config knr = c3f::defaults();
+	(void)knr.set("c3f_style", "knr");
+	(void)knr.set("c3f_one_line_blocks", "expand");
+	// a ternary arm may hold a lambda: its '?' is still open at the lambda's block
+	check("fn void f()\n{\n\ty = a ? fn void() { z(); } :null;\n}\n", "fn void f()\n{\n\ty = a ? fn void() { z(); } : null;\n}\n");
+	// a contract that c3c reads past a string holding its closer is kept, also with CRLF line endings
+	c3f::Config crlf = c3f::defaults();
+	(void)crlf.set("end_of_line", "crlf");
+	check("module m;\r\n<*\r\n @param x : \"a *\x3e b\"\r\n*\x3e\r\nfn void f(int x) {\r\n}\r\n",
+	      "module m;\r\n<*\r\n @param x : \"a *\x3e b\"\r\n*\x3e\r\nfn void f(int x)\r\n{\r\n}\r\n", &crlf);
+	// a cast after a control header is a cast: what follows is a prefix operator, not a product
+	c3f::Config wrap = c3f::defaults();
+	(void)wrap.set("max_line_length", "50");
+	(void)wrap.set("c3f_line_breaks", "long");
+	check("fn void f()\n{\n\tif (x) (int)*p = 1;\n}\n", "fn void f()\n{\n\tif (x) (int)*p = 1;\n}\n", &wrap);
+	// a lambda returning an optional keeps its brace on the line when its block is expanded
+	c3f::Config expand = c3f::defaults();
+	(void)expand.set("c3f_one_line_blocks", "expand");
+	check("fn void f()\n{\n\tvar cb = fn int?(int x) { return x; };\n}\n", "fn void f()\n{\n\tvar cb = fn int?(int x) {\n\t\treturn x;\n\t};\n}\n", &expand);
+	check("fn void f()\n{\n\ty = a * (Foo){1,2}.x;\n}\n", "fn void f() {\n\ty = a * (Foo){1, 2}.x;\n}\n", &knr);
+	// '<' and '>' between operands are spaced like the other comparisons
+	check("fn void f()\n{\n\tx = a.b() <c> d;\n}\n", "fn void f()\n{\n\tx = a.b() < c > d;\n}\n");
+	// equal imports keep their order (and their comments)
+	c3f::Config sorted = c3f::defaults();
+	(void)sorted.set("c3f_sort_imports", "lines");
+	check("import b; // b\nimport a; // one\nimport a; // two\n", "import a; // one\nimport a; // two\nimport b; // b\n", &sorted);
+	// several statements on one line are left alone (each wrap pass would only settle one more)
+	c3f::Config w = c3f::defaults();
+	(void)w.set("max_line_length", "40");
+	(void)w.set("c3f_line_breaks", "long");
+	String one_line = "const Foo A = { 0x4c5c32ff, 0xbb9d };  const Foo B = { 0xb7bede81, 0xdf94 };  const Foo C = { 0xA63293E8, 0x664E };  const Foo D = { 0x18989B1D, 0x99B5 };\n";
+	assert(!fmt_with(one_line, &w).contains("\n\t"), "%s", fmt_with(one_line, &w));
+}
