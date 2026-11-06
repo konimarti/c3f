@@ -13,7 +13,7 @@ A formatter for [C3](https://c3-lang.org). It only changes the whitespace betwee
   dynamic-programming algorithm of [A New Approach to Optimal Code Formatting](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf)
   (Yelland, the algorithm of Google's rfmt): it weighs the ways to break each statement
   against a layout cost, instead of filling one line after the other.
-- **Fast.** c3f formats the whole standard library in 0.13 s, and in 0.33 s while wrapping
+- **Fast.** c3f formats the whole standard library in 0.14 s, and in 0.33 s while wrapping
   it at 120 columns. Its time grows in step with the size of a file: a table of 4,000
   numbers takes under 5 ms.
 
@@ -59,10 +59,10 @@ standard library of c3c c23910038 (0.8.6, 2026-11-04).
 
 | | c3f | c3f, 120 columns | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
 |---|---|---|---|---|
-| Time (median of 5 runs) | 0.13 s | 0.33 s | 2.4 s ⁴ | 99 s ² |
-| Peak memory | 10 MB | 17 MB | 78 MB | 17 MB |
-| Lines changed | 1,857 | 2,920 | 14,069 | 14,854 |
-| Lines over 120 columns left (1,329 before) | 1,325 | 305 ³ | 522 | 738 |
+| Time (median of 5 runs) | 0.14 s | 0.33 s | 2.4 s ⁴ | 99 s ² |
+| Peak memory | 10 MB | 18 MB | 78 MB | 17 MB |
+| Lines changed | 1,857 | 2,909 | 14,069 | 14,854 |
+| Lines over 120 columns left (1,329 before) | 1,325 | 317 ³ | 522 | 738 |
 | Files whose code or comments changed | 0 ¹ | 0 ¹ | 77 | 110 |
 | Files that change again on a second run | 0 | 0 | 31 | 5 |
 | Files it fails on | 0 | 0 | 0 | 69 |
@@ -75,8 +75,9 @@ indentation; their text is otherwise unchanged.
 ² Nearly all of it on the 69 files it fails on, each about 1.4 s before it stops; the
 others take a few milliseconds each.
 
-³ Mostly comments, contract text and long strings (213); then what c3f keeps on one line:
-statements with a comment inside (38), one-line blocks and bodies (29), aligned rows (17).
+³ Mostly comments, contract text and long strings (243); then what c3f keeps on one line:
+one-line blocks and bodies (28), aligned rows (17), lines that hold several statements (15),
+statements with a comment inside (14).
 
 ⁴ The same when it runs on one core.
 
