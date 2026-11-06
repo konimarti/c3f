@@ -1,7 +1,8 @@
 # c3f
 
-A formatter for [C3](https://c3-lang.org). It only changes the whitespace between tokens, and it
-checks that: fast, and correct.
+A fast, verified formatter for [C3](https://c3-lang.org). It changes only the whitespace between
+tokens, and proves it: every result is checked against your original tokens, and formatting
+it again changes nothing.
 
 - **Correct: your code is never changed.** After formatting a file, c3f lexes the result
   again and compares it, token by token, with the original. If anything differs, that place is

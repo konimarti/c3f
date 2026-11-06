@@ -2,7 +2,7 @@ C3F(1)
 
 # NAME
 
-*c3f* - a formatter for C3
+*c3f* - a fast, verified formatter for C3
 
 # SYNOPSIS
 
@@ -230,3 +230,7 @@ _.editorconfig_
 # SEE ALSO
 
 *c3c*(1), https://editorconfig.org
+
+# AUTHOR
+
+c3f was written by Koni Marti <koni.marti@gmail.com>.
