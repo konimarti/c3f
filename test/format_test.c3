@@ -673,3 +673,21 @@ fn void split_writes_one_module_per_import() @test
 	check("import b, a; // x\nimport c;\n", "import a, b; // x\nimport c;\n", &c);
 	check("import b, a;\r\nimport c;\r\n", "import a;\r\nimport b;\r\nimport c;\r\n", &c);
 }
+
+<* The man page must describe every option, with every value the option takes. *>
+fn void man_page_documents_every_option() @test
+{
+	const String MAN = (String)$embed("../c3f.1.scd");
+	foreach (k : c3f::Key::values)
+	{
+		String name = k.name;
+		String line = "";
+		foreach (l : MAN.tsplit("\n")) if (l.starts_with(string::tformat("*%s* =", name))) line = l;
+		assert(line.len > 0, "option %s is not in c3f.1.scd", name);
+		foreach (v : c3f::allowed_values(k).tsplit(", "))
+		{
+			if (v.len == 0 || v[0] < 'a' || v[0] > 'z' || @ok(v.index_of_char(' '))) continue;
+			assert(@ok(line.index_of(v)), "value %s of %s is not in c3f.1.scd", v, name);
+		}
+	}
+}

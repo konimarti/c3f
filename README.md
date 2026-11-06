@@ -104,6 +104,10 @@ c3l sync
 c3c build c3f        # → build/c3f
 ```
 
+or `make` and `make install` (`PREFIX=/usr/local`, `DESTDIR` supported), which also installs the
+man page, `man c3f`. The page is built from `c3f.1.scd` with [scdoc](https://sr.ht/~sircmpwn/scdoc/)
+(`make doc`); the built `c3f.1` is committed.
+
 ## Use
 
 ```sh
