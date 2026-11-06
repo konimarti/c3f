@@ -41,8 +41,8 @@ fn void main()
 	foreach (i, p : primes)
 	{
 		if (p > 5 && i % 2 == 0) io::printfn("prime %d at %d", p, i);
-		total += compute_weight(p, i, primes.len) * scale_factor_for(
-			category, p);
+		total += compute_weight(p, i, primes.len)
+			* scale_factor_for(category, p);
 	}
 }
 ```

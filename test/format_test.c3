@@ -583,3 +583,27 @@ fn void seventh_review_regressions() @test
 	String one_line = "const Foo A = { 0x4c5c32ff, 0xbb9d };  const Foo B = { 0xb7bede81, 0xdf94 };  const Foo C = { 0xA63293E8, 0x664E };  const Foo D = { 0x18989B1D, 0x99B5 };\n";
 	assert(!fmt_with(one_line, &w).contains("\n\t"), "%s", fmt_with(one_line, &w));
 }
+
+const char[*] README = $embed("../README.md");
+
+<* The text of the next ```c3 block of the README from `*from` on; moves `*from` past it. *>
+fn String readme_block(sz* from) @local
+{
+	String doc = (String)README[..];
+	sz start = doc[*from..].index_of("```c3\n")!! + *from + 6;
+	sz end = doc[start..].index_of("```")!! + start;
+	*from = end + 3;
+	return doc[start:end - start];
+}
+
+fn void the_readme_example_is_what_c3f_prints() @test
+{
+	// the first two ```c3 blocks of the README are the input and the output of its example
+	sz at = 0;
+	String input = readme_block(&at);
+	String want = readme_block(&at);
+	c3f::Config c = c3f::defaults();
+	(void)c.set("max_line_length", "72");
+	(void)c.set("c3f_line_breaks", "wrap");
+	check(input, want, &c);
+}
