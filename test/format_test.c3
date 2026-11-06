@@ -655,6 +655,19 @@ fn void wrap_fit_leaves_assert_attributes_and_messages_alone() @test
 	assert(!fmt_with(attr, &c).contains("\"\n"));
 }
 
+fn void a_comment_at_the_end_of_a_line_is_not_part_of_its_length() @test
+{
+	c3f::Config c = c3f::defaults();
+	(void)c.set("max_line_length", "30");
+	(void)c.set("c3f_line_breaks", "wrap");
+	// the code fits: a long comment does not make the line too long
+	String fits = "fn void f()\n{\n\tfoo(a, b); // a comment that runs far past the limit of the line\n}\n";
+	check(fits, fits, &c);
+	// the code does not: it is wrapped and the comment stays after its last line
+	check("fn void f()\n{\n\tfoo(aaaaaaaaaaaa, bbbbbbbbbbbb, cccccccccccc); // note\n}\n",
+	      "fn void f()\n{\n\tfoo(aaaaaaaaaaaa,\n\t\tbbbbbbbbbbbb,\n\t\tcccccccccccc); // note\n}\n", &c);
+}
+
 fn void wrap_fit_braces_a_body_that_is_too_long_for_its_line() @test
 {
 	c3f::Config c = c3f::defaults();

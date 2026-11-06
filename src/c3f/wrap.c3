@@ -6,13 +6,13 @@ import c3::lexer, std::collections::list, std::collections::map;
 // A statement (a head line and its continuation lines) is a sequence of elements: runs of
 // tokens that never break inside, and bracket spans. Between two elements there may be a
 // wrap point (after ',', after '=', before a binary operator) with a cost multiplier. A span
-// is laid out one of three ways (rfmt's choice blocks): inline (items fill the line, wrapping
-// at its commas), hanging (a break after the opener), or stacked (one item per line).
+// is laid out one of three ways: inline (items fill the line, wrapping at its commas),
+// hanging (a break after the opener), or stacked (one item per line).
 //
-// The cost of a layout is rfmt's: per character past the soft margin, per character past the
-// hard margin, and per line break. Because columns are integers, the optimal cost of each
-// piece as a function of its start column is kept as a table over the columns 0..W, which is
-// exactly rfmt's piecewise-linear solution sampled at every column.
+// The cost of a layout is the sum of: a price per character past the soft margin, a higher one
+// per character past the hard margin, and a price per line break. Because columns are integers,
+// the optimal cost of each piece as a function of its start column is kept as a table over the
+// columns 0..W (a piecewise-linear function sampled at every column).
 //
 // A wrapped line is indented one level deeper than the line its innermost open bracket is on
 // (see depths()), so the tables also depend on the depth of the line a piece starts on.
@@ -434,8 +434,8 @@ const sz MAX_DEPTH = 1023;
 <*
  The best way to lay out elements j.. of seq (layout l, its opener on a line of depth `open`)
  when element j starts on a line of depth `cur`, for every start column: element j stays on
- the line or breaks before j + 1; a span is tried in each layout with each continuation (rfmt's
- choice blocks see the rest of the line).
+ the line or breaks before j + 1; a span is tried in each layout with each continuation (the
+ choice of a layout sees the rest of the line).
 *>
 fn Table Wrap.step(&self, sz seq, Layout l, sz open, sz j, sz cur)
 {
@@ -613,7 +613,10 @@ fn void Fmt.wrap(&self)
 	{
 		sz b = a;
 		while (b + 1 < s.len() && !(self.out[b + 1].nl > 0 && !self.out[b + 1].cont)) b++;
-		self.wrap_unit(a, b);
+		// a comment at the end of the line is not part of the statement, nor of its length
+		sz last = b;
+		while (last > a && !s.toks[last].code) last--;
+		self.wrap_unit(a, last);
 		a = b + 1;
 	}
 }

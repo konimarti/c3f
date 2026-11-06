@@ -1,11 +1,13 @@
 module c3f;
-import c3::lexer, std::collections::list;
+import c3::lexer, std::collections::list, std::io;
 
 struct BraceAt
 {
+	sz first;         // the `if`, `else`, `while`, `for` or `foreach`
 	sz open_after;    // the token the '{' follows: the ')' of the header, or `else`
 	sz body;          // the first token of the body
-	sz close_after;   // the token the '}' follows: the ';' of the body, or a comment after it on its line
+	sz end;           // the ';' of the body
+	sz close_after;   // the token the '}' follows: the ';', or a comment after it on its line
 }
 
 <* Can a body that starts with this token be put in braces without changing what it means? *>
@@ -91,7 +93,7 @@ fn String brace_long_bodies(String text, Config* cfg)
 		// a comment after the ';' on its line stays there: the '}' comes after it
 		sz close_after = end;
 		for (sz k = end + 1; k < s.len() && !s.toks[k].code && s.toks[k].nl == 0 && !s.toks[k].text.contains("\n"); k++) close_after = k;
-		found.push({ header_end, body, close_after });
+		found.push({ i, header_end, body, end, close_after });
 		i = close_after;
 	}
 	if (!found.len()) return text;
@@ -101,12 +103,15 @@ fn String brace_long_bodies(String text, Config* cfg)
 	sz from = 0;
 	foreach (b : found)
 	{
-		sz open = s.toks[b.open_after].start + s.toks[b.open_after].text.len;
 		sz close = s.toks[b.close_after].start + s.toks[b.close_after].text.len;
-		d.append(s.text[from:open - from]);
+		sz semi = s.toks[b.end].start + s.toks[b.end].text.len;
+		d.append(s.text[from:s.toks[b.first].start - from]);
+		// the statement is written on one line again, to be wrapped anew inside its block
+		append_joined(&d, &s, b.first, b.open_after);
 		d.append(" {");
 		d.append(nl);
-		d.append(s.text[s.toks[b.body].start:close - s.toks[b.body].start]);
+		append_joined(&d, &s, b.body, b.end);
+		d.append(s.text[semi:close - semi]);
 		d.append(nl);
 		d.append("}");
 		from = close;
@@ -119,26 +124,31 @@ fn String brace_long_bodies(String text, Config* cfg)
 	sz at = 0;
 	foreach (b : found)
 	{
-		for (; at <= b.open_after; at++) if (!same_next(&lx, s.toks[at])) return text;
-		if (!inserted_next(&lx, LBRACE, "{")) return text;
-		for (; at <= b.close_after; at++) if (!same_next(&lx, s.toks[at])) return text;
-		if (!inserted_next(&lx, RBRACE, "}")) return text;
+		for (; at <= b.open_after; at++) if (!expect(&lx, s.toks[at].type, s.toks[at].text)) return text;
+		if (!expect(&lx, LBRACE, "{")) return text;
+		for (; at <= b.close_after; at++) if (!expect(&lx, s.toks[at].type, s.toks[at].text)) return text;
+		if (!expect(&lx, RBRACE, "}")) return text;
 	}
-	for (; at < s.len(); at++) if (!same_next(&lx, s.toks[at])) return text;
-	if (try t = lx.next()) { if (t.type != EOF) return text; }
-	return out;
+	for (; at < s.len(); at++) if (!expect(&lx, s.toks[at].type, s.toks[at].text)) return text;
+	// the lexer reports the end of the input as io::EOF; anything else is an error
+	Token? end = lx.next();
+	if (catch err = end) return err == io::EOF ? out : text;
+	return end.type == EOF ? out : text;
 }
 
-fn bool same_next(Lexer* lx, Tok want) @local
-{
-	Token? t = lx.next();
-	if (catch t) return false;
-	return t.type == want.type && t.text == want.text;
-}
-
-fn bool inserted_next(Lexer* lx, TokenType type, String text) @local
+fn bool expect(Lexer* lx, TokenType type, String text) @local
 {
 	Token? t = lx.next();
 	if (catch t) return false;
 	return t.type == type && t.text == text;
+}
+
+<* The text of tokens a to b, with a gap that holds a line break written as one space. *>
+fn void append_joined(DString* d, Src* s, sz a, sz b) @local
+{
+	for (sz k = a; k <= b; k++)
+	{
+		if (k > a) d.append(s.toks[k].nl > 0 ? " " : s.text[s.toks[k - 1].start + s.toks[k - 1].text.len:s.toks[k].start - s.toks[k - 1].start - s.toks[k - 1].text.len]);
+		d.append(s.toks[k].text);
+	}
 }

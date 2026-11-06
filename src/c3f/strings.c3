@@ -118,7 +118,8 @@ fn List{String} plan_split(String text, sz first_room, sz mid_room, sz tail, sz 
 		while (j < n && at[j + 1] == at[j] + 1)
 		{
 			char c = body[at[j]];
-			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '%') break;
+			bool length_modifier = c == 'h' || c == 'l' || c == 'L' || c == 'j' || c == 'z' || c == 't' || c == 'q';
+			if (!length_modifier && ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '%')) break;
 			j++;
 		}
 		for (sz p = k + 1; p <= j && p < n; p++) forbid[p] = true;
@@ -288,6 +289,7 @@ fn void Fmt.split_strings(&self)
 		sz e = k;
 		bool plain = !self.out[k].verbatim;
 		while (e + 1 < s.len() && self.out[e + 1].nl == 0 && !self.out[e + 1].verbatim) e++;
+		while (e > k && !s.toks[e].code) e--;   // (a comment at the end of the line is not part of its length)
 		for (sz j = k; j <= e; j++) if (!s.toks[j].code || s.toks[j].keep || self.out[j].verbatim) plain = false;
 		if (!plain || self.end_col(e) <= c.max_line_length) continue;
 		// the longest string of the line that can be split to fit

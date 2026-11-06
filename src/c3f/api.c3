@@ -47,26 +47,7 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 	}
 	Config settled = *cfg;
 	settled.finish();
-	// `wrap_fit`: a body that cannot move to the next line without braces gets them first, so wrapping
-	// lays out the braced body (measured on the text as formatted without wrapping)
-	String source = input;
-	if (settled.line_breaks == WRAP_FIT && settled.max_line_length != 0)
-	{
-		FormatResult probe;
-		probe.notes.tinit();
-		Config flat = settled;
-		flat.line_breaks = PRESERVE;
-		String plain = format_text(input, &flat, &probe, tmem, null);
-		if (!probe.fallback) source = brace_long_bodies(plain, &settled);
-	}
-	String text = format_pass(&r, a, source, &settled);
-	if (r.fallback && source != input)
-	{
-		// something in the braced text could not be formatted: start again from the file as it is
-		while (r.notes.len() > 0) free_note(r.notes.pop()!!, a);
-		r.fallback = false;
-		text = format_pass(&r, a, input, &settled);
-	}
+	String text = format_pass(&r, a, input, &settled);
 	r.text = text.copy(a);
 	r.changed = r.text != input;
 	return r;
@@ -78,23 +59,34 @@ fn String format_pass(FormatResult* r, Allocator a, String input, Config* settle
 	WrapMemo memo;
 	if (wraps) memo.init();
 	defer if (wraps) memo.free();
-	String text = format_text(input, settled, r, a, wraps ? &memo : null);
+	String first = format_text(input, settled, r, a, wraps ? &memo : null);
+	String text = first;
+	// `wrap_fit`: a body that cannot move to the next line without braces gets them (and the statement is
+	// joined again); the next pass lays it out
+	if (settled.line_breaks == WRAP_FIT && !r.fallback) text = brace_long_bodies(first, settled);
 	// wrapping can turn one statement into several (a '{' that now ends a line opens a block),
 	// which the next run may wrap again: repeat until nothing changes, so a second run never does
 	// (if the first pass wrapped nothing, the text is formatted as without wrapping: one run is enough)
-	if (wraps && memo.wrapped)
+	if (wraps && (memo.wrapped || text != first))
 	{
 		// the notes are about the input; a later pass that cannot be verified is not used
 		FormatResult later;
 		later.notes.tinit();
 		// (the lines a split string adds can move what was wrapped before: one more pass)
 		int passes = settled.line_breaks == WRAP_FIT ? WRAP_PASSES + 1 : WRAP_PASSES;
+		bool unlaid = text != first;
 		for (int pass = 1; pass < passes; pass++)
 		{
 			memo.wrapped = 0;
-			String again = format_text(text, settled, &later, tmem, &memo, attempts: 1);
-			if (again == text) break;
+			String again = format_text(text, settled, &later, tmem, &memo, attempts: 1, sort: false);   // (sorted by the first pass)
+			if (again == text)
+			{
+				// (braces that were not laid out: the pass failed)
+				if (unlaid) text = first;
+				break;
+			}
 			text = again;
+			unlaid = false;
 			if (!memo.wrapped) break;   // (it may still have re-indented what was wrapped before)
 		}
 	}
@@ -102,10 +94,10 @@ fn String format_pass(FormatResult* r, Allocator a, String input, Config* settle
 }
 
 <* Format once; a place whose result cannot be verified is kept as written and the rest is tried again. *>
-fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a, WrapMemo* memo, int attempts = MAX_ATTEMPTS) @local
+fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a, WrapMemo* memo, int attempts = MAX_ATTEMPTS, bool sort = true) @local
 {
 	String input = original;
-	if (cfg.sort_imports != OFF)
+	if (sort && cfg.sort_imports != OFF)
 	{
 		String sorted = sort_imports(original, cfg.sort_imports);
 		if (sorted != original && same_tokens(original, sorted, cfg.sort_imports == SPLIT)) input = sorted;

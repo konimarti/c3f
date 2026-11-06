@@ -10,6 +10,8 @@ struct Setting
 	String origin;     // file:line
 }
 
+alias SettingList = List{Setting};
+
 <* The root part of an absolute path: "/" or a drive "C:/" ("" if relative). Paths use '/'. *>
 fn String path_root(String p)
 {
@@ -160,7 +162,7 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 	}
 	else
 	{
-		List{String} found;
+		List{SettingList} found;   // the settings of each .editorconfig, nearest first
 		found.tinit();
 		String dir = parent_dir(abs);
 		while (true)
@@ -168,16 +170,16 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 			String candidate = join_path(dir, ".editorconfig");
 			if (file::exists(candidate))
 			{
-				found.push(candidate);
-				// root = true stops the search; it is read again below, in order
-				List{Setting} probe;
-				probe.tinit();
-				if (read_editorconfig(candidate, abs, &probe, error)!) break;
+				List{Setting} here;
+				here.tinit();
+				bool root = read_editorconfig(candidate, abs, &here, error)!;
+				found.push(here);
+				if (root) break;   // root = true stops the search
 			}
 			if (is_root(dir) || dir == ".") break;
 			dir = parent_dir(dir);
 		}
-		for (sz k = found.len(); k > 0; k--) read_editorconfig(found[k - 1], abs, &settings, error)!;
+		for (sz k = found.len(); k > 0; k--) foreach (st : found[k - 1]) settings.push(st);
 	}
 	foreach (kv : sets)
 	{
