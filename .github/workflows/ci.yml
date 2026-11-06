@@ -101,9 +101,9 @@ jobs:
           - { name: linux, args: '--set c3f_brace_style=linux' }
           - { name: aligned, args: '--set c3f_align=decls --set c3f_align_comments=always' }
           - { name: sorted-imports, args: '--set c3f_sort_imports=all' }
-          - { name: wrap-long-100, args: '--set max_line_length=100 --set c3f_line_breaks=long' }
-          - { name: strict-fit-80, args: '--set c3f_style=strict --set max_line_length=80 --set c3f_line_breaks=fit' }
-          - { name: align-wrap-60, args: '--set c3f_continuation=align --set max_line_length=60 --set c3f_line_breaks=long' }
+          - { name: wrap-100, args: '--set max_line_length=100 --set c3f_line_breaks=wrap' }
+          - { name: strict-reflow-80, args: '--set c3f_style=strict --set max_line_length=80 --set c3f_line_breaks=reflow' }
+          - { name: align-wrap-60, args: '--set c3f_continuation=align --set max_line_length=60 --set c3f_line_breaks=wrap' }
     name: style ${{ matrix.name }}
     steps:
       - uses: actions/download-artifact@v4

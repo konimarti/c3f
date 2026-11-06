@@ -15,7 +15,7 @@ enum BracketPadding : char { KEEP, NONE, SPACE }
 enum DeclSpacing : char { KEEP, ONE }
 enum AlignMode : char { PRESERVE, DECLS, OFF }
 enum CommentAlign : char { PRESERVE, ALWAYS, OFF }
-enum LineBreaks : char { PRESERVE, LONG, FIT }
+enum LineBreaks : char { PRESERVE, WRAP, REFLOW }
 enum SortImports : char { OFF, LINES, LISTS, ALL }
 enum CtIndent : char { KEEP, INDENT, FLUSH }
 

@@ -20,7 +20,7 @@ A formatter for [C3](https://c3-lang.org). It only changes the whitespace betwee
 Also: `.editorconfig` support, presets, import sorting, alignment of declarations and
 comments, and CI and git-hook integration.
 
-For example, with `max_line_length = 72` and `c3f_line_breaks = long`,
+For example, with `max_line_length = 72` and `c3f_line_breaks = wrap`,
 
 ```c3
 fn void main(){
@@ -52,7 +52,7 @@ fn void main()
 Formatting the C3 standard library (364 files), with every tool built with `-O3` and
 wrapping at 120 columns: c3fmt by default, c3tools with `--width=120 --indent=t` (as its
 README suggests for the stdlib), and c3f with `max_line_length = 120` and
-`c3f_line_breaks = long` (wrap the lines over the limit, with the optimal layout). c3f's
+`c3f_line_breaks = wrap` (wrap the lines over the limit, with the optimal layout). c3f's
 default, which does not wrap, is shown too. c3f runs on one thread; c3fmt starts one per
 core (28 here). Versions: c3fmt c74d563 (2026-11-01), c3tools 32b5f03 (2026-09-06), and the
 standard library of c3c c23910038 (0.8.6, 2026-11-04).
@@ -180,7 +180,7 @@ search) and can be overridden with `--set key=value`:
 c3f_style = stdlib            # or knr, strict
 indent_style = tab
 max_line_length = 100         # wraps only with c3f_line_breaks; alignment never goes past it
-c3f_line_breaks = long        # wrap the lines longer than that (fit: lay out every statement anew)
+c3f_line_breaks = wrap        # break the lines longer than that (reflow: lay multi-line statements out again)
 c3f_sort_imports = lines
 ```
 
@@ -203,7 +203,7 @@ spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is
 |---|---|
 | `indent_style`, `indent_size`, `tab_width` | `tab`, 4, 4 |
 | `end_of_line`, `insert_final_newline` | keep the file's, `true` |
-| `max_line_length`, `c3f_line_breaks` | `off`; `preserve`, `long`, `fit` |
+| `max_line_length`, `c3f_line_breaks` | `off`; `preserve`, `wrap`, `reflow` (see below) |
 | `c3f_brace_style`, `c3f_else_style` | `allman`, `knr`, `linux` (function bodies Allman, the rest K&R); `follow`, `own_line`, `cuddle` |
 | `c3f_one_line_blocks` | `keep`, `expand` |
 | `c3f_case_indent`, `c3f_ct_indent` | `indent`, `flush`; `keep`, `indent`, `flush` |
@@ -218,6 +218,12 @@ spacing in the stdlib. There `stdlib` keeps what you wrote, since either form is
 | `c3f_soft_max_line_length`, `c3f_wrap_cost_soft` | a second, soft limit (0: off), and 0.05 per column past it |
 | `c3f_wrap_budget` | 2000: statements of more tokens are not wrapped |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all` |
+
+`c3f_line_breaks` (it needs a `max_line_length`) decides what c3f may do with your line breaks:
+`preserve` never moves them; `wrap` breaks the statements that have a line over the limit and
+leaves all others as written; `reflow` also lays out again every statement that spans several
+lines (or ends in a trailing comma), so a break you made by hand is joined if the statement fits
+on one line. A statement that is on one line and fits is never touched.
 
 ## License
 

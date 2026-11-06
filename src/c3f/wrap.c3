@@ -1,7 +1,7 @@
 module c3f;
 import c3::lexer, std::collections::list, std::collections::map;
 
-// Line wrapping: `c3f_line_breaks = long | fit`.
+// Line wrapping: `c3f_line_breaks = wrap | reflow`.
 //
 // A statement (a head line and its continuation lines) is a sequence of elements: runs of
 // tokens that never break inside, and bracket spans. Between two elements there may be a
@@ -601,7 +601,7 @@ fn void WrapMemo.free(&self)
 	self.seen.free();
 }
 
-<* Re-break the statements that need it (all of them in `fit`). *>
+<* Re-break the statements that need it (in `reflow`: every statement that spans lines). *>
 fn void Fmt.wrap(&self)
 {
 	if (self.cfg.line_breaks == PRESERVE || self.cfg.max_line_length == 0) return;
@@ -650,7 +650,7 @@ fn bool Fmt.wants_wrap(&self, sz a, sz b)
 		bool eol = k == b || self.out[k + 1].nl > 0;
 		if (eol && self.end_col(k) > c.max_line_length) too_long = true;
 	}
-	if (c.line_breaks == LONG && !too_long) return false;
+	if (c.line_breaks == WRAP && !too_long) return false;
 	return too_long || c.soft_max_line_length != 0 || !self.fits_as_is(a, b);
 }
 

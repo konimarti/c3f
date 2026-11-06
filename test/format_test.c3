@@ -317,7 +317,7 @@ fn void wrapping() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "long");
+	(void)c.set("c3f_line_breaks", "wrap");
 	check("fn void f()\n{\n\tint r = compute(first_argument, second_argument);\n\tshort(a);\n}\n",
 	      "fn void f()\n{\n\tint r = compute(first_argument,\n\t\tsecond_argument);\n\tshort(a);\n}\n", &c);
 	check("fn void f()\n{\n\tif (alpha_condition && beta_condition || gamma) return;\n}\n",
@@ -325,13 +325,13 @@ fn void wrapping() @test
 	// a wrapped initializer item stays where the next run puts it
 	c = c3f::defaults();
 	(void)c.set("max_line_length", "50");
-	(void)c.set("c3f_line_breaks", "fit");
+	(void)c.set("c3f_line_breaks", "reflow");
 	check("fn void f()\n{\n\tFoo x = { .alpha = compute_value(1, 2), .beta = other_value(3) };\n}\n",
 	      "fn void f()\n{\n\tFoo x = { .alpha = compute_value(1, 2),\n\t\t.beta = other_value(3) };\n}\n", &c);
 	// the arguments see the text glued after them; a macro call breaks like a call, an attribute stays whole
 	c = c3f::defaults();
 	(void)c.set("max_line_length", "60");
-	(void)c.set("c3f_line_breaks", "long");
+	(void)c.set("c3f_line_breaks", "wrap");
 	check("fn void f()\n{\n\tif (spawn_actions(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN~;\n"
 	      "\treturn @atomic_exchange(ptr, value, AtomicOrdering.RELAXED, $alignment);\n}\n"
 	      "extern fn int get_path(WString name, ulong len, Char16* buffer) @cname(\"GetPath\");\n",
@@ -353,7 +353,7 @@ fn void release_review_regressions() @test
 	// the statement after a control header starts on the header's line, also when wrapping
 	c3f::Config w = c3f::defaults();
 	(void)w.set("max_line_length", "60");
-	(void)w.set("c3f_line_breaks", "long");
+	(void)w.set("c3f_line_breaks", "wrap");
 	String src = "fn void f()\n{\n\tif (s - buf == 1 && (y || p > 0 || flags_hash_value)) *s++ = 1;\n}\n";
 	check(src, "fn void f()\n{\n\tif (s - buf == 1\n\t\t&& (y || p > 0 || flags_hash_value)) *s++ = 1;\n}\n", &w);
 	// a '\r' that c3c would drop keeps the whole file
@@ -441,7 +441,7 @@ fn void wrapping_counts_the_indentation_it_writes() @test
 	{
 		c3f::Config c = c3f::defaults();
 		(void)c.set("max_line_length", string::tformat("%d", limit));
-		(void)c.set("c3f_line_breaks", "fit");
+		(void)c.set("c3f_line_breaks", "reflow");
 		String got = fmt_with(src, &c);
 		foreach (line : got.tsplit("\n")) assert(c3f::text_width(line, 0, 4) <= limit, "%d: %s", limit, line);
 		assert(fmt_with(got, &c) == got);
@@ -461,8 +461,8 @@ fn void later_wrap_passes_settle() @test
 {
 	// a pass that wraps nothing may still re-indent what was wrapped (tab and align continuations)
 	String call = "fn void f()\n{\n\tx = aaaa(bbbbbbbbbbbbbbbb, cccccccccccccccccccccccccccccccc, dddddddddd(eeeeeeeeeeeeeeee, ffffffffffffffff, gggggggggggggggg, hhhhhhhhhhhhhh));\n}\n";
-	stable_with(call, {"max_line_length", "50", "c3f_line_breaks", "long", "c3f_continuation", "tab"});
-	stable_with(call, {"max_line_length", "60", "c3f_line_breaks", "long", "c3f_continuation", "align"});
+	stable_with(call, {"max_line_length", "50", "c3f_line_breaks", "wrap", "c3f_continuation", "tab"});
+	stable_with(call, {"max_line_length", "60", "c3f_line_breaks", "wrap", "c3f_continuation", "align"});
 	// an aligned gap before a name does not move the continuation lines that align after its '('
 	stable_with("fn int\tget_value(char r,\n\tint b)\n{\n\treturn 1;\n}\n", {"c3f_continuation", "align"});
 	// an aligned line that opens a bracket continued below keeps its place (the continuation was put under it)
@@ -472,7 +472,7 @@ fn void later_wrap_passes_settle() @test
 	stable_with("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", {"c3f_continuation", "tab"});
 	// several statements on one line are not wrapped (each pass would settle only one more)
 	stable_with("const Foo A = { 0x4c5c32ff, 0xbb9d, 0x43b0, x\"b5b42d72e54eaaa4\" };  const Foo B = { 0xb7bede81, 0xdf94, 0x4682, x\"a7d857a52620b86f\" };  const Foo C = { 0xA63293E8, 0x664E, 0x48DB, x\"A079DF759E0509F7\" };\n",
-		{"max_line_length", "40", "c3f_line_breaks", "long"});
+		{"max_line_length", "40", "c3f_line_breaks", "wrap"});
 }
 
 fn void fourth_review_regressions() @test
@@ -525,7 +525,7 @@ fn void sixth_review_regressions() @test
 	// a cast is not broken inside its parentheses
 	c3f::Config w = c3f::defaults();
 	(void)w.set("max_line_length", "40");
-	(void)w.set("c3f_line_breaks", "fit");
+	(void)w.set("c3f_line_breaks", "reflow");
 	String cast = fmt_with("fn void f()\n{\n\tx = compute_something_long((int)another_long_function_name(a, b));\n}\n", &w);
 	assert(cast.contains("(int)another_long_function_name"), "%s", cast);
 	// aligned declarations keep a '*' with its name
@@ -543,7 +543,7 @@ fn void wrapping_prefers_the_operator_to_the_opener() @test
 	// the outer operator is the place to break, not the '(' of its second operand
 	c3f::Config w = c3f::defaults();
 	(void)w.set("max_line_length", "80");
-	(void)w.set("c3f_line_breaks", "long");
+	(void)w.set("c3f_line_breaks", "wrap");
 	check("fn ulong f(ulong w)\n{\n\treturn ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL) | ((w >> 12) & (ulong)0x000F000F000F000FULL);\n}\n",
 	      "fn ulong f(ulong w)\n{\n\treturn ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL)\n\t\t| ((w >> 12) & (ulong)0x000F000F000F000FULL);\n}\n", &w);
 }
@@ -563,7 +563,7 @@ fn void seventh_review_regressions() @test
 	// a cast after a control header is a cast: what follows is a prefix operator, not a product
 	c3f::Config wrap = c3f::defaults();
 	(void)wrap.set("max_line_length", "50");
-	(void)wrap.set("c3f_line_breaks", "long");
+	(void)wrap.set("c3f_line_breaks", "wrap");
 	check("fn void f()\n{\n\tif (x) (int)*p = 1;\n}\n", "fn void f()\n{\n\tif (x) (int)*p = 1;\n}\n", &wrap);
 	// a lambda returning an optional keeps its brace on the line when its block is expanded
 	c3f::Config expand = c3f::defaults();
@@ -579,7 +579,7 @@ fn void seventh_review_regressions() @test
 	// several statements on one line are left alone (each wrap pass would only settle one more)
 	c3f::Config w = c3f::defaults();
 	(void)w.set("max_line_length", "40");
-	(void)w.set("c3f_line_breaks", "long");
+	(void)w.set("c3f_line_breaks", "wrap");
 	String one_line = "const Foo A = { 0x4c5c32ff, 0xbb9d };  const Foo B = { 0xb7bede81, 0xdf94 };  const Foo C = { 0xA63293E8, 0x664E };  const Foo D = { 0x18989B1D, 0x99B5 };\n";
 	assert(!fmt_with(one_line, &w).contains("\n\t"), "%s", fmt_with(one_line, &w));
 }
