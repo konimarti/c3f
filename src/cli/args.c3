@@ -107,7 +107,7 @@ fn void? Options.set_mode(&self, Mode m, String flag)
 	self.mode = m;
 }
 
-const String HELP = `c3f - a fast, verified formatter for C3
+const String HELP = `c3f - a stable, fast, token-based formatter for C3
 
 usage:
   c3f [flags] [path ...]   format files or directories (*.c3, *.c3i, *.c3t; in directories,

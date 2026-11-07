@@ -28,7 +28,7 @@ const int MAX_ATTEMPTS = 8;
 const int WRAP_PASSES = 3;
 
 <*
- Format C3 source. Only whitespace changes; the result is checked by lexing it again.
+ Format C3 source. The result is checked by lexing it again and comparing it with the input.
  @param a : "allocator for the result"
 *>
 fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()

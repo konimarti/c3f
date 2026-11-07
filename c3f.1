@@ -5,11 +5,11 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "C3F" "1" "2026-11-06"
+.TH "C3F" "1" "2026-11-07"
 .P
 .SH NAME
 .P
-\fBc3f\fR - a fast, verified formatter for C3
+\fBc3f\fR - a stable, fast, token-based formatter for C3
 .P
 .SH SYNOPSIS
 .P
@@ -19,11 +19,9 @@
 .P
 .SH DESCRIPTION
 .P
-\fBc3f\fR formats C3 source files.\& It changes only the whitespace between tokens (and, if you
-ask for it, the order of imports): the tokens and comments of the output are those of the
-input, which \fBc3f\fR checks by lexing the result again.\& A place it cannot verify, or that is
-unbalanced (a bracket still being typed), is kept as written, so it is safe to run on a file
-while editing it.\&
+\fBc3f\fR formats C3 source files and checks every result by lexing it again and comparing it,
+token by token, with the input.\& A place it cannot verify, or that is unbalanced (a bracket
+still being typed), is kept as written, so it is safe to run on a file while editing it.\&
 .P
 With one file and none of \fB-w\fR, \fB--check\fR and \fB--diff\fR, the formatted file is written to
 standard output.\& With \fB-\fR, standard input is read and the result written to standard output.\&
@@ -149,13 +147,45 @@ End the file with a line break.\&
 \fBoff\fR, or 1 to 10000.\& The column limit used by wrapping and alignment.\&
 .P
 .RE
-\fBc3f_line_breaks\fR = preserve | wrap | reflow
+\fBc3f_line_breaks\fR = preserve | wrap | wrap_fit | reflow
 .RS 4
 What \fBc3f\fR may do with line breaks.\& It needs a \fBmax_line_length\fR.\& \fBpreserve\fR never
 moves them; \fBwrap\fR breaks the statements that have a line over the limit; \fBreflow\fR
 also lays out again every statement that spans several lines, so a break made by hand
 is joined if the statement fits on one line.\& A statement on one line that fits is
-never touched.\&
+never touched.\& \fBwrap_fit\fR is \fBwrap\fR, and in addition:
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.IP \(bu 4
+.\}
+a string literal that still runs past the limit is written as several literals,
+
+.RE
+.RE
+which the compiler joins: "a b c" becomes "a " "b c".\& It cuts after a space if it can,
+.RS 4
+never inside an escape sequence, a UTF-8 character or a \fBprintf\fR conversion, and not in
+an attribute, an \fBassert\fR or a compile-time directive.\& The value of every piece is
+checked to be the original'\&s.\&
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.IP \(bu 4
+.\}
+the single statement after an \fBif\fR, \fBelse\fR, \fBwhile\fR, \fBfor\fR or \fBforeach\fR without braces
+
+.RE
+.RE
+that is too long for its line gets braces and a line of its own (\fBc3c\fR does not accept the
+.RS 4
+statement of an \fBif\fR on the line after it, so it could only be broken inside).\& Bodies that
+start with another \fBif\fR, a loop, a \fBswitch\fR or a \fBdefer\fR are left as they are.\&
+Only this option changes more than whitespace.\& (\fBwrap-fit\fR is accepted too.\&)
 .P
 .RE
 \fBc3f_brace_style\fR = allman | knr | linux

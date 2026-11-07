@@ -2,7 +2,7 @@ C3F(1)
 
 # NAME
 
-*c3f* - a fast, verified formatter for C3
+*c3f* - a stable, fast, token-based formatter for C3
 
 # SYNOPSIS
 
@@ -11,11 +11,9 @@ C3F(1)
 
 # DESCRIPTION
 
-*c3f* formats C3 source files. It changes only the whitespace between tokens (and, if you
-ask for it, the order of imports): the tokens and comments of the output are those of the
-input, which *c3f* checks by lexing the result again. A place it cannot verify, or that is
-unbalanced (a bracket still being typed), is kept as written, so it is safe to run on a file
-while editing it.
+*c3f* formats C3 source files and checks every result by lexing it again and comparing it,
+token by token, with the input. A place it cannot verify, or that is unbalanced (a bracket
+still being typed), is kept as written, so it is safe to run on a file while editing it.
 
 With one file and none of *-w*, *--check* and *--diff*, the formatted file is written to
 standard output. With *-*, standard input is read and the result written to standard output.
