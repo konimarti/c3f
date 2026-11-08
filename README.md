@@ -1,14 +1,15 @@
 # c3f
 
-A stable, fast, token-based formatter for [C3](https://c3-lang.org).
+A fast, token-based formatter for [C3](https://c3-lang.org).
+
+- **Token-based.** It works on tokens, not a grammar, so half-typed code and new syntax do not stop it.
+- **Fast.** The whole standard library in 0.13 s, and in 0.30 s wrapped at 120 columns.
 
 - **Stable.** Formatting twice gives the same bytes: no flapping in CI, no fights with format-on-save.
-- **Fast.** The whole standard library in 0.13 s, and in 0.30 s wrapped at 120 columns.
-- **Token-based.** It works on tokens, not a grammar, so half-typed code and new syntax do not stop it.
 - **Verified.** Every result is lexed again and compared, token by token, with your code.
+
 - **Stdlib style.** Spacing rules learned from the C3 standard library itself.
-- **Optimal wrapping.** Line breaks are determined by a dynamic programming algorithm
-  ([Yelland](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf), as in Google's rfmt). Opt-in.
+- **Optimal wrapping.** Line breaks are determined by a dynamic programming algorithm ([Yelland](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf), as in Google's rfmt). Opt-in.
 
 Format on save, `.editorconfig`, presets, import sorting and a git hook are included.
 
