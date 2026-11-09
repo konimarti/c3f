@@ -265,8 +265,9 @@ fn bool Src.is_type_star(&self, sz s)
 fn bool Src.closes_type(&self, sz r)
 {
 	Tok* t = &self.toks[r];
-	if (t.match == NO || t.match == 0) return false;
-	sz b = t.match - 1;
+	if (t.match == NO) return false;
+	sz b = self.prev_code(t.match);
+	if (b == NO) return false;
 	switch (self.toks[b].type)
 	{
 		case RBRACKET: case RVEC: case RBRACE: return self.closes_type(b);
