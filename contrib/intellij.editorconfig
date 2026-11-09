@@ -59,3 +59,7 @@ max_line_length = off
 c3f_sort_imports = off
 insert_final_newline = false
 end_of_line = keep
+
+# Known differences: where the plugin has no spacing rule it leaves what was written, and c3f still
+# normalizes: a space after a cast (c3f_space_after_cast), the spaces around ?: and the space in
+# (Type){ ... } compound literals. The plugin also leaves a run of spaces where it has no rule.
