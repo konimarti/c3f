@@ -11,7 +11,7 @@ enum BraceStyle : char { ALLMAN, KNR, LINUX }   // LINUX: function bodies Allman
 enum ElseStyle : char { FOLLOW, OWN_LINE, CUDDLE }
 enum WhileStyle : char { KEEP, OWN_LINE, CUDDLE }
 enum OneLineBlocks : char { KEEP, EXPAND }
-enum Continuation : char { KEEP, TAB, ALIGN, FLUSH }
+enum Continuation : char { KEEP, TAB, ALIGN }
 enum SpacingMode : char { STDLIB, STRICT }
 enum PointerStyle : char { KEEP, TYPE, NAME }
 enum BracketPadding : char { KEEP, NONE, SPACE }
