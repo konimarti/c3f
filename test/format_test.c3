@@ -892,6 +892,8 @@ fn void expand_puts_the_brace_of_an_empty_body_where_the_brace_style_says() @tes
 	check("fn void test() {}\nstruct Writer {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", "fn void test()\n{}\nstruct Writer {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", &linux);
 	// the default leaves an empty body where it is
 	check(src, src);
+	// ... and a one-line block that starts its line keeps its else, as without expand
+	check("fn void f()\n{\n\tif (x)\n\t{ a(); } else { b(); }\n}\n", "fn void f()\n{\n\tif (x)\n\t{ a(); } else { b(); }\n}\n");
 }
 
 fn void man_page_documents_every_option() @test

@@ -233,7 +233,8 @@ fn void Fmt.else_break(&self, sz e)
 	if (e == 0 || self.fixed(e) || s.toks[e - 1].type != RBRACE) return;
 	// `if (x) { a; } else { b; }` on one line stays as it is (unless the block was just expanded)
 	sz open = s.toks[e - 1].match;
-	if (open == NO || (s.toks[open].line == s.toks[e - 1].line && self.out[e - 1].nl == 0 && self.out[open].nl == 0)) return;
+	if (open == NO || (s.toks[open].line == s.toks[e - 1].line && self.out[e - 1].nl == 0
+		&& (self.cfg.one_line_blocks != EXPAND || self.out[open].nl == 0))) return;
 	ElseStyle style = self.cfg.else_style;
 	if (style == FOLLOW) style = self.cfg.brace_style == ALLMAN ? ElseStyle.OWN_LINE : ElseStyle.CUDDLE;
 	if (style == OWN_LINE && self.out[e].nl == 0) self.out[e].nl = 1;
