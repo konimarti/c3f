@@ -114,7 +114,8 @@ fn void Fmt.brace_breaks(&self, sz o)
 	sz m = t.match;
 	if (m == NO || o == 0 || self.fixed(o) || self.fixed(m)) return;
 	bool content = m > o + 1;
-	bool multi = s.toks[m].line > t.line || (content && t.brace == BLOCK && self.cfg.one_line_blocks == EXPAND);
+	// (expand: a block or a type body on one line is written on several)
+	bool multi = s.toks[m].line > t.line || (content && self.cfg.one_line_blocks == EXPAND);
 	if (!multi) return;
 	// a lambda body or a block inside an expression keeps its brace where it is
 	bool in_expression = t.encl != NO && s.toks[t.encl].type != LBRACE;
@@ -141,7 +142,7 @@ fn void Fmt.brace_breaks(&self, sz o)
 }
 
 <*
- Only with `c3f_one_line_blocks = expand`: one statement per line.
+ Only with `c3f_one_line_blocks = expand`: one statement per line, and one member per line in a type body.
  `i` is the token whose end a break may follow; `in_for_header` tells that it is in a `$for` header.
 *>
 fn void Fmt.expand_breaks(&self, sz i, bool in_for_header)
@@ -155,18 +156,23 @@ fn void Fmt.expand_breaks(&self, sz i, bool in_for_header)
 			if (in_for_header || (t.encl != NO && s.toks[t.encl].type != LBRACE)) return;
 			self.break_after(i);
 		case RBRACE:
-			// a block, not a lambda or a block in an expression
+			// a block or a type body, not a lambda or a block in an expression
 			if (t.match == NO) return;
 			Tok* o = &s.toks[t.match];
-			if (o.brace != BLOCK || s.is_lambda_body(t.match)) return;
+			if ((o.brace != BLOCK && o.brace != BODY) || s.is_lambda_body(t.match)) return;
 			if (o.encl != NO && s.toks[o.encl].type != LBRACE) return;
 			self.break_after(i);
+		case COMMA:
+			// a member of an enum body
+			if (t.encl != NO && s.toks[t.encl].type == LBRACE && s.toks[t.encl].brace == BODY) self.break_after(i);
 		case CT_ELSE: case CT_ENDIF: case CT_ENDFOR: case CT_ENDFOREACH: case CT_ENDSWITCH:
 			self.break_after(i);
 		case CT_IF: case CT_FOR: case CT_FOREACH: case CT_SWITCH:
 			// the header's ':' ends the line (the bodies of a `$case` may stay on its line)
 			sz colon = s.header_colon(i, t.type == CT_FOREACH, semicolons: t.type == CT_FOR);
 			if (colon != NO && !self.fixed(colon)) self.break_after(colon);
+		case FAULTDEF:
+			self.break_faultdef(i);
 		case LBRACE:
 			self.break_initializer(i);
 		default:
@@ -184,6 +190,25 @@ fn void Fmt.break_after(&self, sz i)
 	// the `else` or `while` of the statement that has just ended stays after a block
 	if (s.toks[i].type == RBRACE && (nt == ELSE || nt == WHILE)) return;
 	self.out[n].nl = 1;
+}
+
+<* One member per line in `faultdef A, B;` (a single one stays on its line). *>
+fn void Fmt.break_faultdef(&self, sz f)
+{
+	Src* s = self.src;
+	sz last = f;
+	sz commas;
+	for (sz k = f + 1; k < s.len() && s.toks[k].fault_member; k++)
+	{
+		if (s.toks[k].type == COMMA && s.toks[k].encl == s.toks[f].encl) commas++;
+		last = k;
+	}
+	if (commas == 0) return;
+	self.break_after(f);
+	for (sz k = f + 1; k <= last; k++)
+	{
+		if (s.toks[k].type == COMMA && s.toks[k].encl == s.toks[f].encl && !self.fixed(k)) self.break_after(k);
+	}
 }
 
 <*

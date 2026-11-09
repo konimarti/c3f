@@ -852,6 +852,28 @@ fn void expand_starts_a_multi_line_initializer_on_its_own_line() @test
 		"\tint[] z = { 1, 2, };\n}\n", &expand);
 }
 
+fn void expand_writes_type_bodies_on_several_lines() @test
+{
+	c3f::Config expand = c3f::defaults();
+	(void)expand.set("c3f_one_line_blocks", "expand");
+	String src = "struct Point { int x; int y; }\nunion U { int a; float b; }\nenum Dir : int { N, E, S, W, }\nconstdef Foo : int { OK, NOT_FOUND = 404 }\n"
+		"bitstruct Bar : int { int low : 0..7; int high : 8..15; }\nstruct Outer { struct inner { int x; } int y; }\n";
+	String want = "struct Point\n{\n\tint x;\n\tint y;\n}\nunion U\n{\n\tint a;\n\tfloat b;\n}\nenum Dir : int\n{\n\tN,\n\tE,\n\tS,\n\tW,\n}\n"
+		"constdef Foo : int\n{\n\tOK,\n\tNOT_FOUND = 404\n}\n"
+		"bitstruct Bar : int\n{\n\tint low : 0..7;\n\tint high : 8..15;\n}\n"
+		"struct Outer\n{\n\tstruct inner\n\t{\n\t\tint x;\n\t}\n\tint y;\n}\n";
+	check(src, want, &expand);
+	// members on lines of their own already: one member per line, also where two shared a line
+	check("enum Dir : int\n{\n\tN, E,\n\tS\n}\n", "enum Dir : int\n{\n\tN,\n\tE,\n\tS\n}\n", &expand);
+	// parameters of an enum and an empty body are not members
+	check("enum Op : int (String name) { ADD(\"a\"), SUB(\"b\") }\n", "enum Op : int (String name)\n{\n\tADD(\"a\"),\n\tSUB(\"b\")\n}\n", &expand);
+	check("struct Empty {}\n", "struct Empty {}\n", &expand);
+	// a faultdef with several members gets one per line, a single one stays
+	check("faultdef A, B;\nfaultdef C;\n", "faultdef\n\tA,\n\tB;\nfaultdef C;\n", &expand);
+	// the default writes them as they are
+	check(src, src);
+}
+
 fn void man_page_documents_every_option() @test
 {
 	const String MAN = (String)$embed("../c3f.1.scd");

@@ -133,6 +133,9 @@ Values are given with their default first.
 	*$case* or *case* on the line of its label stays, as does a single *if (x) return;*. A
 	multi-line initializer starts its elements on the line after its *{*, and its *}* goes on a
 	line of its own after a trailing comma; an initializer on one line is not touched.
+	The body of a *struct*, *union*, *enum*, *constdef*, *bitstruct* or *interface* written on
+	one line is written on several, one member or enum value per line, and so is a *faultdef*
+	with more than one member.
 
 *c3f_case_indent* = indent | flush
 	Indent *case* under *switch*, or put it in the same column.
