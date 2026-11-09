@@ -406,7 +406,11 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 		case KEEP:
 			// relative to the line the statement started on (none: one level, as `tab` does)
 			if (!f.has_head) nextcase TAB;
-			return { base.levels, base.extra.tconcat(self.relative(s.indent_of(i), f.head_src)) };
+			String extra = self.relative(s.indent_of(i), f.head_src);
+			// inside an initializer that opened on an earlier line and has no lines of its own
+			// (`= { { 1, 2 },` then `{ 3, 4 },`): at least one level in, a closer excepted
+			if (extra.len == 0 && !(is_closer(t.type) && i == j) && self.in_open_initializer(t.encl)) return base.deeper();
+			return { base.levels, base.extra.tconcat(extra) };
 		case ALIGN:
 			sz o = t.encl;
 			// (under the first token after the opener; not under a comment there, which aligning moves)
@@ -421,6 +425,14 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 		case TAB:
 			return is_closer(t.type) && i == j ? base : base.deeper();
 	}
+}
+
+<* Is o the '{' of an initializer whose first line carries elements, so that no frame was opened for it? *>
+fn bool Fmt.in_open_initializer(&self, sz o)
+{
+	if (o == NO) return false;
+	Tok* b = &self.src.toks[o];
+	return b.type == LBRACE && b.brace == INIT && !self.opens_lines(o);
 }
 
 <* Are tokens i..j on one output line? *>

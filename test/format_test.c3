@@ -782,6 +782,26 @@ fn void a_pointer_after_a_type_suffix_stays_tight() @test
 	check("fn void f()\n{\n\tList{int}[2]* d;\n}\n", "fn void f()\n{\n\tList{int}[2] *d;\n}\n", &name);
 }
 
+fn void lines_inside_an_initializer_opened_on_the_first_line_are_indented() @test
+{
+	String want = "fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t\t{ 2, 3 },\n\t\t{ 4, 5 },\n\t};\n"
+		"\tFoo w = { .a = 1,\n\t\t.b = 2 };\n\tfoo({ 1,\n\t\t2 });\n}\n"
+		"int[2][*] g = { { 1, 2 },\n\t{ 2, 3 },\n};\n";
+	String src = "fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t{ 2, 3 },\n\t{ 4, 5 },\n\t};\n"
+		"\tFoo w = { .a = 1,\n\t.b = 2 };\n\tfoo({ 1,\n\t2 });\n}\n"
+		"int[2][*] g = { { 1, 2 },\n{ 2, 3 },\n};\n";
+	check(src, want);
+	check(want, want);
+	c3f::Config knr = c3f::defaults();
+	(void)knr.set("c3f_style", "knr");
+	check("fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t{ 2, 3 },\n\t};\n}\n",
+	      "fn void f() {\n\tint[2][*] x = { { 1, 2 },\n\t\t{ 2, 3 },\n\t};\n}\n", &knr);
+	c3f::Config strict = c3f::defaults();
+	(void)strict.set("c3f_style", "strict");
+	check("fn void f()\n{\n\tint[2][*] x = {{ 1, 2 },\n\t{ 2, 3 },\n\t};\n}\n",
+	      "fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t\t{ 2, 3 },\n\t};\n}\n", &strict);
+}
+
 fn void man_page_documents_every_option() @test
 {
 	const String MAN = (String)$embed("../c3f.1.scd");
