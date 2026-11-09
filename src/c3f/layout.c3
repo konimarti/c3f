@@ -79,8 +79,10 @@ fn void Fmt.breaks(&self)
 			o.verbatim = true;
 			continue;
 		}
-		if (o.nl > c.max_blank_lines + 1) o.nl = c.max_blank_lines + 1;
-		if (o.nl > 1 && c.trim_block_blanks && (s.toks[i - 1].type == LBRACE || t.type == RBRACE)) o.nl = 1;
+		sz limit = self.blank_limit(i);
+		if (o.nl > limit + 1) o.nl = limit + 1;
+		bool rbrace_limited = t.type == RBRACE && c.blank_lines_before_rbrace != COMMON_LIMIT && self.is_block_close(i);
+		if (o.nl > 1 && c.trim_block_blanks && !rbrace_limited && (s.toks[i - 1].type == LBRACE || t.type == RBRACE)) o.nl = 1;
 		if (s.toks[i - 1].type == LINE_COMMENT && o.nl == 0) o.nl = 1;
 	}
 	sz for_colon = NO;   // the ':' that ends the header of the `$for` being passed
@@ -102,6 +104,35 @@ fn void Fmt.breaks(&self)
 	}
 	// the spacing rules look at line breaks: let them see these, as the next run will
 	for (sz i = 1; i < s.len(); i++) s.toks[i].nl = self.out[i].nl;
+}
+
+<* Is the '}' at i the end of a block or a type body (not of an initializer or generic arguments)? *>
+fn bool Fmt.is_block_close(&self, sz i)
+{
+	sz m = self.src.toks[i].match;
+	return m != NO && (self.src.toks[m].brace == BLOCK || self.src.toks[m].brace == BODY);
+}
+
+<*
+ How many blank lines may stand in the gap before token i: the limit for what is before a closing brace,
+ else for declarations (the top level and type bodies) or for code, each following c3f_max_blank_lines unless set.
+*>
+fn sz Fmt.blank_limit(&self, sz i)
+{
+	Src* s = self.src;
+	Config* c = self.cfg;
+	Tok* t = &s.toks[i];
+	sz limit = c.max_blank_lines;
+	if (t.type == RBRACE && self.is_block_close(i))
+	{
+		if (c.blank_lines_before_rbrace != COMMON_LIMIT) return c.blank_lines_before_rbrace;
+		sz o = t.match;   // (the container of what is before it: the body itself)
+		return s.toks[o].brace == BODY ? (c.blank_lines_declarations == COMMON_LIMIT ? limit : c.blank_lines_declarations) : (c.blank_lines_code == COMMON_LIMIT ? limit : c.blank_lines_code);
+	}
+	sz e = t.encl;
+	bool declarations = e == NO || (s.toks[e].type == LBRACE && s.toks[e].brace == BODY);
+	sz own = declarations ? c.blank_lines_declarations : c.blank_lines_code;
+	return own == COMMON_LIMIT ? limit : own;
 }
 
 fn bool Fmt.fixed(&self, sz i) @inline => i >= self.src.len() || self.src.toks[i].keep;
