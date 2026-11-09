@@ -261,6 +261,20 @@ fn bool Src.is_type_star(&self, sz s)
 	return v;
 }
 
+<* Does the ']', '>]' or '}' at r end a type (`int[2]`, `Foo{int}`, `List{int}[2]`, `int*[4]`)? *>
+fn bool Src.closes_type(&self, sz r)
+{
+	Tok* t = &self.toks[r];
+	if (t.match == NO || t.match == 0) return false;
+	sz b = t.match - 1;
+	switch (self.toks[b].type)
+	{
+		case RBRACKET: case RVEC: case RBRACE: return self.closes_type(b);
+		case STAR: return self.is_type_star(b);
+		default: return is_type_token(self.toks[b].type);
+	}
+}
+
 fn bool Src.type_star_uncached(&self, sz s)
 {
 	if (s == 0 || s + 1 >= self.len() || self.toks[s].type != STAR) return false;
@@ -269,8 +283,7 @@ fn bool Src.type_star_uncached(&self, sz s)
 	switch (p.type)
 	{
 		case STAR: typed = self.is_type_star(s - 1);
-		case RBRACKET: case RVEC: case RBRACE:
-			typed = p.match != NO && p.match > 0 && is_type_token(self.toks[p.match - 1].type);
+		case RBRACKET: case RVEC: case RBRACE: typed = self.closes_type(s - 1);
 		default: typed = is_type_token(p.type);
 	}
 	if (!typed) return false;
@@ -490,6 +503,9 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	// `s[a:b]`: in strict mode a slice's ':' sits tight (the stdlib writes both `[a:b]` and `[a : b]`)
 	if (cfg.spacing == STRICT && ((next.type == COLON && self.is_slice_colon(i)) || (prev.type == COLON && self.is_slice_colon(i - 1)))) return NONE;
 	if (prev.type == RPAREN && self.is_cast_close(i - 1)) return cfg.space_after_cast ? Space.ONE : Space.NONE;
+	// `int[2]*? p`: the star of a nullable pointer type after a suffix is left as written, as after `Foo`
+	if (next.type == STAR && i + 1 < self.len() && self.toks[i + 1].type == QUESTION
+		&& (prev.type == RBRACKET || prev.type == RVEC || prev.type == RBRACE) && self.closes_type(i - 1)) return KEEP;
 	if (cfg.pointer_style == KEEP)
 	{
 		if ((next.type == STAR && self.is_type_star(i)) || (prev.type == STAR && self.is_type_star(i - 1))) return KEEP;

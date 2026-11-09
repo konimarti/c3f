@@ -771,6 +771,17 @@ fn void split_writes_one_module_per_import() @test
 }
 
 <* The man page must describe every option, with every value the option takes. *>
+fn void a_pointer_after_a_type_suffix_stays_tight() @test
+{
+	String src = "fn void f(List{int}[2]*? c)\n{\n\tint[2]*? a;\n\tint[<2>]*? b = (int[2]*?)p;\n\tList{int}[2]* d;\n"
+		"\tx = v[2] * k;\n\ty = w[<1>] * 2;\n\tz = arr[i] * b ?: 0;\n}\n";
+	check(src, src);
+	c3f::Config name = c3f::defaults();
+	(void)name.set("c3f_pointer_style", "name");
+	check("fn void f()\n{\n\tint[2]*? a;\n\tx = v[2] * k;\n}\n", "fn void f()\n{\n\tint[2]*? a;\n\tx = v[2] * k;\n}\n", &name);
+	check("fn void f()\n{\n\tList{int}[2]* d;\n}\n", "fn void f()\n{\n\tList{int}[2] *d;\n}\n", &name);
+}
+
 fn void man_page_documents_every_option() @test
 {
 	const String MAN = (String)$embed("../c3f.1.scd");
