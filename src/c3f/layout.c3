@@ -547,6 +547,10 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 				if (pad > 0) return { line.levels, line.extra.tconcat(spaces(pad)) };
 			}
 			nextcase TAB;
+		case FLUSH:
+			// at the statement's indent, but one level in inside an initializer that opened on an earlier line
+			if (!(is_closer(t.type) && i == j) && self.in_open_initializer(t.encl)) return base.deeper();
+			return base;
 		case TAB:
 			return is_closer(t.type) && i == j ? base : base.deeper();
 	}

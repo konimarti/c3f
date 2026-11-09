@@ -146,9 +146,10 @@ Values are given with their default first.
 	The contents of *$if*, *$switch* and *$foreach* blocks: as written, indented, or at the
 	level of the directive.
 
-*c3f_continuation* = keep | tab | align
-	How the lines of a broken statement are continued: as written, one more level, or
-	aligned under the opening bracket.
+*c3f_continuation* = keep | tab | align | flush
+	How the lines of a broken statement are continued: as written, one more level, aligned
+	under the opening bracket, or at the indent of the statement itself (*flush*; the lines of an
+	initializer that opened on an earlier line are still one level in).
 
 *c3f_spacing* = stdlib | strict
 	Where the standard library writes both forms (about 0.2% of its spacing), *stdlib*

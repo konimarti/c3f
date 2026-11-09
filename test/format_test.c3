@@ -919,6 +919,14 @@ fn void blank_lines_have_limits_for_declarations_code_and_before_a_closing_brace
 	check(src, "struct S\n{\n\tint a;\n\n\n\tint b;\n}\n\n\nfn void f()\n{\n\tint x;\n\n\n\tint y;\n}\n");
 }
 
+fn void flush_continuation_keeps_broken_lines_at_the_indent_of_the_statement() @test
+{
+	c3f::Config flush = c3f::defaults();
+	(void)flush.set("c3f_continuation", "flush");
+	check("fn void f()\n{\n\tcall(first,\n\t\tsecond,\n\t    third);\n\ttotal = one +\n\t\t\ttwo;\n\tint[2][*] g = { { 1 },\n\t{ 2 },\n\t};\n}\n",
+	      "fn void f()\n{\n\tcall(first,\n\tsecond,\n\tthird);\n\ttotal = one +\n\ttwo;\n\tint[2][*] g = { { 1 },\n\t\t{ 2 },\n\t};\n}\n", &flush);
+}
+
 fn void man_page_documents_every_option() @test
 {
 	const String MAN = (String)$embed("../c3f.1.scd");

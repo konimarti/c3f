@@ -10,7 +10,7 @@ enum Eol : char { KEEP, LF, CRLF }
 enum BraceStyle : char { ALLMAN, KNR, LINUX }   // LINUX: function bodies Allman, everything else K&R
 enum ElseStyle : char { FOLLOW, OWN_LINE, CUDDLE }
 enum OneLineBlocks : char { KEEP, EXPAND }
-enum Continuation : char { KEEP, TAB, ALIGN }
+enum Continuation : char { KEEP, TAB, ALIGN, FLUSH }
 enum SpacingMode : char { STDLIB, STRICT }
 enum PointerStyle : char { KEEP, TYPE, NAME }
 enum BracketPadding : char { KEEP, NONE, SPACE }
