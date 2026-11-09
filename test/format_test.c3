@@ -927,16 +927,6 @@ fn void flush_continuation_keeps_broken_lines_at_the_indent_of_the_statement() @
 	      "fn void f()\n{\n\tcall(first,\n\tsecond,\n\tthird);\n\ttotal = one +\n\ttwo;\n\tint[2][*] g = { { 1 },\n\t\t{ 2 },\n\t};\n}\n", &flush);
 }
 
-fn void comment_spacing_keep_leaves_the_gaps_around_comments() @test
-{
-	c3f::Config keep = c3f::defaults();
-	(void)keep.set("c3f_comment_spacing", "keep");
-	(void)keep.set("c3f_align_comments", "off");
-	String src = "fn void f()\n{\n\tint a = 1;// tight\n\tint b = 2;       // far\n\tx /*c*/ = /*d*/y;\n\tz = 1;/* e */\n}\n";
-	check(src, src, &keep);
-	check(src, "fn void f()\n{\n\tint a = 1; // tight\n\tint b = 2;       // far\n\tx /*c*/ = /*d*/y;\n\tz = 1; /* e */\n}\n");
-}
-
 fn void while_style_places_the_while_of_a_do_loop() @test
 {
 	String own = "fn void f()\n{\n\tdo\n\t{\n\t\tstep();\n\t}\n\twhile (more());\n}\n";

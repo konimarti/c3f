@@ -18,7 +18,6 @@ enum BracketPadding : char { KEEP, NONE, SPACE }
 enum DeclSpacing : char { KEEP, ONE }
 enum AlignMode : char { PRESERVE, DECLS, OFF }
 enum CommentAlign : char { PRESERVE, ALWAYS, OFF }
-enum CommentSpacing : char { NORMALIZE, KEEP }
 enum LineBreaks : char { PRESERVE, WRAP, WRAP_FIT, REFLOW }
 enum SortImports : char { OFF, LINES, LISTS, ALL, SPLIT }
 enum CtIndent : char { KEEP, INDENT, FLUSH }
@@ -50,7 +49,6 @@ struct Config
 	DeclSpacing    decl_spacing;
 	AlignMode      align;
 	CommentAlign   align_comments;
-	CommentSpacing comment_spacing;
 	sz             trailing_comment_spaces;  // before a trailing // comment; 0 = keep
 	LineBreaks     line_breaks;
 	bool           magic_comma;
@@ -93,7 +91,6 @@ enum Key : char (String name)
 	DECL_SPACING         { "c3f_decl_spacing" },
 	ALIGN                { "c3f_align" },
 	ALIGN_COMMENTS       { "c3f_align_comments" },
-	COMMENT_SPACING      { "c3f_comment_spacing" },
 	TRAILING_COMMENT_SPACES { "c3f_trailing_comment_spaces" },
 	LINE_BREAKS          { "c3f_line_breaks" },
 	MAGIC_COMMA          { "c3f_magic_comma" },
@@ -271,7 +268,6 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 		case DECL_SPACING: self.decl_spacing = v == "1" ? ONE : parse_enum(DeclSpacing, v)!;
 		case ALIGN: self.align = parse_enum(AlignMode, v)!;
 		case ALIGN_COMMENTS: self.align_comments = parse_enum(CommentAlign, v)!;
-		case COMMENT_SPACING: self.comment_spacing = parse_enum(CommentSpacing, v)!;
 		case TRAILING_COMMENT_SPACES:
 			self.trailing_comment_spaces = v == "keep" ? 0 : parse_uint(v)!;
 			if ((self.trailing_comment_spaces == 0 && v != "keep") || self.trailing_comment_spaces > 16) return BAD_VALUE~;
@@ -321,7 +317,6 @@ fn String allowed_values(Key k)
 		case DECL_SPACING: return "keep, 1";
 		case ALIGN: return enum_names(AlignMode);
 		case ALIGN_COMMENTS: return enum_names(CommentAlign);
-		case COMMENT_SPACING: return enum_names(CommentSpacing);
 		case TRAILING_COMMENT_SPACES: return "keep, or 1 to 16";
 		case LINE_BREAKS: return enum_names(LineBreaks);
 		case SOFT_MAX_LINE_LENGTH: return "0 (off) to 10000";
@@ -384,7 +379,6 @@ fn String Config.value_text(&self, Key k)
 		case DECL_SPACING: return self.decl_spacing == ONE ? "1" : "keep";
 		case ALIGN: return enum_text(self.align);
 		case ALIGN_COMMENTS: return enum_text(self.align_comments);
-		case COMMENT_SPACING: return enum_text(self.comment_spacing);
 		case TRAILING_COMMENT_SPACES: return self.trailing_comment_spaces ? string::tformat("%d", self.trailing_comment_spaces) : "keep";
 		case LINE_BREAKS: return enum_text(self.line_breaks);
 		case MAGIC_COMMA: return bool_text(self.magic_comma);

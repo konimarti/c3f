@@ -619,12 +619,6 @@ fn void Fmt.space(&self, sz i)
 		o.spacing = " ";     // a line that was joined (brace or else style)
 		return;
 	}
-	// c3f_comment_spacing = keep: the gaps before and after a comment stay as written
-	if (c.comment_spacing == KEEP && (is_comment_type(s.toks[i].type) || is_comment_type(s.toks[i - 1].type)))
-	{
-		o.spacing = gap;
-		return;
-	}
 	Space rule = s.space_rule(i, c);
 	bool comment = is_comment_type(s.toks[i].type);
 	// c3f_trailing_comment_spaces: a fixed distance to a trailing // comment
