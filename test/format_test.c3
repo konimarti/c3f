@@ -946,6 +946,21 @@ fn void the_inner_lines_of_a_comment_can_stay_where_they_are() @test
 	check("fn void f()\n{\n    /* first\n       second */\n}\n", "fn void f()\n{\n\t/* first\n\t   second */\n}\n");
 }
 
+fn void while_style_places_the_while_of_a_do_loop() @test
+{
+	String own = "fn void f()\n{\n\tdo\n\t{\n\t\tstep();\n\t}\n\twhile (more());\n}\n";
+	String cud = "fn void f()\n{\n\tdo\n\t{\n\t\tstep();\n\t} while (more());\n}\n";
+	check(own, own);
+	check(cud, cud);
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_while_style", "own_line");
+	check(cud, own, &c);
+	(void)c.set("c3f_while_style", "cuddle");
+	check(own, cud, &c);
+	// the while loop after a block is not a do loop
+	check("fn void f()\n{\n\t{\n\t\tstep();\n\t}\n\twhile (more()) step();\n}\n", "fn void f()\n{\n\t{\n\t\tstep();\n\t}\n\twhile (more()) step();\n}\n", &c);
+}
+
 fn void man_page_documents_every_option() @test
 {
 	const String MAN = (String)$embed("../c3f.1.scd");

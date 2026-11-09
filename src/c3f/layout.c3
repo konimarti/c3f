@@ -93,6 +93,7 @@ fn void Fmt.breaks(&self)
 		{
 			case LBRACE: self.brace_breaks(i);
 			case ELSE: self.else_break(i);
+			case WHILE: self.while_break(i);
 			default:
 		}
 		if (c.one_line_blocks == EXPAND && !self.fixed(i))
@@ -256,6 +257,17 @@ fn void Fmt.break_initializer(&self, sz o)
 	self.break_after(o);
 	sz p = s.prev_code(m);
 	if (s.type_at(p) == COMMA && self.out[m].nl == 0 && !self.fixed(m)) self.out[m].nl = 1;
+}
+
+<* The `while` after the body of a `do`: on the line of the '}' or on a line of its own (c3f_while_style). *>
+fn void Fmt.while_break(&self, sz w)
+{
+	Src* s = self.src;
+	if (w == 0 || self.cfg.while_style == KEEP || self.fixed(w) || s.toks[w - 1].type != RBRACE) return;
+	sz open = s.toks[w - 1].match;
+	if (open == NO || s.type_at(s.prev_code(open)) != DO) return;
+	if (self.cfg.while_style == OWN_LINE && self.out[w].nl == 0) self.out[w].nl = 1;
+	if (self.cfg.while_style == CUDDLE) self.out[w].nl = 0;
 }
 
 fn void Fmt.else_break(&self, sz e)

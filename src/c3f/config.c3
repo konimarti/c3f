@@ -9,6 +9,7 @@ enum IndentStyle : char { TAB, SPACE }
 enum Eol : char { KEEP, LF, CRLF }
 enum BraceStyle : char { ALLMAN, KNR, LINUX }   // LINUX: function bodies Allman, everything else K&R
 enum ElseStyle : char { FOLLOW, OWN_LINE, CUDDLE }
+enum WhileStyle : char { KEEP, OWN_LINE, CUDDLE }
 enum OneLineBlocks : char { KEEP, EXPAND }
 enum Continuation : char { KEEP, TAB, ALIGN, FLUSH }
 enum SpacingMode : char { STDLIB, STRICT }
@@ -32,6 +33,7 @@ struct Config
 	sz             max_line_length;          // 0 = off
 	BraceStyle     brace_style;
 	ElseStyle      else_style;
+	WhileStyle     while_style;
 	OneLineBlocks  one_line_blocks;
 	bool           case_indent;
 	CtIndent       ct_indent;
@@ -75,6 +77,7 @@ enum Key : char (String name)
 	MAX_LINE_LENGTH      { "max_line_length" },
 	BRACE_STYLE          { "c3f_brace_style" },
 	ELSE_STYLE           { "c3f_else_style" },
+	WHILE_STYLE          { "c3f_while_style" },
 	ONE_LINE_BLOCKS      { "c3f_one_line_blocks" },
 	CASE_INDENT          { "c3f_case_indent" },
 	CT_INDENT            { "c3f_ct_indent" },
@@ -251,6 +254,7 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 			if ((self.max_line_length == 0 && v != "off") || self.max_line_length > MAX_COLUMNS) return BAD_VALUE~;
 		case BRACE_STYLE: self.brace_style = parse_enum(BraceStyle, v)!;
 		case ELSE_STYLE: self.else_style = parse_enum(ElseStyle, v)!;
+		case WHILE_STYLE: self.while_style = parse_enum(WhileStyle, v)!;
 		case ONE_LINE_BLOCKS: self.one_line_blocks = parse_enum(OneLineBlocks, v)!;
 		case CASE_INDENT: self.case_indent = parse_indent(v)!;
 		case CT_INDENT: self.ct_indent = parse_enum(CtIndent, v)!;
@@ -307,6 +311,7 @@ fn String allowed_values(Key k)
 		case MAX_LINE_LENGTH: return "off, or 1 to 10000";
 		case BRACE_STYLE: return enum_names(BraceStyle);
 		case ELSE_STYLE: return enum_names(ElseStyle);
+		case WHILE_STYLE: return enum_names(WhileStyle);
 		case ONE_LINE_BLOCKS: return enum_names(OneLineBlocks);
 		case CASE_INDENT: return "indent, flush";
 		case CT_INDENT: return enum_names(CtIndent);
@@ -365,6 +370,7 @@ fn String Config.value_text(&self, Key k)
 		case MAX_LINE_LENGTH: return self.max_line_length ? string::tformat("%d", self.max_line_length) : "off";
 		case BRACE_STYLE: return enum_text(self.brace_style);
 		case ELSE_STYLE: return enum_text(self.else_style);
+		case WHILE_STYLE: return enum_text(self.while_style);
 		case ONE_LINE_BLOCKS: return enum_text(self.one_line_blocks);
 		case CASE_INDENT: return self.case_indent ? "indent" : "flush";
 		case CT_INDENT: return enum_text(self.ct_indent);

@@ -125,6 +125,9 @@ Values are given with their default first.
 *c3f_else_style* = follow | own_line | cuddle
 	Where *else* goes: *follow* the brace style, on its own line, or after *}*.
 
+*c3f_while_style* = keep | own_line | cuddle
+	Where the *while* of a *do* loop goes: as written, on its own line, or after the *}*.
+
 *c3f_one_line_blocks* = keep | expand
 	Keep a block written on one line, or put its statements on lines of their own. *expand* also
 	breaks the line after every *;* that ends a statement (not in the header of a *for* or *$for*,
