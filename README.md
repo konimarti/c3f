@@ -181,6 +181,14 @@ c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay mult
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all`, `split` (one module per `import`). |
 | `c3f_align`, `c3f_align_comments` | Keep (`preserve`), apply (`decls`, `always`) or remove (`off`) alignment of declarations and trailing comments. |
 
+### IntelliJ-compatible settings
+
+[`contrib/intellij.editorconfig`](contrib/intellij.editorconfig) is a `.editorconfig` section that
+writes what the C3 plugin for IntelliJ and CLion formats by default (Allman braces, tabs, one statement
+per line, blank lines kept up to two, no wrapping), with a comment on each key saying which plugin
+setting it mirrors and lines for the K&R variant. Where c3f is stricter than the plugin (it also
+normalizes spaces in casts and ternaries, which the plugin leaves as written), the file says so.
+
 All options and their values are in the man page: `man c3f` (source: [`c3f.1.scd`](c3f.1.scd)).
 
 ## License

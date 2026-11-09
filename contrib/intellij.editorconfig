@@ -1,0 +1,61 @@
+# c3f settings that reproduce the default formatting of the C3 plugin for IntelliJ and CLion
+# (c3lang/c3intellij). Copy the section into your .editorconfig. Every key that matters is
+# written out, so the result does not depend on the c3f_style defaults.
+
+[*.{c3,c3i}]
+# base: the spacing rules of c3f's strict preset, which the plugin's operator, comma and bracket spacing matches
+c3f_style = strict
+c3f_spacing = strict
+
+# Code style | Tabs and Indents: use tab character, indent 4, tab size 4
+indent_style = tab
+indent_size = 4
+tab_width = 4
+# the plugin only indents the content of braces, compile-time blocks and case bodies; a line of a broken
+# statement stays at the indent of the statement (the continuation indent setting is not used)
+c3f_continuation = flush
+c3f_case_indent = indent
+c3f_ct_indent = indent
+
+# Wrapping and Braces | Brace style (Default: Allman; C3_BRACE_STYLE)
+c3f_brace_style = allman
+# K&R variant (C3_BRACE_STYLE = K&R): the plugin still breaks the line after every '}', also before else
+# c3f_brace_style = knr
+# a '}' is always followed by a line break, so else and the while of a do loop get lines of their own
+c3f_else_style = own_line
+c3f_while_style = own_line
+# KEEP_SIMPLE_BLOCKS_IN_ONE_LINE is shown in the settings but not read by the formatter: every block,
+# type body and compile-time block is written on lines of their own, one statement per line
+c3f_one_line_blocks = expand
+
+# Blank lines (KEEP_BLANK_LINES_*, default 2 each)
+c3f_max_blank_lines = 2
+# KEEP_BLANK_LINES_IN_DECLARATIONS: top level and the bodies of struct, enum, ...
+c3f_max_blank_lines_declarations = 2
+# KEEP_BLANK_LINES_IN_CODE: function bodies, blocks, initializers
+c3f_max_blank_lines_code = 2
+# KEEP_BLANK_LINES_BEFORE_RBRACE
+c3f_max_blank_lines_before_rbrace = 2
+# blank lines after a '{' are kept like any other (up to the limit above)
+c3f_trim_block_blanks = false
+# the plugin never adds blank lines
+c3f_decl_spacing = keep
+
+# Spacing: one space where the plugin sets one, and no alignment
+c3f_pointer_style = type
+c3f_bracket_padding = keep
+c3f_space_after_cast = false
+c3f_align = off
+c3f_align_comments = preserve
+# spaces before and after comments are kept as written (preserveSpaces)
+c3f_comment_spacing = keep
+c3f_trailing_comment_spaces = keep
+# the inner lines of a multi-line comment are never touched
+c3f_reindent_comments = false
+
+# No wrapping, no import sorting, and nothing is added at the end of the file
+c3f_line_breaks = preserve
+max_line_length = off
+c3f_sort_imports = off
+insert_final_newline = false
+end_of_line = keep
