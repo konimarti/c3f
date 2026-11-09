@@ -49,6 +49,7 @@ struct Config
 	AlignMode      align;
 	CommentAlign   align_comments;
 	CommentSpacing comment_spacing;
+	bool           reindent_comments;       // the inner lines of a multi-line comment move with its first line
 	sz             trailing_comment_spaces;  // before a trailing // comment; 0 = keep
 	LineBreaks     line_breaks;
 	bool           magic_comma;
@@ -91,6 +92,7 @@ enum Key : char (String name)
 	ALIGN                { "c3f_align" },
 	ALIGN_COMMENTS       { "c3f_align_comments" },
 	COMMENT_SPACING      { "c3f_comment_spacing" },
+	REINDENT_COMMENTS    { "c3f_reindent_comments" },
 	TRAILING_COMMENT_SPACES { "c3f_trailing_comment_spaces" },
 	LINE_BREAKS          { "c3f_line_breaks" },
 	MAGIC_COMMA          { "c3f_magic_comma" },
@@ -113,7 +115,7 @@ fn Config defaults()
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .bracket_padding = KEEP,
 		.max_blank_lines = 2, .blank_lines_declarations = COMMON_LIMIT, .blank_lines_code = COMMON_LIMIT,
 		.blank_lines_before_rbrace = COMMON_LIMIT, .trim_block_blanks = true, .decl_spacing = KEEP,
-		.align = PRESERVE, .align_comments = PRESERVE,
+		.align = PRESERVE, .align_comments = PRESERVE, .reindent_comments = true,
 		.line_breaks = PRESERVE, .magic_comma = true,
 		.wrap_cost_soft = 0.05, .wrap_cost_hard = 100, .wrap_cost_break = 2, .wrap_budget = 2000,
 		.sort_imports = OFF, .style = "stdlib",
@@ -268,6 +270,7 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 		case ALIGN: self.align = parse_enum(AlignMode, v)!;
 		case ALIGN_COMMENTS: self.align_comments = parse_enum(CommentAlign, v)!;
 		case COMMENT_SPACING: self.comment_spacing = parse_enum(CommentSpacing, v)!;
+		case REINDENT_COMMENTS: self.reindent_comments = parse_bool(v)!;
 		case TRAILING_COMMENT_SPACES:
 			self.trailing_comment_spaces = v == "keep" ? 0 : parse_uint(v)!;
 			if ((self.trailing_comment_spaces == 0 && v != "keep") || self.trailing_comment_spaces > 16) return BAD_VALUE~;
@@ -300,7 +303,7 @@ fn String allowed_values(Key k)
 		case INDENT_SIZE: return "1 to 16, or tab";
 		case TAB_WIDTH: return "1 to 16";
 		case END_OF_LINE: return enum_names(Eol);
-		case INSERT_FINAL_NEWLINE: case SPACE_AFTER_CAST: case TRIM_BLOCK_BLANKS: case MAGIC_COMMA: return "true, false";
+		case INSERT_FINAL_NEWLINE: case REINDENT_COMMENTS: case SPACE_AFTER_CAST: case TRIM_BLOCK_BLANKS: case MAGIC_COMMA: return "true, false";
 		case MAX_LINE_LENGTH: return "off, or 1 to 10000";
 		case BRACE_STYLE: return enum_names(BraceStyle);
 		case ELSE_STYLE: return enum_names(ElseStyle);
@@ -379,6 +382,7 @@ fn String Config.value_text(&self, Key k)
 		case ALIGN: return enum_text(self.align);
 		case ALIGN_COMMENTS: return enum_text(self.align_comments);
 		case COMMENT_SPACING: return enum_text(self.comment_spacing);
+		case REINDENT_COMMENTS: return bool_text(self.reindent_comments);
 		case TRAILING_COMMENT_SPACES: return self.trailing_comment_spaces ? string::tformat("%d", self.trailing_comment_spaces) : "keep";
 		case LINE_BREAKS: return enum_text(self.line_breaks);
 		case MAGIC_COMMA: return bool_text(self.magic_comma);
