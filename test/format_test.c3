@@ -773,18 +773,18 @@ fn void split_writes_one_module_per_import() @test
 <* The man page must describe every option, with every value the option takes. *>
 fn void a_pointer_after_a_type_suffix_stays_tight() @test
 {
-	String src = "fn void f(List{int}[2]*? c)\n{\n\tint[2]*? a;\n\tint[<2>]*? b = (int[2]*?)p;\n\tList{int}[2]* d;\n"
-		"\tx = v[2] * k;\n\ty = w[<1>] * 2;\n\tz = arr[i] * b ?: 0;\n}\n";
+	String src = "fn void f(List{int}[2]*? c)\n{\n\tchar[8]*? buf;\n\tfloat[<4>]*? vec = (char[8]*?)p;\n\tList{int}[2]* d;\n"
+		"\tx = v[3] * k;\n\ty = w[<2>] * 3;\n\tz = arr[i] * b ?: 0;\n}\n";
 	check(src, src);
 	c3f::Config name = c3f::defaults();
 	(void)name.set("c3f_pointer_style", "name");
-	check("fn void f()\n{\n\tint[2]*? a;\n\tx = v[2] * k;\n}\n", "fn void f()\n{\n\tint[2]*? a;\n\tx = v[2] * k;\n}\n", &name);
+	check("fn void f()\n{\n\tchar[8]*? buf;\n\tx = v[3] * k;\n}\n", "fn void f()\n{\n\tchar[8]*? buf;\n\tx = v[3] * k;\n}\n", &name);
 	check("fn void f()\n{\n\tList{int}[2]* d;\n}\n", "fn void f()\n{\n\tList{int}[2] *d;\n}\n", &name);
 	// a comment before the bracket does not hide the type
-	check("fn void f()\n{\n\tint /*c*/ [2]*? p;\n}\n", "fn void f()\n{\n\tint /*c*/ [2]*? p;\n}\n");
+	check("fn void f()\n{\n\tchar /*c*/ [8]*? p;\n}\n", "fn void f()\n{\n\tchar /*c*/ [8]*? p;\n}\n");
 	// a spaced source is made tight, under every pointer style
-	String loose = "fn void f()\n{\n\tint [2] * ? a;\n\tint [< 2 >] * ? b;\n}\n";
-	String tight = "fn void f()\n{\n\tint[2]*? a;\n\tint[<2>]*? b;\n}\n";
+	String loose = "fn void f()\n{\n\tuint [8] * ? buf;\n\tfloat [< 4 >] * ? vec;\n}\n";
+	String tight = "fn void f()\n{\n\tuint[8]*? buf;\n\tfloat[<4>]*? vec;\n}\n";
 	check(loose, tight);
 	check(loose, tight, &name);
 	c3f::Config strict = c3f::defaults();
@@ -794,22 +794,22 @@ fn void a_pointer_after_a_type_suffix_stays_tight() @test
 
 fn void lines_inside_an_initializer_opened_on_the_first_line_are_indented() @test
 {
-	String want = "fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t\t{ 2, 3 },\n\t\t{ 4, 5 },\n\t};\n"
+	String want = "fn void f()\n{\n\tint[3][*] grid = { { 7, 8 },\n\t\t{ 9, 10 },\n\t\t{ 11, 12 },\n\t};\n"
 		"\tFoo w = { .a = 1,\n\t\t.b = 2 };\n\tfoo({ 1,\n\t\t2 });\n}\n"
-		"int[2][*] g = { { 1, 2 },\n\t{ 2, 3 },\n};\n";
-	String src = "fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t{ 2, 3 },\n\t{ 4, 5 },\n\t};\n"
+		"int[2][*] tab = { { 1, 2 },\n\t{ 3, 4 },\n};\n";
+	String src = "fn void f()\n{\n\tint[3][*] grid = { { 7, 8 },\n\t{ 9, 10 },\n\t{ 11, 12 },\n\t};\n"
 		"\tFoo w = { .a = 1,\n\t.b = 2 };\n\tfoo({ 1,\n\t2 });\n}\n"
-		"int[2][*] g = { { 1, 2 },\n{ 2, 3 },\n};\n";
+		"int[2][*] tab = { { 1, 2 },\n{ 3, 4 },\n};\n";
 	check(src, want);
 	check(want, want);
 	c3f::Config knr = c3f::defaults();
 	(void)knr.set("c3f_style", "knr");
-	check("fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t{ 2, 3 },\n\t};\n}\n",
-	      "fn void f() {\n\tint[2][*] x = { { 1, 2 },\n\t\t{ 2, 3 },\n\t};\n}\n", &knr);
+	check("fn void f()\n{\n\tint[3][*] grid = { { 7, 8 },\n\t{ 9, 10 },\n\t};\n}\n",
+	      "fn void f() {\n\tint[3][*] grid = { { 7, 8 },\n\t\t{ 9, 10 },\n\t};\n}\n", &knr);
 	c3f::Config strict = c3f::defaults();
 	(void)strict.set("c3f_style", "strict");
-	check("fn void f()\n{\n\tint[2][*] x = {{ 1, 2 },\n\t{ 2, 3 },\n\t};\n}\n",
-	      "fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t\t{ 2, 3 },\n\t};\n}\n", &strict);
+	check("fn void f()\n{\n\tint[3][*] grid = {{ 7, 8 },\n\t{ 9, 10 },\n\t};\n}\n",
+	      "fn void f()\n{\n\tint[3][*] grid = { { 7, 8 },\n\t\t{ 9, 10 },\n\t};\n}\n", &strict);
 }
 
 fn void expand_puts_every_statement_on_its_own_line() @test
@@ -846,9 +846,9 @@ fn void expand_starts_a_multi_line_initializer_on_its_own_line() @test
 {
 	c3f::Config expand = c3f::defaults();
 	(void)expand.set("c3f_one_line_blocks", "expand");
-	check("fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t{ 2, 3 },\n\t{ 4, 5 },\n\t};\n\tint[2][*] y = { { 1, 2 },\n\t\t{ 3, 4 } };\n"
+	check("fn void f()\n{\n\tint[3][*] grid = { { 7, 8 },\n\t{ 9, 10 },\n\t{ 11, 12 },\n\t};\n\tint[2][*] pair = { { 1, 2 },\n\t\t{ 3, 4 } };\n"
 		"\tint[] z = { 1, 2, };\n}\n",
-	      "fn void f()\n{\n\tint[2][*] x = {\n\t\t{ 1, 2 },\n\t\t{ 2, 3 },\n\t\t{ 4, 5 },\n\t};\n\tint[2][*] y = {\n\t\t{ 1, 2 },\n\t\t{ 3, 4 } };\n"
+	      "fn void f()\n{\n\tint[3][*] grid = {\n\t\t{ 7, 8 },\n\t\t{ 9, 10 },\n\t\t{ 11, 12 },\n\t};\n\tint[2][*] pair = {\n\t\t{ 1, 2 },\n\t\t{ 3, 4 } };\n"
 		"\tint[] z = { 1, 2, };\n}\n", &expand);
 }
 
@@ -856,19 +856,19 @@ fn void expand_writes_type_bodies_on_several_lines() @test
 {
 	c3f::Config expand = c3f::defaults();
 	(void)expand.set("c3f_one_line_blocks", "expand");
-	String src = "struct Point { int x; int y; }\nunion U { int a; float b; }\nenum Dir : int { N, E, S, W, }\nconstdef Foo : int { OK, NOT_FOUND = 404 }\n"
-		"bitstruct Bar : int { int low : 0..7; int high : 8..15; }\nstruct Outer { struct inner { int x; } int y; }\n";
-	String want = "struct Point\n{\n\tint x;\n\tint y;\n}\nunion U\n{\n\tint a;\n\tfloat b;\n}\nenum Dir : int\n{\n\tN,\n\tE,\n\tS,\n\tW,\n}\n"
-		"constdef Foo : int\n{\n\tOK,\n\tNOT_FOUND = 404\n}\n"
-		"bitstruct Bar : int\n{\n\tint low : 0..7;\n\tint high : 8..15;\n}\n"
+	String src = "struct Vec { int a; int b; }\nunion U { int a; float b; }\nenum Shade : char { DARK, DIM, BRIGHT, }\nconstdef Mode : int { OFF, ON = 7 }\n"
+		"bitstruct Flags : char { bool on : 0; int level : 1..3; }\nstruct Outer { struct inner { int x; } int y; }\n";
+	String want = "struct Vec\n{\n\tint a;\n\tint b;\n}\nunion U\n{\n\tint a;\n\tfloat b;\n}\nenum Shade : char\n{\n\tDARK,\n\tDIM,\n\tBRIGHT,\n}\n"
+		"constdef Mode : int\n{\n\tOFF,\n\tON = 7\n}\n"
+		"bitstruct Flags : char\n{\n\tbool on : 0;\n\tint level : 1..3;\n}\n"
 		"struct Outer\n{\n\tstruct inner\n\t{\n\t\tint x;\n\t}\n\tint y;\n}\n";
 	check(src, want, &expand);
 	// members on lines of their own already: one member per line, also where two shared a line
-	check("enum Dir : int\n{\n\tN, E,\n\tS\n}\n", "enum Dir : int\n{\n\tN,\n\tE,\n\tS\n}\n", &expand);
+	check("enum Shade : char\n{\n\tDARK, DIM,\n\tBRIGHT\n}\n", "enum Shade : char\n{\n\tDARK,\n\tDIM,\n\tBRIGHT\n}\n", &expand);
 	// the parameters of an enum are not members
-	check("enum Op : int (String name) { ADD(\"a\"), SUB(\"b\") }\n", "enum Op : int (String name)\n{\n\tADD(\"a\"),\n\tSUB(\"b\")\n}\n", &expand);
+	check("enum Op : int (String name) { ADD(\"add\"), SUB(\"sub\") }\n", "enum Op : int (String name)\n{\n\tADD(\"add\"),\n\tSUB(\"sub\")\n}\n", &expand);
 	// a faultdef with several members gets one per line, a single one stays
-	check("faultdef A, B;\nfaultdef C;\n", "faultdef\n\tA,\n\tB;\nfaultdef C;\n", &expand);
+	check("faultdef LOST, GONE;\nfaultdef LATE;\n", "faultdef\n\tLOST,\n\tGONE;\nfaultdef LATE;\n", &expand);
 	// the default writes them as they are
 	check(src, src);
 }
@@ -877,19 +877,19 @@ fn void expand_puts_the_brace_of_an_empty_body_where_the_brace_style_says() @tes
 {
 	c3f::Config expand = c3f::defaults();
 	(void)expand.set("c3f_one_line_blocks", "expand");
-	String src = "fn void test() {}\nstruct Writer (OutStream) {}\nfn void f(int x)\n{\n\tif (x) {} else {}\n\tcb = fn void() {};\n\tapply(fn void() {}, 1);\n}\n";
-	check(src, "fn void test()\n{}\nstruct Writer (OutStream)\n{}\nfn void f(int x)\n{\n\tif (x)\n\t{}\n\telse\n\t{}\n\tcb = fn void() {};\n"
+	String src = "fn void noop() {}\nstruct Sink (Stream) {}\nfn void f(int x)\n{\n\tif (x) {} else {}\n\tcb = fn void() {};\n\tapply(fn void() {}, 1);\n}\n";
+	check(src, "fn void noop()\n{}\nstruct Sink (Stream)\n{}\nfn void f(int x)\n{\n\tif (x)\n\t{}\n\telse\n\t{}\n\tcb = fn void() {};\n"
 		"\tapply(fn void() {}, 1);\n}\n", &expand);
-	check("fn void test()\n{}\n", "fn void test()\n{}\n", &expand);
+	check("fn void noop()\n{}\n", "fn void noop()\n{}\n", &expand);
 	// K&R keeps (and joins) it on the line, and linux moves only the brace of a function
 	c3f::Config knr = c3f::defaults();
 	(void)knr.set("c3f_style", "knr");
 	(void)knr.set("c3f_one_line_blocks", "expand");
-	check("fn void test()\n{}\nstruct Writer (OutStream)\n{}\n", "fn void test() {}\nstruct Writer (OutStream) {}\n", &knr);
+	check("fn void noop()\n{}\nstruct Sink (Stream)\n{}\n", "fn void noop() {}\nstruct Sink (Stream) {}\n", &knr);
 	c3f::Config linux = c3f::defaults();
 	(void)linux.set("c3f_brace_style", "linux");
 	(void)linux.set("c3f_one_line_blocks", "expand");
-	check("fn void test() {}\nstruct Writer {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", "fn void test()\n{}\nstruct Writer {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", &linux);
+	check("fn void noop() {}\nstruct Sink {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", "fn void noop()\n{}\nstruct Sink {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", &linux);
 	// the default leaves an empty body where it is
 	check(src, src);
 	// ... and a one-line block that starts its line keeps its else, as without expand
