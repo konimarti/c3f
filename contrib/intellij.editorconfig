@@ -11,34 +11,30 @@ c3f_spacing = strict
 indent_style = tab
 indent_size = 4
 tab_width = 4
-# the plugin only indents the content of braces, compile-time blocks and case bodies; a line of a broken
-# statement stays at the indent of the statement (the continuation indent setting is not used)
-c3f_continuation = flush
+# the plugin's indent rules only give brace contents, compile-time bodies and case bodies a level (C3Block.getIndent
+# returns a normal or no indent), so it adds none to the lines of a broken statement. c3f cannot leave them
+# flush: keep is the closest, it takes their indent from the source instead of adding a level (tab would)
+c3f_continuation = keep
 c3f_case_indent = indent
 c3f_ct_indent = indent
 
 # Wrapping and Braces | Brace style (Default: Allman; C3_BRACE_STYLE)
 c3f_brace_style = allman
-# K&R variant (C3_BRACE_STYLE = K&R): the plugin still breaks the line after every '}', also before else
+# K&R variant (C3_BRACE_STYLE = K&R): C3Block still breaks the line after a '}' (unless a , ; ) ] follows), also before else
 # c3f_brace_style = knr
-# a '}' is always followed by a line break, so else and the while of a do loop get lines of their own
+# after a '}' there is a line break, so else and the while of a do loop get lines of their own
 c3f_else_style = own_line
 c3f_while_style = own_line
-# KEEP_SIMPLE_BLOCKS_IN_ONE_LINE is shown in the settings but not read by the formatter: every block,
-# type body and compile-time block is written on lines of their own, one statement per line
+# KEEP_SIMPLE_BLOCKS_IN_ONE_LINE is shown in the settings, but C3Block and C3SpacingBuilder do not use it: they
+# break after '{' and before '}' of every block and type body and after every ';' (not in a for header)
 c3f_one_line_blocks = expand
 
-# Blank lines (KEEP_BLANK_LINES_*, default 2 each)
+# Blank lines: the plugin has three limits, KEEP_BLANK_LINES_IN_DECLARATIONS, _IN_CODE and _BEFORE_RBRACE
+# (default 2 each); c3f has one limit for all (see the known differences)
 c3f_max_blank_lines = 2
-# KEEP_BLANK_LINES_IN_DECLARATIONS: top level and the bodies of struct, enum, ...
-c3f_max_blank_lines_declarations = 2
-# KEEP_BLANK_LINES_IN_CODE: function bodies, blocks, initializers
-c3f_max_blank_lines_code = 2
-# KEEP_BLANK_LINES_BEFORE_RBRACE
-c3f_max_blank_lines_before_rbrace = 2
-# blank lines after a '{' are kept like any other (up to the limit above)
+# blank lines after a '{' are kept like any other (up to the limit)
 c3f_trim_block_blanks = false
-# the plugin never adds blank lines
+# no blank lines are added
 c3f_decl_spacing = keep
 
 # Spacing: one space where the plugin sets one, and no alignment
@@ -47,19 +43,23 @@ c3f_bracket_padding = keep
 c3f_space_after_cast = false
 c3f_align = off
 c3f_align_comments = preserve
-# spaces before and after comments are kept as written (preserveSpaces)
-c3f_comment_spacing = keep
+# trailing comments: alignment as written (the plugin keeps the spaces before a comment, see the known differences)
 c3f_trailing_comment_spaces = keep
-# the inner lines of a multi-line comment are never touched
-c3f_reindent_comments = false
 
-# No wrapping, no import sorting, and nothing is added at the end of the file
+# No wrapping, no import sorting, no final newline added
 c3f_line_breaks = preserve
 max_line_length = off
 c3f_sort_imports = off
 insert_final_newline = false
 end_of_line = keep
 
-# Known differences: where the plugin has no spacing rule it leaves what was written, and c3f still
-# normalizes: a space after a cast (c3f_space_after_cast), the spaces around ?: and the space in
-# (Type){ ... } compound literals. The plugin also leaves a run of spaces where it has no rule.
+# Known differences (what the plugin does by C3Block, and what c3f does instead):
+# - blank lines: three limits, KEEP_BLANK_LINES_IN_DECLARATIONS / _IN_CODE / _BEFORE_RBRACE, default 2 each;
+#   c3f has one limit (c3f_max_blank_lines) for all.
+# - continuation lines of a broken statement: getIndent gives them no indent; c3f indents them (c3f_continuation).
+# - spaces around comments: the spacing rules keep them as written (preserveSpaces); c3f normalizes them,
+#   at least one space before a comment, and keeps a wide gap only as alignment.
+# - the lines inside a multi-line comment: C3Block has no rule for them; c3f moves them with the comment.
+# - casts, ?: and (Type){ ... }: the plugin sets no space around them (or, for a compound literal after
+#   ')', a space before the initializer list) and leaves what was written; c3f writes (int)x, a ? b : c and (Type){ ... }.
+# - a run of spaces where the plugin has no spacing rule stays; c3f writes one space.
