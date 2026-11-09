@@ -927,6 +927,16 @@ fn void flush_continuation_keeps_broken_lines_at_the_indent_of_the_statement() @
 	      "fn void f()\n{\n\tcall(first,\n\tsecond,\n\tthird);\n\ttotal = one +\n\ttwo;\n\tint[2][*] g = { { 1 },\n\t\t{ 2 },\n\t};\n}\n", &flush);
 }
 
+fn void comment_spacing_keep_leaves_the_gaps_around_comments() @test
+{
+	c3f::Config keep = c3f::defaults();
+	(void)keep.set("c3f_comment_spacing", "keep");
+	(void)keep.set("c3f_align_comments", "off");
+	String src = "fn void f()\n{\n\tint a = 1;// tight\n\tint b = 2;       // far\n\tx /*c*/ = /*d*/y;\n\tz = 1;/* e */\n}\n";
+	check(src, src, &keep);
+	check(src, "fn void f()\n{\n\tint a = 1; // tight\n\tint b = 2;       // far\n\tx /*c*/ = /*d*/y;\n\tz = 1; /* e */\n}\n");
+}
+
 fn void man_page_documents_every_option() @test
 {
 	const String MAN = (String)$embed("../c3f.1.scd");

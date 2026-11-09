@@ -188,6 +188,10 @@ Values are given with their default first.
 *c3f_align_comments* = preserve | always | off
 	The same for trailing comments.
 
+*c3f_comment_spacing* = normalize | keep
+	*keep* leaves the spaces before and after a comment on its line as written, none included;
+	*normalize* writes at least one space before a comment, as the other tokens are spaced.
+
 *c3f_trailing_comment_spaces* = keep
 	*keep*, or 1 to 16. The spaces before a trailing _//_ comment.
 
