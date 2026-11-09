@@ -937,15 +937,6 @@ fn void comment_spacing_keep_leaves_the_gaps_around_comments() @test
 	check(src, "fn void f()\n{\n\tint a = 1; // tight\n\tint b = 2;       // far\n\tx /*c*/ = /*d*/y;\n\tz = 1; /* e */\n}\n");
 }
 
-fn void the_inner_lines_of_a_comment_can_stay_where_they_are() @test
-{
-	c3f::Config stay = c3f::defaults();
-	(void)stay.set("c3f_reindent_comments", "false");
-	String src = "fn void f()\n{\nint x;\n/* first\n      second\n   third */\n}\n";
-	check(src, "fn void f()\n{\n\tint x;\n\t/* first\n      second\n   third */\n}\n", &stay);
-	check("fn void f()\n{\n    /* first\n       second */\n}\n", "fn void f()\n{\n\t/* first\n\t   second */\n}\n");
-}
-
 fn void while_style_places_the_while_of_a_do_loop() @test
 {
 	String own = "fn void f()\n{\n\tdo\n\t{\n\t\tstep();\n\t}\n\twhile (more());\n}\n";

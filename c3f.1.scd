@@ -195,10 +195,6 @@ Values are given with their default first.
 	*keep* leaves the spaces before and after a comment on its line as written, none included;
 	*normalize* writes at least one space before a comment, as the other tokens are spaced.
 
-*c3f_reindent_comments* = true | false
-	Move the inner lines of a multi-line comment with its first line when its indentation
-	changes (only if all of them start with the old indentation), or leave them as written.
-
 *c3f_trailing_comment_spaces* = keep
 	*keep*, or 1 to 16. The spaces before a trailing _//_ comment.
 
