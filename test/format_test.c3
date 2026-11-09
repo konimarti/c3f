@@ -865,12 +865,32 @@ fn void expand_writes_type_bodies_on_several_lines() @test
 	check(src, want, &expand);
 	// members on lines of their own already: one member per line, also where two shared a line
 	check("enum Dir : int\n{\n\tN, E,\n\tS\n}\n", "enum Dir : int\n{\n\tN,\n\tE,\n\tS\n}\n", &expand);
-	// parameters of an enum and an empty body are not members
+	// the parameters of an enum are not members
 	check("enum Op : int (String name) { ADD(\"a\"), SUB(\"b\") }\n", "enum Op : int (String name)\n{\n\tADD(\"a\"),\n\tSUB(\"b\")\n}\n", &expand);
-	check("struct Empty {}\n", "struct Empty {}\n", &expand);
 	// a faultdef with several members gets one per line, a single one stays
 	check("faultdef A, B;\nfaultdef C;\n", "faultdef\n\tA,\n\tB;\nfaultdef C;\n", &expand);
 	// the default writes them as they are
+	check(src, src);
+}
+
+fn void expand_puts_the_brace_of_an_empty_body_where_the_brace_style_says() @test
+{
+	c3f::Config expand = c3f::defaults();
+	(void)expand.set("c3f_one_line_blocks", "expand");
+	String src = "fn void test() {}\nstruct Writer (OutStream) {}\nfn void f(int x)\n{\n\tif (x) {} else {}\n\tcb = fn void() {};\n\tapply(fn void() {}, 1);\n}\n";
+	check(src, "fn void test()\n{}\nstruct Writer (OutStream)\n{}\nfn void f(int x)\n{\n\tif (x)\n\t{}\n\telse\n\t{}\n\tcb = fn void() {};\n"
+		"\tapply(fn void() {}, 1);\n}\n", &expand);
+	check("fn void test()\n{}\n", "fn void test()\n{}\n", &expand);
+	// K&R keeps (and joins) it on the line, and linux moves only the brace of a function
+	c3f::Config knr = c3f::defaults();
+	(void)knr.set("c3f_style", "knr");
+	(void)knr.set("c3f_one_line_blocks", "expand");
+	check("fn void test()\n{}\nstruct Writer (OutStream)\n{}\n", "fn void test() {}\nstruct Writer (OutStream) {}\n", &knr);
+	c3f::Config linux = c3f::defaults();
+	(void)linux.set("c3f_brace_style", "linux");
+	(void)linux.set("c3f_one_line_blocks", "expand");
+	check("fn void test() {}\nstruct Writer {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", "fn void test()\n{}\nstruct Writer {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", &linux);
+	// the default leaves an empty body where it is
 	check(src, src);
 }
 

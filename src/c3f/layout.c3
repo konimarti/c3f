@@ -114,8 +114,9 @@ fn void Fmt.brace_breaks(&self, sz o)
 	sz m = t.match;
 	if (m == NO || o == 0 || self.fixed(o) || self.fixed(m)) return;
 	bool content = m > o + 1;
-	// (expand: a block or a type body on one line is written on several)
-	bool multi = s.toks[m].line > t.line || (content && self.cfg.one_line_blocks == EXPAND);
+	// (expand: a block or a type body on one line is written on several; an empty one only gets its brace placed)
+	bool expand = self.cfg.one_line_blocks == EXPAND;
+	bool multi = s.toks[m].line > t.line || expand;
 	if (!multi) return;
 	// a lambda body or a block inside an expression keeps its brace where it is
 	bool in_expression = t.encl != NO && s.toks[t.encl].type != LBRACE;
@@ -232,7 +233,7 @@ fn void Fmt.else_break(&self, sz e)
 	if (e == 0 || self.fixed(e) || s.toks[e - 1].type != RBRACE) return;
 	// `if (x) { a; } else { b; }` on one line stays as it is (unless the block was just expanded)
 	sz open = s.toks[e - 1].match;
-	if (open == NO || (s.toks[open].line == s.toks[e - 1].line && self.out[e - 1].nl == 0)) return;
+	if (open == NO || (s.toks[open].line == s.toks[e - 1].line && self.out[e - 1].nl == 0 && self.out[open].nl == 0)) return;
 	ElseStyle style = self.cfg.else_style;
 	if (style == FOLLOW) style = self.cfg.brace_style == ALLMAN ? ElseStyle.OWN_LINE : ElseStyle.CUDDLE;
 	if (style == OWN_LINE && self.out[e].nl == 0) self.out[e].nl = 1;

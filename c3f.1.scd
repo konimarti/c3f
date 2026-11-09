@@ -135,7 +135,9 @@ Values are given with their default first.
 	line of its own after a trailing comma; an initializer on one line is not touched.
 	The body of a *struct*, *union*, *enum*, *constdef*, *bitstruct* or *interface* written on
 	one line is written on several, one member or enum value per line, and so is a *faultdef*
-	with more than one member.
+	with more than one member. The braces of an empty body are placed as the brace style says
+	(Allman: *fn void f()* and *{}* on the next line; K&R: *{}* on the line); the *{}* stays
+	together, and a lambda keeps its braces where they are.
 
 *c3f_case_indent* = indent | flush
 	Indent *case* under *switch*, or put it in the same column.
