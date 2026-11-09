@@ -780,6 +780,14 @@ fn void a_pointer_after_a_type_suffix_stays_tight() @test
 	(void)name.set("c3f_pointer_style", "name");
 	check("fn void f()\n{\n\tint[2]*? a;\n\tx = v[2] * k;\n}\n", "fn void f()\n{\n\tint[2]*? a;\n\tx = v[2] * k;\n}\n", &name);
 	check("fn void f()\n{\n\tList{int}[2]* d;\n}\n", "fn void f()\n{\n\tList{int}[2] *d;\n}\n", &name);
+	// a spaced source is made tight, under every pointer style
+	String loose = "fn void f()\n{\n\tint [2] * ? a;\n\tint [< 2 >] * ? b;\n}\n";
+	String tight = "fn void f()\n{\n\tint[2]*? a;\n\tint[<2>]*? b;\n}\n";
+	check(loose, tight);
+	check(loose, tight, &name);
+	c3f::Config strict = c3f::defaults();
+	(void)strict.set("c3f_style", "strict");
+	check(loose, tight, &strict);
 }
 
 fn void lines_inside_an_initializer_opened_on_the_first_line_are_indented() @test

@@ -503,9 +503,9 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	// `s[a:b]`: in strict mode a slice's ':' sits tight (the stdlib writes both `[a:b]` and `[a : b]`)
 	if (cfg.spacing == STRICT && ((next.type == COLON && self.is_slice_colon(i)) || (prev.type == COLON && self.is_slice_colon(i - 1)))) return NONE;
 	if (prev.type == RPAREN && self.is_cast_close(i - 1)) return cfg.space_after_cast ? Space.ONE : Space.NONE;
-	// `int[2]*? p`: the star of a nullable pointer type after a suffix is left as written, as after `Foo`
+	// `int[2]*? p`: a nullable pointer type is tight after a suffix too, as `Foo*? p`
 	if (next.type == STAR && i + 1 < self.len() && self.toks[i + 1].type == QUESTION
-		&& (prev.type == RBRACKET || prev.type == RVEC || prev.type == RBRACE) && self.closes_type(i - 1)) return KEEP;
+		&& (prev.type == RBRACKET || prev.type == RVEC || prev.type == RBRACE) && self.closes_type(i - 1)) return NONE;
 	if (cfg.pointer_style == KEEP)
 	{
 		if ((next.type == STAR && self.is_type_star(i)) || (prev.type == STAR && self.is_type_star(i - 1))) return KEEP;
