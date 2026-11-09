@@ -126,7 +126,13 @@ Values are given with their default first.
 	Where *else* goes: *follow* the brace style, on its own line, or after *}*.
 
 *c3f_one_line_blocks* = keep | expand
-	Keep a block written on one line, or put its statements on lines of their own.
+	Keep a block written on one line, or put its statements on lines of their own. *expand* also
+	breaks the line after every *;* that ends a statement (not in the header of a *for* or *$for*,
+	and not before a comment), and after the *}* of a block. In a compile-time block the header,
+	*$else* and *$endif* (and the other end keywords) stand alone on their lines; the body of a
+	*$case* or *case* on the line of its label stays, as does a single *if (x) return;*. A
+	multi-line initializer starts its elements on the line after its *{*, and its *}* goes on a
+	line of its own after a trailing comma; an initializer on one line is not touched.
 
 *c3f_case_indent* = indent | flush
 	Indent *case* under *switch*, or put it in the same column.

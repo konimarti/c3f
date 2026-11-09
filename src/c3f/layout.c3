@@ -83,6 +83,7 @@ fn void Fmt.breaks(&self)
 		if (o.nl > 1 && c.trim_block_blanks && (s.toks[i - 1].type == LBRACE || t.type == RBRACE)) o.nl = 1;
 		if (s.toks[i - 1].type == LINE_COMMENT && o.nl == 0) o.nl = 1;
 	}
+	sz for_colon = NO;   // the ':' that ends the header of the `$for` being passed
 	for (sz i = 0; i < s.len(); i++)
 	{
 		Tok* t = &s.toks[i];
@@ -91,6 +92,11 @@ fn void Fmt.breaks(&self)
 			case LBRACE: self.brace_breaks(i);
 			case ELSE: self.else_break(i);
 			default:
+		}
+		if (c.one_line_blocks == EXPAND && !self.fixed(i))
+		{
+			if (t.type == CT_FOR) for_colon = s.header_colon(i, false, semicolons: true);
+			self.expand_breaks(i, i < for_colon);
 		}
 		if (c.decl_spacing == ONE) self.decl_break(i);
 	}
@@ -132,6 +138,67 @@ fn void Fmt.brace_breaks(&self, sz o)
 	bool code_follows = k == o + 1 || (k < m && self.out[k].nl == 0);
 	if (self.out[o + 1].nl == 0 && code_follows && !self.fixed(o + 1)) self.out[o + 1].nl = 1;
 	if (self.out[m].nl == 0) self.out[m].nl = 1;
+}
+
+<*
+ Only with `c3f_one_line_blocks = expand`: one statement per line.
+ `i` is the token whose end a break may follow; `in_for_header` tells that it is in a `$for` header.
+*>
+fn void Fmt.expand_breaks(&self, sz i, bool in_for_header)
+{
+	Src* s = self.src;
+	Tok* t = &s.toks[i];
+	switch (t.type)
+	{
+		case EOS:
+			// not in a `for (;;)` or `$for` header; a statement of a body is what ends here
+			if (in_for_header || (t.encl != NO && s.toks[t.encl].type != LBRACE)) return;
+			self.break_after(i);
+		case RBRACE:
+			// a block, not a lambda or a block in an expression
+			if (t.match == NO) return;
+			Tok* o = &s.toks[t.match];
+			if (o.brace != BLOCK || s.is_lambda_body(t.match)) return;
+			if (o.encl != NO && s.toks[o.encl].type != LBRACE) return;
+			self.break_after(i);
+		case CT_ELSE: case CT_ENDIF: case CT_ENDFOR: case CT_ENDFOREACH: case CT_ENDSWITCH:
+			self.break_after(i);
+		case CT_IF: case CT_FOR: case CT_FOREACH: case CT_SWITCH:
+			// the header's ':' ends the line (the bodies of a `$case` may stay on its line)
+			sz colon = s.header_colon(i, t.type == CT_FOREACH, semicolons: t.type == CT_FOR);
+			if (colon != NO && !self.fixed(colon)) self.break_after(colon);
+		case LBRACE:
+			self.break_initializer(i);
+		default:
+	}
+}
+
+<* A line break after token i, if code follows it on its line (a comment after it stays). *>
+fn void Fmt.break_after(&self, sz i)
+{
+	Src* s = self.src;
+	sz n = i + 1;
+	if (n >= s.len() || self.out[n].nl > 0 || self.fixed(n) || !s.toks[n].code) return;
+	TokenType nt = s.toks[n].type;
+	if (is_closer(nt) || nt == EOS || nt == COMMA) return;
+	// the `else` or `while` of the statement that has just ended stays after a block
+	if (s.toks[i].type == RBRACE && (nt == ELSE || nt == WHILE)) return;
+	self.out[n].nl = 1;
+}
+
+<*
+ The elements of an initializer list that spans lines start on a line after its '{', and its '}' is on a
+ line of its own after a trailing comma; a list on one line is left alone.
+*>
+fn void Fmt.break_initializer(&self, sz o)
+{
+	Src* s = self.src;
+	Tok* t = &s.toks[o];
+	sz m = t.match;
+	if (t.brace != INIT || m == NO || m <= o + 1 || s.toks[m].line == t.line || self.fixed(m)) return;
+	self.break_after(o);
+	sz p = s.prev_code(m);
+	if (s.type_at(p) == COMMA && self.out[m].nl == 0 && !self.fixed(m)) self.out[m].nl = 1;
 }
 
 fn void Fmt.else_break(&self, sz e)

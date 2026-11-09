@@ -810,6 +810,46 @@ fn void lines_inside_an_initializer_opened_on_the_first_line_are_indented() @tes
 	      "fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t\t{ 2, 3 },\n\t};\n}\n", &strict);
 }
 
+fn void expand_puts_every_statement_on_its_own_line() @test
+{
+	c3f::Config expand = c3f::defaults();
+	(void)expand.set("c3f_one_line_blocks", "expand");
+	check("module m;\nconst int A = 1; const int B = 2;\nfn void f(int n)\n{\n\tint a = 1; int b = 2; // both\n"
+		"\tfor (int i = 0; i < n; i++) { a++; b++; }\n\tfor (;;) break;\n\tif (a) return;\n\tif (a) b = 1; else b = 2;\n"
+		"\tif (a) { b = 1; } c = 2;\n}\n",
+	      "module m;\nconst int A = 1;\nconst int B = 2;\nfn void f(int n)\n{\n\tint a = 1;\n\tint b = 2; // both\n"
+		"\tfor (int i = 0; i < n; i++)\n\t{\n\t\ta++;\n\t\tb++;\n\t}\n\tfor (;;) break;\n\tif (a) return;\n"
+		"\tif (a) b = 1;\n\telse b = 2;\n\tif (a)\n\t{\n\t\tb = 1;\n\t}\n\tc = 2;\n}\n", &expand);
+	// a case body on the line of its label stays; a second statement goes on a line of its own
+	check("fn void f(int a)\n{\n\tswitch (a)\n\t{\n\t\tcase 1: foo();\n\t\tcase 2: foo(); bar();\n\t}\n}\n",
+	      "fn void f(int a)\n{\n\tswitch (a)\n\t{\n\t\tcase 1: foo();\n\t\tcase 2: foo();\n\t\t\tbar();\n\t}\n}\n", &expand);
+	// the default keeps statements together
+	check("fn void f()\n{\n\ta = 1; b = 2;\n\tif (x) { y = 1; }\n}\n", "fn void f()\n{\n\ta = 1; b = 2;\n\tif (x) { y = 1; }\n}\n");
+}
+
+fn void expand_puts_compile_time_blocks_on_lines_of_their_own() @test
+{
+	c3f::Config expand = c3f::defaults();
+	(void)expand.set("c3f_one_line_blocks", "expand");
+	check("fn void f()\n{\n\t$for var $i = 0; $i < 3; $i++: bar($i); baz(); $endfor x = 1;\n\t$if A: foo(); $else bar(); $endif\n"
+		"\t$switch (a): $case 1: foo(); $default: bar(); $endswitch\n}\n",
+	      "fn void f()\n{\n\t$for var $i = 0; $i < 3; $i++:\n\tbar($i);\n\tbaz();\n\t$endfor\n\tx = 1;\n\t$if A:\n\tfoo();\n\t$else\n\tbar();\n\t$endif\n"
+		"\t$switch (a):\n\t$case 1: foo();\n\t$default: bar();\n\t$endswitch\n}\n", &expand);
+	(void)expand.set("c3f_ct_indent", "indent");
+	check("fn void f()\n{\n\t$if A: foo(); $else bar(); $endif\n}\n",
+	      "fn void f()\n{\n\t$if A:\n\t\tfoo();\n\t$else\n\t\tbar();\n\t$endif\n}\n", &expand);
+}
+
+fn void expand_starts_a_multi_line_initializer_on_its_own_line() @test
+{
+	c3f::Config expand = c3f::defaults();
+	(void)expand.set("c3f_one_line_blocks", "expand");
+	check("fn void f()\n{\n\tint[2][*] x = { { 1, 2 },\n\t{ 2, 3 },\n\t{ 4, 5 },\n\t};\n\tint[2][*] y = { { 1, 2 },\n\t\t{ 3, 4 } };\n"
+		"\tint[] z = { 1, 2, };\n}\n",
+	      "fn void f()\n{\n\tint[2][*] x = {\n\t\t{ 1, 2 },\n\t\t{ 2, 3 },\n\t\t{ 4, 5 },\n\t};\n\tint[2][*] y = {\n\t\t{ 1, 2 },\n\t\t{ 3, 4 } };\n"
+		"\tint[] z = { 1, 2, };\n}\n", &expand);
+}
+
 fn void man_page_documents_every_option() @test
 {
 	const String MAN = (String)$embed("../c3f.1.scd");
