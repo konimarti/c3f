@@ -169,14 +169,6 @@ Values are given with their default first.
 *c3f_max_blank_lines* = 2
 	0 to 100. More blank lines in a row are cut to this number.
 
-*c3f_max_blank_lines_declarations* = common | 0 to 100++
-*c3f_max_blank_lines_code* = common | 0 to 100++
-*c3f_max_blank_lines_before_rbrace* = common | 0 to 100
-	Separate limits for the blank lines between declarations (at the top level and in the body
-	of a *struct*, *enum*, ...), in code (a function body, a block, an initializer) and before
-	a closing brace of a block or a type body. *common* is *c3f_max_blank_lines*. The limit
-	before a closing brace replaces *c3f_trim_block_blanks* there.
-
 *c3f_trim_block_blanks* = true | false
 	Remove blank lines after an opening and before a closing brace.
 

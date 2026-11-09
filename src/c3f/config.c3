@@ -3,8 +3,6 @@ import std::collections::list, std::io, std::math;
 
 faultdef UNKNOWN_KEY, BAD_VALUE;
 
-const sz COMMON_LIMIT = 1000;   // a blank-line limit that follows c3f_max_blank_lines
-
 enum IndentStyle : char { TAB, SPACE }
 enum Eol : char { KEEP, LF, CRLF }
 enum BraceStyle : char { ALLMAN, KNR, LINUX }   // LINUX: function bodies Allman, everything else K&R
@@ -42,9 +40,6 @@ struct Config
 	PointerStyle   pointer_style;
 	BracketPadding bracket_padding;
 	sz             max_blank_lines;
-	sz             blank_lines_declarations;  // COMMON_LIMIT: max_blank_lines
-	sz             blank_lines_code;
-	sz             blank_lines_before_rbrace;
 	bool           trim_block_blanks;
 	DeclSpacing    decl_spacing;
 	AlignMode      align;
@@ -84,9 +79,6 @@ enum Key : char (String name)
 	POINTER_STYLE        { "c3f_pointer_style" },
 	BRACKET_PADDING      { "c3f_bracket_padding" },
 	MAX_BLANK_LINES      { "c3f_max_blank_lines" },
-	MAX_BLANK_LINES_DECLARATIONS { "c3f_max_blank_lines_declarations" },
-	MAX_BLANK_LINES_CODE { "c3f_max_blank_lines_code" },
-	MAX_BLANK_LINES_BEFORE_RBRACE { "c3f_max_blank_lines_before_rbrace" },
 	TRIM_BLOCK_BLANKS    { "c3f_trim_block_blanks" },
 	DECL_SPACING         { "c3f_decl_spacing" },
 	ALIGN                { "c3f_align" },
@@ -111,8 +103,7 @@ fn Config defaults()
 		.brace_style = ALLMAN, .else_style = FOLLOW, .one_line_blocks = KEEP,
 		.case_indent = true, .ct_indent = KEEP, .continuation = KEEP,
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .bracket_padding = KEEP,
-		.max_blank_lines = 2, .blank_lines_declarations = COMMON_LIMIT, .blank_lines_code = COMMON_LIMIT,
-		.blank_lines_before_rbrace = COMMON_LIMIT, .trim_block_blanks = true, .decl_spacing = KEEP,
+		.max_blank_lines = 2, .trim_block_blanks = true, .decl_spacing = KEEP,
 		.align = PRESERVE, .align_comments = PRESERVE,
 		.line_breaks = PRESERVE, .magic_comma = true,
 		.wrap_cost_soft = 0.05, .wrap_cost_hard = 100, .wrap_cost_break = 2, .wrap_budget = 2000,
@@ -179,16 +170,6 @@ macro bool? parse_bool(String v)
 		default: return BAD_VALUE~;
 	}
 }
-
-fn sz? parse_limit(String v)
-{
-	if (v == "common") return COMMON_LIMIT;
-	sz n = parse_uint(v)!;
-	if (n > 100) return BAD_VALUE~;
-	return n;
-}
-
-fn String limit_text(sz n) => n == COMMON_LIMIT ? "common" : string::tformat("%d", n);
 
 macro sz? parse_uint(String v) => (sz)(v.to_uint() ?? BAD_VALUE~!);
 
@@ -261,9 +242,6 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 		case MAX_BLANK_LINES:
 			self.max_blank_lines = parse_uint(v)!;
 			if (self.max_blank_lines > 100) return BAD_VALUE~;
-		case MAX_BLANK_LINES_DECLARATIONS: self.blank_lines_declarations = parse_limit(v)!;
-		case MAX_BLANK_LINES_CODE: self.blank_lines_code = parse_limit(v)!;
-		case MAX_BLANK_LINES_BEFORE_RBRACE: self.blank_lines_before_rbrace = parse_limit(v)!;
 		case TRIM_BLOCK_BLANKS: self.trim_block_blanks = parse_bool(v)!;
 		case DECL_SPACING: self.decl_spacing = v == "1" ? ONE : parse_enum(DeclSpacing, v)!;
 		case ALIGN: self.align = parse_enum(AlignMode, v)!;
@@ -313,7 +291,6 @@ fn String allowed_values(Key k)
 		case POINTER_STYLE: return enum_names(PointerStyle);
 		case BRACKET_PADDING: return enum_names(BracketPadding);
 		case MAX_BLANK_LINES: return "0 to 100";
-		case MAX_BLANK_LINES_DECLARATIONS: case MAX_BLANK_LINES_CODE: case MAX_BLANK_LINES_BEFORE_RBRACE: return "common, 0 to 100";
 		case DECL_SPACING: return "keep, 1";
 		case ALIGN: return enum_names(AlignMode);
 		case ALIGN_COMMENTS: return enum_names(CommentAlign);
@@ -372,9 +349,6 @@ fn String Config.value_text(&self, Key k)
 		case POINTER_STYLE: return enum_text(self.pointer_style);
 		case BRACKET_PADDING: return enum_text(self.bracket_padding);
 		case MAX_BLANK_LINES: return string::tformat("%d", self.max_blank_lines);
-		case MAX_BLANK_LINES_DECLARATIONS: return limit_text(self.blank_lines_declarations);
-		case MAX_BLANK_LINES_CODE: return limit_text(self.blank_lines_code);
-		case MAX_BLANK_LINES_BEFORE_RBRACE: return limit_text(self.blank_lines_before_rbrace);
 		case TRIM_BLOCK_BLANKS: return bool_text(self.trim_block_blanks);
 		case DECL_SPACING: return self.decl_spacing == ONE ? "1" : "keep";
 		case ALIGN: return enum_text(self.align);

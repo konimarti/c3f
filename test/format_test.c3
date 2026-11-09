@@ -896,29 +896,6 @@ fn void expand_puts_the_brace_of_an_empty_body_where_the_brace_style_says() @tes
 	check("fn void f()\n{\n\tif (x)\n\t{ a(); } else { b(); }\n}\n", "fn void f()\n{\n\tif (x)\n\t{ a(); } else { b(); }\n}\n");
 }
 
-fn void blank_lines_have_limits_for_declarations_code_and_before_a_closing_brace() @test
-{
-	String src = "struct S\n{\n\tint a;\n\n\n\n\tint b;\n\n\n}\n\n\n\nfn void f()\n{\n\n\n\tint x;\n\n\n\n\tint y;\n\n\n}\n";
-	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_trim_block_blanks", "false");
-	(void)c.set("c3f_max_blank_lines_declarations", "1");
-	check(src, "struct S\n{\n\tint a;\n\n\tint b;\n\n}\n\nfn void f()\n{\n\n\n\tint x;\n\n\n\tint y;\n\n\n}\n", &c);
-	c3f::Config code = c3f::defaults();
-	(void)code.set("c3f_trim_block_blanks", "false");
-	(void)code.set("c3f_max_blank_lines_code", "0");
-	check(src, "struct S\n{\n\tint a;\n\n\n\tint b;\n\n\n}\n\n\nfn void f()\n{\n\tint x;\n\tint y;\n}\n", &code);
-	c3f::Config rb = c3f::defaults();
-	(void)rb.set("c3f_trim_block_blanks", "false");
-	(void)rb.set("c3f_max_blank_lines_before_rbrace", "0");
-	check(src, "struct S\n{\n\tint a;\n\n\n\tint b;\n}\n\n\nfn void f()\n{\n\n\n\tint x;\n\n\n\tint y;\n}\n", &rb);
-	// the limit before a closing brace wins over trimming the blocks' edges, which still applies after '{'
-	c3f::Config trim = c3f::defaults();
-	(void)trim.set("c3f_max_blank_lines_before_rbrace", "1");
-	check("fn void f()\n{\n\n\tint x;\n\n\n}\n", "fn void f()\n{\n\tint x;\n\n}\n", &trim);
-	// without them nothing changes
-	check(src, "struct S\n{\n\tint a;\n\n\n\tint b;\n}\n\n\nfn void f()\n{\n\tint x;\n\n\n\tint y;\n}\n");
-}
-
 fn void while_style_places_the_while_of_a_do_loop() @test
 {
 	String own = "fn void f()\n{\n\tdo\n\t{\n\t\tstep();\n\t}\n\twhile (more());\n}\n";
