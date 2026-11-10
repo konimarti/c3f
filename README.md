@@ -53,16 +53,15 @@ git HEAD with `-O3`: c3f b357cb4, [c3fmt](https://github.com/lmichaudel/c3fmt) a
 | Peak memory | 13 MB | 19 MB | 29 MB |
 | Lines changed | 1,845 | 2,906 | 14,122 |
 | Lines over 120 columns left (1,331 before) | 1,331 | 315 ² | 503 |
-| Files whose code changed (whitespace aside) | 0 | 0 | 9 ³ |
+| Files whose code changed ³ | 0 | 0 | 9 |
 | Files that change again on a second run | 0 | 0 | 31 |
 | ... and still on a third run | 0 | 0 | 5 |
 | c3c's unit tests (1,878) still pass afterwards | yes | yes | yes |
-| Formats a file with a syntax error (e.g. while typing) | yes | yes | no ⁴ |
+| Formats a file with a syntax error (e.g. while typing) | yes | yes | no |
 
-¹ The same on one core: c3fmt starts a thread per core, but formats one file at a time.<br>
+¹ The same when pinned to one core.<br>
 ² Mostly comments, contract text and long strings; also one-line blocks, aligned rows and lines with several statements.<br>
-³ Empty `;` removed after `$endif`, `$endswitch` and `}`, and in 4 files `tlocal` dropped from a thread-local variable.<br>
-⁴ It leaves the file as it is (exit status 0); from stdin, as editors call it, it crashes.
+³ Differences that remain after removing all whitespace from both files.
 
 c3fmt's own stdlib snapshot (364 files) gives the same picture. *Lines changed* counts the lines
 of the input that were changed or removed. [c3tools](https://github.com/alexveden/c3tools) c3fmt
