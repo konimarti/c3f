@@ -16,7 +16,7 @@ tab_width = 4
 # flush: keep is the closest, it takes their indent from the source instead of adding a level (indent would)
 c3f_continuation = keep
 c3f_case_indent = indent
-c3f_ct_indent = indent
+c3f_compile_time_indent = indent
 
 # Wrapping and Braces | Brace style (Default: Allman; C3_BRACE_STYLE)
 c3f_brace_style = allman

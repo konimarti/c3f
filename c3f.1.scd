@@ -145,7 +145,7 @@ Values are given with their default first.
 *c3f_case_indent* = indent | flush
 	Indent *case* under *switch*, or put it in the same column.
 
-*c3f_ct_indent* = keep | indent | flush
+*c3f_compile_time_indent* = keep | indent | flush
 	The contents of *$if*, *$switch* and *$foreach* blocks: as written, indented, or at the
 	level of the directive.
 

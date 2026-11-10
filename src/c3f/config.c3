@@ -33,7 +33,7 @@ struct Config
 	WhileStyle     while_style;
 	OneLineBlocks  one_line_blocks;
 	bool           case_indent;
-	CtIndent       ct_indent;
+	CtIndent       compile_time_indent;
 	Continuation   continuation;
 	SpacingMode    spacing;
 	bool           space_after_cast;
@@ -73,7 +73,7 @@ enum Key : char (String name)
 	WHILE_STYLE          { "c3f_while_style" },
 	ONE_LINE_BLOCKS      { "c3f_one_line_blocks" },
 	CASE_INDENT          { "c3f_case_indent" },
-	CT_INDENT            { "c3f_ct_indent" },
+	COMPILE_TIME_INDENT            { "c3f_compile_time_indent" },
 	CONTINUATION         { "c3f_continuation" },
 	SPACING              { "c3f_spacing" },
 	SPACE_AFTER_CAST     { "c3f_space_after_cast" },
@@ -103,7 +103,7 @@ fn Config defaults()
 		.indent_style = TAB, .indent_size = 4, .tab_width = 4,
 		.end_of_line = KEEP, .insert_final_newline = true,
 		.brace_style = ALLMAN, .else_style = FOLLOW, .one_line_blocks = KEEP,
-		.case_indent = true, .ct_indent = KEEP, .continuation = KEEP,
+		.case_indent = true, .compile_time_indent = KEEP, .continuation = KEEP,
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .space_inside_brackets = KEEP, .space_inside_braces = KEEP,
 		.max_blank_lines = 2, .trim_block_blanks = true, .blank_lines_between_decls = KEEP,
 		.align = KEEP, .align_comments = KEEP,
@@ -235,7 +235,7 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 		case WHILE_STYLE: self.while_style = parse_enum(WhileStyle, v)!;
 		case ONE_LINE_BLOCKS: self.one_line_blocks = parse_enum(OneLineBlocks, v)!;
 		case CASE_INDENT: self.case_indent = parse_indent(v)!;
-		case CT_INDENT: self.ct_indent = parse_enum(CtIndent, v)!;
+		case COMPILE_TIME_INDENT: self.compile_time_indent = parse_enum(CtIndent, v)!;
 		case CONTINUATION: self.continuation = parse_enum(Continuation, v)!;
 		case SPACING: self.spacing = parse_enum(SpacingMode, v)!;
 		case SPACE_AFTER_CAST: self.space_after_cast = parse_bool(v)!;
@@ -290,7 +290,7 @@ fn String allowed_values(Key k)
 		case WHILE_STYLE: return enum_names(WhileStyle);
 		case ONE_LINE_BLOCKS: return enum_names(OneLineBlocks);
 		case CASE_INDENT: return "indent, flush";
-		case CT_INDENT: return enum_names(CtIndent);
+		case COMPILE_TIME_INDENT: return enum_names(CtIndent);
 		case CONTINUATION: return enum_names(Continuation);
 		case SPACING: return enum_names(SpacingMode);
 		case POINTER_STYLE: return enum_names(PointerStyle);
@@ -347,7 +347,7 @@ fn String Config.value_text(&self, Key k)
 		case WHILE_STYLE: return enum_text(self.while_style);
 		case ONE_LINE_BLOCKS: return enum_text(self.one_line_blocks);
 		case CASE_INDENT: return self.case_indent ? "indent" : "flush";
-		case CT_INDENT: return enum_text(self.ct_indent);
+		case COMPILE_TIME_INDENT: return enum_text(self.compile_time_indent);
 		case CONTINUATION: return enum_text(self.continuation);
 		case SPACING: return enum_text(self.spacing);
 		case SPACE_AFTER_CAST: return bool_text(self.space_after_cast);

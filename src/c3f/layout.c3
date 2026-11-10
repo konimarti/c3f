@@ -397,7 +397,7 @@ fn bool Fmt.flush_directive(&self, sz i)
 {
 	Src* s = self.src;
 	Tok* t = &s.toks[i];
-	if (self.cfg.ct_indent != KEEP || (i > 0 && self.out[i].nl == 0) || t.encl == NO) return false;
+	if (self.cfg.compile_time_indent != KEEP || (i > 0 && self.out[i].nl == 0) || t.encl == NO) return false;
 	if (!is_ct_open(t.type) && !is_ct_end(t.type) && t.type != CT_ELSE) return false;
 	return s.indent_of(i).len == 0;
 }
@@ -408,7 +408,7 @@ fn bool Fmt.flush_directive(&self, sz i)
 *>
 fn Indent Fmt.ct_content(&self, sz h, Indent line)
 {
-	switch (self.cfg.ct_indent)
+	switch (self.cfg.compile_time_indent)
 	{
 		case INDENT: return line.deeper();
 		case FLUSH: return line;

@@ -837,7 +837,7 @@ fn void expand_puts_compile_time_blocks_on_lines_of_their_own() @test
 		"\t$switch (a): $case 1: foo(); $default: bar(); $endswitch\n}\n",
 	      "fn void f()\n{\n\t$for var $i = 0; $i < 3; $i++:\n\tbar($i);\n\tbaz();\n\t$endfor\n\tx = 1;\n\t$if A:\n\tfoo();\n\t$else\n\tbar();\n\t$endif\n"
 		"\t$switch (a):\n\t$case 1: foo();\n\t$default: bar();\n\t$endswitch\n}\n", &expand);
-	(void)expand.set("c3f_ct_indent", "indent");
+	(void)expand.set("c3f_compile_time_indent", "indent");
 	check("fn void f()\n{\n\t$if A: foo(); $else bar(); $endif\n}\n",
 	      "fn void f()\n{\n\t$if A:\n\t\tfoo();\n\t$else\n\t\tbar();\n\t$endif\n}\n", &expand);
 }
