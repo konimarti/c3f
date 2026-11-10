@@ -425,7 +425,7 @@ fn void third_review_regressions() @test
 	check("fn void f()\n{\n\tx=-1;\n\tok=a==-1;\n\tb=!c;\n\tp=*q;\n}\n", "fn void f()\n{\n\tx = -1;\n\tok = a == -1;\n\tb = !c;\n\tp = *q;\n}\n");
 	// a blank line after each top-level body, not inside one
 	c3f::Config d = c3f::defaults();
-	(void)d.set("c3f_decl_spacing", "1");
+	(void)d.set("c3f_blank_lines_between_decls", "1");
 	check("fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\nint x;\n", "fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\n\nint x;\n", &d);
 	// values that make no sense are rejected
 	c3f::Config c = c3f::defaults();

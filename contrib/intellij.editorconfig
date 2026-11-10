@@ -35,7 +35,7 @@ c3f_max_blank_lines = 2
 # blank lines after a '{' are kept like any other (up to the limit)
 c3f_trim_block_blanks = false
 # no blank lines are added
-c3f_decl_spacing = keep
+c3f_blank_lines_between_decls = keep
 
 # Spacing: one space where the plugin sets one, and no alignment
 c3f_pointer_style = type

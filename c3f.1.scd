@@ -172,7 +172,7 @@ Values are given with their default first.
 *c3f_trim_block_blanks* = true | false
 	Remove blank lines after an opening and before a closing brace.
 
-*c3f_decl_spacing* = keep | 1
+*c3f_blank_lines_between_decls* = keep | 1
 	*1* puts exactly one blank line between declarations.
 
 *c3f_align* = keep | decls | off

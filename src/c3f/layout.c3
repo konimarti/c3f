@@ -99,7 +99,7 @@ fn void Fmt.breaks(&self)
 			if (t.type == CT_FOR) for_colon = s.header_colon(i, false, semicolons: true);
 			self.expand_breaks(i, i < for_colon);
 		}
-		if (c.decl_spacing == ONE) self.decl_break(i);
+		if (c.blank_lines_between_decls == ONE) self.decl_break(i);
 	}
 	// the spacing rules look at line breaks: let them see these, as the next run will
 	for (sz i = 1; i < s.len(); i++) s.toks[i].nl = self.out[i].nl;
