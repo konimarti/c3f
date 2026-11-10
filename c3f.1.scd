@@ -205,7 +205,7 @@ Values are given with their default first.
 *c3f_wrap_cost_break* = 2
 	The cost of a line break.
 
-*c3f_wrap_budget* = 2000
+*c3f_wrap_max_tokens* = 2000
 	0 to 10000. Statements of more tokens are not wrapped.
 
 *c3f_sort_imports* = off | lines | lists | all | split

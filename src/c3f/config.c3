@@ -52,7 +52,7 @@ struct Config
 	float          wrap_cost_soft;
 	float          wrap_cost_hard;
 	float          wrap_cost_break;
-	sz             wrap_budget;
+	sz             wrap_max_tokens;
 	SortImports    sort_imports;
 	String         style;                    // the preset last applied
 	String[Key::len] origin;                  // where each value came from (--print-config)
@@ -92,7 +92,7 @@ enum Key : char (String name)
 	WRAP_COST_SOFT       { "c3f_wrap_cost_soft" },
 	WRAP_COST_HARD       { "c3f_wrap_cost_hard" },
 	WRAP_COST_BREAK      { "c3f_wrap_cost_break" },
-	WRAP_BUDGET          { "c3f_wrap_budget" },
+	WRAP_MAX_TOKENS          { "c3f_wrap_max_tokens" },
 	SORT_IMPORTS         { "c3f_sort_imports" },
 }
 
@@ -108,7 +108,7 @@ fn Config defaults()
 		.max_blank_lines = 2, .trim_block_blanks = true, .blank_lines_between_decls = KEEP,
 		.align = KEEP, .align_comments = KEEP,
 		.line_breaks = KEEP, .magic_comma = true,
-		.wrap_cost_soft = 0.05, .wrap_cost_hard = 100, .wrap_cost_break = 2, .wrap_budget = 2000,
+		.wrap_cost_soft = 0.05, .wrap_cost_hard = 100, .wrap_cost_break = 2, .wrap_max_tokens = 2000,
 		.sort_imports = OFF, .style = "stdlib",
 	};
 	foreach (&o : c.origin) *o = "default";
@@ -262,16 +262,16 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 		case WRAP_COST_SOFT: self.wrap_cost_soft = parse_float(v)!;
 		case WRAP_COST_HARD: self.wrap_cost_hard = parse_float(v)!;
 		case WRAP_COST_BREAK: self.wrap_cost_break = parse_float(v)!;
-		case WRAP_BUDGET:
-			self.wrap_budget = parse_uint(v)!;
-			if (self.wrap_budget > MAX_WRAP_BUDGET) return BAD_VALUE~;
+		case WRAP_MAX_TOKENS:
+			self.wrap_max_tokens = parse_uint(v)!;
+			if (self.wrap_max_tokens > WRAP_TOKENS_LIMIT) return BAD_VALUE~;
 		case SORT_IMPORTS: self.sort_imports = parse_enum(SortImports, v)!;
 	}
 	self.origin[k.ordinal] = origin;
 }
 
 const sz MAX_COLUMNS = 10000;
-const sz MAX_WRAP_BUDGET = 10000;
+const sz WRAP_TOKENS_LIMIT = 10000;
 
 <* The values an option takes, for error messages. *>
 fn String allowed_values(Key k)
@@ -303,7 +303,7 @@ fn String allowed_values(Key k)
 		case LINE_BREAKS: return enum_names(LineBreaks);
 		case SOFT_MAX_LINE_LENGTH: return "0 (off) to 10000";
 		case WRAP_COST_SOFT: case WRAP_COST_HARD: case WRAP_COST_BREAK: return "a number, 0 or more";
-		case WRAP_BUDGET: return "0 to 10000";
+		case WRAP_MAX_TOKENS: return "0 to 10000";
 		case SORT_IMPORTS: return enum_names(SortImports);
 	}
 }
@@ -366,7 +366,7 @@ fn String Config.value_text(&self, Key k)
 		case WRAP_COST_SOFT: return string::tformat("%g", self.wrap_cost_soft);
 		case WRAP_COST_HARD: return string::tformat("%g", self.wrap_cost_hard);
 		case WRAP_COST_BREAK: return string::tformat("%g", self.wrap_cost_break);
-		case WRAP_BUDGET: return string::tformat("%d", self.wrap_budget);
+		case WRAP_MAX_TOKENS: return string::tformat("%d", self.wrap_max_tokens);
 		case SORT_IMPORTS: return enum_text(self.sort_imports);
 	}
 }

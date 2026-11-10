@@ -642,7 +642,7 @@ fn bool Fmt.wants_wrap(&self, sz a, sz b)
 {
 	Src* s = self.src;
 	Config* c = self.cfg;
-	if (b == a || b - a + 1 > c.wrap_budget) return false;
+	if (b == a || b - a + 1 > c.wrap_max_tokens) return false;
 	bool too_long;
 	for (sz k = a; k <= b; k++)
 	{
