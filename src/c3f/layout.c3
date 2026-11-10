@@ -236,7 +236,7 @@ fn void Fmt.while_break(&self, sz w)
 	sz open = s.toks[w - 1].match;
 	if (open == NO || s.type_at(s.prev_code(open)) != DO) return;
 	if (self.cfg.while_style == OWN_LINE && self.out[w].nl == 0) self.out[w].nl = 1;
-	if (self.cfg.while_style == CUDDLE) self.out[w].nl = 0;
+	if (self.cfg.while_style == SAME_LINE) self.out[w].nl = 0;
 }
 
 fn void Fmt.else_break(&self, sz e)
@@ -248,9 +248,9 @@ fn void Fmt.else_break(&self, sz e)
 	if (open == NO || (s.toks[open].line == s.toks[e - 1].line && self.out[e - 1].nl == 0
 		&& (self.cfg.one_line_blocks != EXPAND || self.out[open].nl == 0))) return;
 	ElseStyle style = self.cfg.else_style;
-	if (style == FOLLOW) style = self.cfg.brace_style == ALLMAN ? ElseStyle.OWN_LINE : ElseStyle.CUDDLE;
+	if (style == FOLLOW) style = self.cfg.brace_style == ALLMAN ? ElseStyle.OWN_LINE : ElseStyle.SAME_LINE;
 	if (style == OWN_LINE && self.out[e].nl == 0) self.out[e].nl = 1;
-	if (style == CUDDLE) self.out[e].nl = 0;
+	if (style == SAME_LINE) self.out[e].nl = 0;
 }
 
 <* At least one blank line after a top-level function or type body. *>

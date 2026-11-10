@@ -122,10 +122,10 @@ Values are given with their default first.
 	Where the opening brace goes. *linux* is *knr* with the braces of functions on their
 	own line.
 
-*c3f_else_style* = follow | own_line | cuddle
+*c3f_else_style* = follow | own_line | same_line
 	Where *else* goes: *follow* the brace style, on its own line, or after *}*.
 
-*c3f_while_style* = keep | own_line | cuddle
+*c3f_while_style* = keep | own_line | same_line
 	Where the *while* of a *do* loop goes: as written, on its own line, or after the *}*.
 
 *c3f_one_line_blocks* = keep | expand

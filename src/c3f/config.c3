@@ -6,8 +6,8 @@ faultdef UNKNOWN_KEY, BAD_VALUE;
 enum IndentStyle : char { TAB, SPACE }
 enum Eol : char { KEEP, LF, CRLF }
 enum BraceStyle : char { ALLMAN, KNR, LINUX }   // LINUX: function bodies Allman, everything else K&R
-enum ElseStyle : char { FOLLOW, OWN_LINE, CUDDLE }
-enum WhileStyle : char { KEEP, OWN_LINE, CUDDLE }
+enum ElseStyle : char { FOLLOW, OWN_LINE, SAME_LINE }
+enum WhileStyle : char { KEEP, OWN_LINE, SAME_LINE }
 enum OneLineBlocks : char { KEEP, EXPAND }
 enum Continuation : char { KEEP, INDENT, ALIGN }
 enum SpacingMode : char { STDLIB, STRICT }
@@ -129,7 +129,7 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	if (name == "knr")
 	{
 		self.brace_style = KNR;
-		self.else_style = CUDDLE;
+		self.else_style = SAME_LINE;
 		self.origin[Key.BRACE_STYLE.ordinal] = from;
 		self.origin[Key.ELSE_STYLE.ordinal] = from;
 	}

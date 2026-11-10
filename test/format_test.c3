@@ -905,7 +905,7 @@ fn void while_style_places_the_while_of_a_do_loop() @test
 	c3f::Config c = c3f::defaults();
 	(void)c.set("c3f_while_style", "own_line");
 	check(cud, own, &c);
-	(void)c.set("c3f_while_style", "cuddle");
+	(void)c.set("c3f_while_style", "same_line");
 	check(own, cud, &c);
 	// the while loop after a block is not a do loop
 	check("fn void f()\n{\n\t{\n\t\tstep();\n\t}\n\twhile (more()) step();\n}\n", "fn void f()\n{\n\t{\n\t\tstep();\n\t}\n\twhile (more()) step();\n}\n", &c);
