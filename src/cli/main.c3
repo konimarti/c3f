@@ -1,7 +1,7 @@
 module c3f::cli;
 import c3f, libc, std::collections::list, std::io, std::io::path;
 
-const String VERSION = "0.1.1";
+const String VERSION = env::PROJECT_VERSION;
 
 enum Status : int { OK, CHANGED, ERROR, KEPT }
 
