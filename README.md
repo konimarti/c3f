@@ -63,9 +63,8 @@ standard library c23910038 (0.8.6).
 ³ Mostly comments, contract text and long strings; also one-line blocks, aligned rows and lines with several statements.<br>
 ⁴ The same on one core.
 
-The C3 plugin for IntelliJ and CLion ([c3lang/c3intellij](https://github.com/c3lang/c3intellij))
-formats inside the IDE, so it is not in the table. The default styles largely agree; c3f also works
-in any editor, in CI and in a git hook, reads `.editorconfig`, wraps to a column limit and sorts imports.
+The formatter of the C3 plugin for IntelliJ and CLion runs only inside the IDE, so it is not in the
+table; see [IntelliJ IDEA and CLion](#intellij-idea-and-clion).
 
 ## Install
 
@@ -139,18 +138,7 @@ formatter = { command = "c3f", args = ["-"] }
 auto-format = true
 ```
 
-JetBrains IDEs (IntelliJ IDEA, CLion, ...): add an external tool (*Settings | Tools | External
-Tools*) with Program the full path of `c3f`, Arguments `-w $FilePath$`, Working directory `$FileDir$`
-and *Synchronize files after execution* ticked. For format on save use the *File Watchers* plugin
-(IntelliJ IDEA: Ultimate) with the C3 file type, Program `c3f-save`, Arguments `$FilePath$`, and
-*Trigger the watcher regardless of syntax errors* ticked. The IDE disables a watcher whose program
-fails, and `c3f -w` exits with 3 when it keeps a place as written, so `c3f-save` (on your PATH) maps that to 0:
-
-```sh
-#!/bin/sh
-c3f -w "$1"
-case $? in 0|3) exit 0 ;; *) exit 1 ;; esac
-```
+JetBrains IDEs: see [IntelliJ IDEA and CLion](#intellij-idea-and-clion).
 
 **CI.** Fail the build if anything is not formatted:
 
@@ -181,15 +169,34 @@ c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay mult
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all`, `split` (one module per `import`). |
 | `c3f_align`, `c3f_align_comments` | Keep (`preserve`), apply (`decls`, `always`) or remove (`off`) alignment of declarations and trailing comments. |
 
-### IntelliJ-compatible settings
-
-[`contrib/intellij.editorconfig`](contrib/intellij.editorconfig) is a `.editorconfig` section that
-writes what the C3 plugin for IntelliJ and CLion formats by default (Allman braces, tabs, one statement
-per line, blank lines kept up to two, no wrapping), with a comment on each key saying which plugin
-setting it mirrors and lines for the K&R variant. Where c3f is stricter than the plugin (it also
-normalizes spaces in casts and ternaries, which the plugin leaves as written), the file says so.
-
 All options and their values are in the man page: `man c3f` (source: [`c3f.1.scd`](c3f.1.scd)).
+
+## IntelliJ IDEA and CLion
+
+The C3 plugin for IntelliJ and CLion ([c3lang/c3intellij](https://github.com/c3lang/c3intellij))
+has a formatter of its own, which runs only inside the IDE. c3f also works in any editor, in CI and
+in a git hook, reads `.editorconfig`, wraps to a column limit and sorts imports.
+
+**The plugin's style.** [`contrib/intellij.editorconfig`](contrib/intellij.editorconfig) is an
+`.editorconfig` section that makes c3f format like the plugin's defaults: Allman braces, tabs, one
+statement per line, blank lines kept up to two, no wrapping. Copy it into your `.editorconfig`.
+A comment on each key names the plugin setting it mirrors, and commented-out lines give the K&R
+variant. A *Known differences* block at the end lists what c3f does differently: one blank-line
+limit instead of three, indented continuation lines, normalized spaces around comments, casts
+and `?:`.
+
+**Run c3f from the IDE.** Add an external tool (*Settings | Tools | External Tools*) with Program the
+full path of `c3f`, Arguments `-w $FilePath$`, Working directory `$FileDir$` and *Synchronize files
+after execution* ticked. For format on save use the *File Watchers* plugin (IntelliJ IDEA: Ultimate)
+with the C3 file type, Program `c3f-save`, Arguments `$FilePath$`, and *Trigger the watcher
+regardless of syntax errors* ticked. The IDE disables a watcher whose program fails, and `c3f -w`
+exits with 3 when it keeps a place as written, so `c3f-save` (on your PATH) maps that to 0:
+
+```sh
+#!/bin/sh
+c3f -w "$1"
+case $? in 0|3) exit 0 ;; *) exit 1 ;; esac
+```
 
 ## License
 
