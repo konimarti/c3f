@@ -129,5 +129,5 @@ flags:
       --version            print the version
 
 One file without -w, --check or --diff is written to stdout.
-Exit status: 0 ok, 1 --check found changes, 2 usage or I/O error, 3 a place was kept as written
-(with -w or --check; when printing the result or the diff, the notes go to stderr and the status is 0).`;
+Exit status: 0 ok, 1 --check found changes, 2 usage or I/O error, 3 --check found a place it kept as written
+(with -w, printing the result or --diff, the notes go to stderr and the status is 0).`;

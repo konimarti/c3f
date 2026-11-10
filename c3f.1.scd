@@ -230,8 +230,8 @@ Values are given with their default first.
 	Usage or I/O error.
 
 *3*
-	A place was kept as written (with *-w* or *--check*). Printing the result or the diff
-	succeeds, with the notes on standard error.
+	*--check* found a place it kept as written. With *-w*, *--diff* or when printing the
+	result, that is a success (exit status 0), with the notes on standard error.
 
 # EXAMPLES
 

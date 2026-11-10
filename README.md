@@ -99,7 +99,7 @@ c3f -w --exclude 'gen/*' .  # skip paths matching a glob
 ```
 
 `// c3f off` … `// c3f on` leaves a region untouched. Exit status: 0 ok, 1 `--check` found
-changes, 2 usage or I/O error, 3 a place was kept as written (`man c3f` has the details).
+changes, 2 usage or I/O error, 3 `--check` found a place it kept as written (`man c3f` has the details).
 
 ## Format on save, in CI, before every commit
 
@@ -194,15 +194,8 @@ and `?:`.
 **Run c3f from the IDE.** Add an external tool (*Settings | Tools | External Tools*) with Program the
 full path of `c3f`, Arguments `-w $FilePath$`, Working directory `$FileDir$` and *Synchronize files
 after execution* ticked. For format on save use the *File Watchers* plugin (IntelliJ IDEA: Ultimate)
-with the C3 file type, Program `c3f-save`, Arguments `$FilePath$`, and *Trigger the watcher
-regardless of syntax errors* ticked. The IDE disables a watcher whose program fails, and `c3f -w`
-exits with 3 when it keeps a place as written, so `c3f-save` (on your PATH) maps that to 0:
-
-```sh
-#!/bin/sh
-c3f -w "$1"
-case $? in 0|3) exit 0 ;; *) exit 1 ;; esac
-```
+with the C3 file type, Program `c3f`, Arguments `-w $FilePath$`, and *Trigger the watcher
+regardless of syntax errors* ticked.
 
 ## License
 
