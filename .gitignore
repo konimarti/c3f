@@ -1,6 +1,7 @@
 # build output
 build/
-# dependencies, restored with `c3l sync`
-lib/
+# dependencies: git submodules, pinned and checked by c3l (c3l.lock)
+lib/*
+!lib/lexer.c3l
 # temporary files of an interrupted `c3f -w`
 *.c3f~
