@@ -713,7 +713,7 @@ fn void strict_pads_initializer_braces() @test
 	      "Foo a = {};\nFoo b = { 1 };\nFoo c = { { 1, 2 }, { 3 } };\nFoo d = { .x = { 1 }, .y = 2 };\nFoo e = { &x, &y };\nx = a[i];\n", &strict);
 	// ... unless the padding is set explicitly
 	c3f::Config tight = strict;
-	(void)tight.set("c3f_bracket_padding", "none");
+	(void)tight.set("c3f_space_inside_braces", "false");
 	check("Foo c = { { 1, 2 }, { 3 } };\n", "Foo c = {{1, 2}, {3}};\n", &tight);
 }
 

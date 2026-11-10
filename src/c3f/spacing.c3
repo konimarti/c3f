@@ -478,8 +478,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 		}
 	}
 	// strict: an initializer list is padded inside, `{ 1, 2 }` (the stdlib: 92 to 98%; the table splits it by
-	// what follows the brace, which leaves `{{ 1 }, { 2 }}` and `{&x}` lopsided); c3f_bracket_padding wins
-	if (cfg.spacing == STRICT && cfg.bracket_padding == KEEP)
+	// what follows the brace, which leaves `{{ 1 }, { 2 }}` and `{&x}` lopsided); c3f_space_inside_braces wins
+	if (cfg.spacing == STRICT && cfg.space_inside_braces == KEEP)
 	{
 		if (prev.type == LBRACE && prev.brace == INIT && next.type != RBRACE) return ONE;
 		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == INIT && prev.type != LBRACE) return ONE;
@@ -524,11 +524,15 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 			return cfg.pointer_style == TYPE && ident_after ? Space.ONE : Space.NONE;
 		}
 	}
-	if (cfg.bracket_padding != KEEP)
+	if (cfg.space_inside_brackets != KEEP)
 	{
-		Space pad = cfg.bracket_padding == SPACE ? Space.ONE : Space.NONE;
+		Space pad = cfg.space_inside_brackets == TRUE ? Space.ONE : Space.NONE;
 		if (prev.type == LBRACKET && next.type != RBRACKET) return pad;
 		if (next.type == RBRACKET && prev.type != LBRACKET) return pad;
+	}
+	if (cfg.space_inside_braces != KEEP)
+	{
+		Space pad = cfg.space_inside_braces == TRUE ? Space.ONE : Space.NONE;
 		// the gap itself is on a line (the caller only asks for those), whatever the rest of the braces does
 		if (prev.type == LBRACE && prev.brace == INIT && prev.match != i) return pad;
 		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == INIT && prev.type != LBRACE) return pad;

@@ -39,7 +39,8 @@ c3f_blank_lines_between_decls = keep
 
 # Spacing: one space where the plugin sets one, and no alignment
 c3f_pointer_style = type
-c3f_bracket_padding = keep
+c3f_space_inside_brackets = keep
+c3f_space_inside_braces = keep
 c3f_space_after_cast = false
 c3f_align = off
 c3f_align_comments = keep

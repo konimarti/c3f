@@ -12,7 +12,7 @@ enum OneLineBlocks : char { KEEP, EXPAND }
 enum Continuation : char { KEEP, INDENT, ALIGN }
 enum SpacingMode : char { STDLIB, STRICT }
 enum PointerStyle : char { KEEP, TYPE, NAME }
-enum BracketPadding : char { KEEP, NONE, SPACE }
+enum Padding : char { KEEP, FALSE, TRUE }   // keep, or never / always a space
 enum DeclBlankLines : char { KEEP, ONE }
 enum AlignMode : char { KEEP, DECLS, OFF }
 enum CommentAlign : char { KEEP, ALWAYS, OFF }
@@ -38,7 +38,8 @@ struct Config
 	SpacingMode    spacing;
 	bool           space_after_cast;
 	PointerStyle   pointer_style;
-	BracketPadding bracket_padding;
+	Padding        space_inside_brackets;
+	Padding        space_inside_braces;
 	sz             max_blank_lines;
 	bool           trim_block_blanks;
 	DeclBlankLines    blank_lines_between_decls;
@@ -77,7 +78,8 @@ enum Key : char (String name)
 	SPACING              { "c3f_spacing" },
 	SPACE_AFTER_CAST     { "c3f_space_after_cast" },
 	POINTER_STYLE        { "c3f_pointer_style" },
-	BRACKET_PADDING      { "c3f_bracket_padding" },
+	SPACE_INSIDE_BRACKETS { "c3f_space_inside_brackets" },
+	SPACE_INSIDE_BRACES  { "c3f_space_inside_braces" },
 	MAX_BLANK_LINES      { "c3f_max_blank_lines" },
 	TRIM_BLOCK_BLANKS    { "c3f_trim_block_blanks" },
 	BLANK_LINES_BETWEEN_DECLS { "c3f_blank_lines_between_decls" },
@@ -102,7 +104,7 @@ fn Config defaults()
 		.end_of_line = KEEP, .insert_final_newline = true,
 		.brace_style = ALLMAN, .else_style = FOLLOW, .one_line_blocks = KEEP,
 		.case_indent = true, .ct_indent = KEEP, .continuation = KEEP,
-		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .bracket_padding = KEEP,
+		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .space_inside_brackets = KEEP, .space_inside_braces = KEEP,
 		.max_blank_lines = 2, .trim_block_blanks = true, .blank_lines_between_decls = KEEP,
 		.align = KEEP, .align_comments = KEEP,
 		.line_breaks = KEEP, .magic_comma = true,
@@ -238,7 +240,8 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 		case SPACING: self.spacing = parse_enum(SpacingMode, v)!;
 		case SPACE_AFTER_CAST: self.space_after_cast = parse_bool(v)!;
 		case POINTER_STYLE: self.pointer_style = parse_enum(PointerStyle, v)!;
-		case BRACKET_PADDING: self.bracket_padding = parse_enum(BracketPadding, v)!;
+		case SPACE_INSIDE_BRACKETS: self.space_inside_brackets = parse_enum(Padding, v)!;
+		case SPACE_INSIDE_BRACES: self.space_inside_braces = parse_enum(Padding, v)!;
 		case MAX_BLANK_LINES:
 			self.max_blank_lines = parse_uint(v)!;
 			if (self.max_blank_lines > 100) return BAD_VALUE~;
@@ -291,7 +294,7 @@ fn String allowed_values(Key k)
 		case CONTINUATION: return enum_names(Continuation);
 		case SPACING: return enum_names(SpacingMode);
 		case POINTER_STYLE: return enum_names(PointerStyle);
-		case BRACKET_PADDING: return enum_names(BracketPadding);
+		case SPACE_INSIDE_BRACKETS: case SPACE_INSIDE_BRACES: return enum_names(Padding);
 		case MAX_BLANK_LINES: return "0 to 100";
 		case BLANK_LINES_BETWEEN_DECLS: return "keep, 1";
 		case ALIGN: return enum_names(AlignMode);
@@ -349,7 +352,8 @@ fn String Config.value_text(&self, Key k)
 		case SPACING: return enum_text(self.spacing);
 		case SPACE_AFTER_CAST: return bool_text(self.space_after_cast);
 		case POINTER_STYLE: return enum_text(self.pointer_style);
-		case BRACKET_PADDING: return enum_text(self.bracket_padding);
+		case SPACE_INSIDE_BRACKETS: return enum_text(self.space_inside_brackets);
+		case SPACE_INSIDE_BRACES: return enum_text(self.space_inside_braces);
 		case MAX_BLANK_LINES: return string::tformat("%d", self.max_blank_lines);
 		case TRIM_BLOCK_BLANKS: return bool_text(self.trim_block_blanks);
 		case BLANK_LINES_BETWEEN_DECLS: return self.blank_lines_between_decls == ONE ? "1" : "keep";

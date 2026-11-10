@@ -163,8 +163,13 @@ Values are given with their default first.
 *c3f_pointer_style* = keep | type | name
 	Write _Foo\* p_ (*type*) or _Foo \*p_ (*name*).
 
-*c3f_bracket_padding* = keep | none | space
-	Spaces inside _[ ]_ and _( )_.
+*c3f_space_inside_brackets* = keep | false | true
+	Spaces inside _[ ]_: _a[i]_ (*false*) or _a[ i ]_ (*true*). Parentheses are not touched.
+
+*c3f_space_inside_braces* = keep | false | true
+	Spaces inside the braces of an initializer list: _{1, 2}_ (*false*) or _{ 1, 2 }_
+	(*true*). The braces of blocks and bodies are not touched. With *keep*, *c3f_spacing* =
+	*strict* pads them (_{ 1, 2 }_).
 
 *c3f_max_blank_lines* = 2
 	0 to 100. More blank lines in a row are cut to this number.
