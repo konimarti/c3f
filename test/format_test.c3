@@ -619,7 +619,7 @@ fn void wrap_fit_splits_a_long_literal_at_spaces() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap_fit");
+	(void)c.set("c3f_line_breaks", "wrap_rewrite");
 	String src = "fn void f()\n{\n\tString s = \"one two three four five six seven eight nine ten\";\n}\n";
 	check(src, "fn void f()\n{\n\tString s =\n\t\t\"one two three four five \"\n\t\t\"six seven eight nine ten\";\n}\n", &c);
 	// plain wrap never splits a literal
@@ -631,7 +631,7 @@ fn void wrap_fit_keeps_escapes_conversions_and_utf8_whole() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "30");
-	(void)c.set("c3f_line_breaks", "wrap_fit");
+	(void)c.set("c3f_line_breaks", "wrap_rewrite");
 	// the only places to cut are inside a `%08x`, a `\x41`, a `\n` and a two-byte character
 	String src = "fn void f()\n{\n\tx = \"aaaaaaaa%08xbbbbbbbb\\x41cccccccc\\ndddddd\xC3\xA9\xC3\xA9eeeeeeee\";\n}\n";
 	String got = fmt_with(src, &c);
@@ -648,7 +648,7 @@ fn void wrap_fit_leaves_assert_attributes_and_messages_alone() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "30");
-	(void)c.set("c3f_line_breaks", "wrap_fit");
+	(void)c.set("c3f_line_breaks", "wrap_rewrite");
 	String assertion = "fn void f()\n{\n\tassert(x == \"aaaa bbbb cccc dddd eeee ffff gggg\");\n}\n";
 	String attr = "fn void f() @export(\"aaaa_bbbb cccc dddd eeee ffff gggg\") {}\n";
 	assert(!fmt_with(assertion, &c).contains("\"\n"));
@@ -672,7 +672,7 @@ fn void wrap_fit_braces_a_body_that_is_too_long_for_its_line() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap_fit");
+	(void)c.set("c3f_line_breaks", "wrap_rewrite");
 	check("fn int f()\n{\n\tif (!is_lf(self.peek())) return INVALID_NEWLINE~;\n}\n",
 	      "fn int f()\n{\n\tif (!is_lf(self.peek()))\n\t{\n\t\treturn INVALID_NEWLINE~;\n\t}\n}\n", &c);
 	// the other values only wrap
@@ -686,7 +686,7 @@ fn void wrap_fit_leaves_short_nested_and_deferred_bodies_alone() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap_fit");
+	(void)c.set("c3f_line_breaks", "wrap_rewrite");
 	// fits; an `else if` chain and a nested `if` (a dangling else); a defer belongs to the block around it
 	check("fn void f()\n{\n\tif (x) return;\n}\n", "fn void f()\n{\n\tif (x) return;\n}\n", &c);
 	String nested = "fn void f()\n{\n\tif (aaaaaaaaaaaa) if (bbbbbbbbbbbbbbbb) cccccccccccccccc();\n}\n";
@@ -699,7 +699,7 @@ fn void wrap_fit_keeps_a_comment_after_the_body_on_its_line() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap_fit");
+	(void)c.set("c3f_line_breaks", "wrap_rewrite");
 	check("fn int f()\n{\n\tif (!is_lf(self.peek())) return INVALID_NEWLINE~; // why\n}\n",
 	      "fn int f()\n{\n\tif (!is_lf(self.peek()))\n\t{\n\t\treturn INVALID_NEWLINE~; // why\n\t}\n}\n", &c);
 }

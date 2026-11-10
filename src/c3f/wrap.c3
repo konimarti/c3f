@@ -317,8 +317,8 @@ fn Point Wrap.point_before(&self, sz k)
 		return e != NO && s.toks[e].type == LPAREN ? Point.NONE : Point.ASSIGN;
 	}
 	if (s.is_binary(k) && !is_assign(s.toks[k].type)) return OPERATOR;
-	// strings written one after another (split by `wrap-fit`) stay where they are
-	if (prev == STRING && s.toks[k].type == STRING && self.f.cfg.line_breaks == WRAP_FIT) return OPERATOR;
+	// strings written one after another (split by `wrap_rewrite`) stay where they are
+	if (prev == STRING && s.toks[k].type == STRING && self.f.cfg.line_breaks == WRAP_REWRITE) return OPERATOR;
 	return NONE;
 }
 

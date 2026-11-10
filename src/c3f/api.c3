@@ -61,9 +61,9 @@ fn String format_pass(FormatResult* r, Allocator a, String input, Config* settle
 	defer if (wraps) memo.free();
 	String first = format_text(input, settled, r, a, wraps ? &memo : null);
 	String text = first;
-	// `wrap_fit`: a body that cannot move to the next line without braces gets them (and the statement is
+	// `wrap_rewrite`: a body that cannot move to the next line without braces gets them (and the statement is
 	// joined again); the next pass lays it out
-	if (settled.line_breaks == WRAP_FIT && !r.fallback) text = brace_long_bodies(first, settled);
+	if (settled.line_breaks == WRAP_REWRITE && !r.fallback) text = brace_long_bodies(first, settled);
 	// wrapping can turn one statement into several (a '{' that now ends a line opens a block),
 	// which the next run may wrap again: repeat until nothing changes, so a second run never does
 	// (if the first pass wrapped nothing, the text is formatted as without wrapping: one run is enough)
@@ -73,7 +73,7 @@ fn String format_pass(FormatResult* r, Allocator a, String input, Config* settle
 		FormatResult later;
 		later.notes.tinit();
 		// (the lines a split string adds can move what was wrapped before: one more pass)
-		int passes = settled.line_breaks == WRAP_FIT ? WRAP_PASSES + 1 : WRAP_PASSES;
+		int passes = settled.line_breaks == WRAP_REWRITE ? WRAP_PASSES + 1 : WRAP_PASSES;
 		bool unlaid = text != first;
 		for (int pass = 1; pass < passes; pass++)
 		{

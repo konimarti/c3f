@@ -21,7 +21,7 @@ struct Out
 	bool   cont;        // a continuation line: it belongs to the statement above
 	sz     line_tok;    // first token of the output line
 	sz     col;         // output column where the token starts (before alignment)
-	String[] pieces;    // a string literal written as several (`wrap-fit`): the text of each
+	String[] pieces;    // a string literal written as several (`wrap_rewrite`): the text of each
 	Indent piece_indent; // the indent of the lines after the first piece
 }
 

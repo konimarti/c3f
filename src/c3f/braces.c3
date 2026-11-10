@@ -42,7 +42,7 @@ fn sz statement_end(Src* s, sz from) @local
 }
 
 <*
- Used by `wrap_fit`: the single statement after an `if`, `else`, `while`, `for` or `foreach`
+ Used by `wrap_rewrite`: the single statement after an `if`, `else`, `while`, `for` or `foreach`
  cannot move to the next line without braces, so one that is too long for its line gets them,
  and its body goes on a line of its own. This adds tokens (a '{' and a '}' for each); the result is
  checked to be the input with just these tokens added. If nothing needs braces or the check fails,

@@ -101,12 +101,12 @@ Values are given with their default first.
 *max_line_length* = off
 	*off*, or 1 to 10000. The column limit used by wrapping and alignment.
 
-*c3f_line_breaks* = keep | wrap | wrap_fit | reflow
+*c3f_line_breaks* = keep | wrap | wrap_rewrite | reflow
 	What *c3f* may do with line breaks. It needs a *max_line_length*. *keep* never
 	moves them; *wrap* breaks the statements that have a line over the limit; *reflow*
 	also lays out again every statement that spans several lines, so a break made by hand
 	is joined if the statement fits on one line. A statement on one line that fits is
-	never touched. *wrap_fit* is *wrap*, and in addition:
+	never touched. *wrap_rewrite* is *wrap*, and in addition:
 	- a string literal that still runs past the limit is written as several literals,
 	which the compiler joins: "a b c" becomes "a " "b c". It cuts after a space if it can,
 	never inside an escape sequence, a UTF-8 character or a *printf* conversion, and not in
@@ -116,7 +116,7 @@ Values are given with their default first.
 	that is too long for its line gets braces and a line of its own (*c3c* does not accept the
 	statement of an *if* on the line after it, so it could only be broken inside). Bodies that
 	start with another *if*, a loop, a *switch* or a *defer* are left as they are.
-	Only this option changes more than whitespace. (*wrap-fit* is accepted too.)
+	Only this option changes more than whitespace.
 
 *c3f_brace_style* = allman | knr | linux
 	Where the opening brace goes. *linux* is *knr* with the braces of functions on their
