@@ -1,6 +1,14 @@
 # c3f settings that reproduce the default formatting of the C3 plugin for IntelliJ and CLion
 # (c3lang/c3intellij). Copy the section into your .editorconfig. Every key that matters is
-# written out, so the result does not depend on the c3f_style defaults.
+# written out, so the result does not depend on the c3f_style defaults. A comment on each key
+# names the plugin setting it mirrors; commented-out lines give the K&R variant; "Known
+# differences" at the end lists what c3f does differently.
+#
+# Run c3f from the IDE:
+# - External tool (Settings | Tools | External Tools): Program = full path of c3f,
+#   Arguments = -w $FilePath$, Working directory = $FileDir$, tick "Synchronize files after execution".
+# - Format on save: File Watchers plugin (IntelliJ IDEA: Ultimate), file type C3, Program = c3f,
+#   Arguments = -w $FilePath$, tick "Trigger the watcher regardless of syntax errors".
 
 [*.{c3,c3i}]
 # base: the spacing rules of c3f's strict preset, which the plugin's operator, comma and bracket spacing matches
