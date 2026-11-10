@@ -48,7 +48,7 @@ struct Config
 	sz             trailing_comment_spaces;  // before a trailing // comment; 0 = keep
 	LineBreaks     line_breaks;
 	bool           magic_comma;
-	sz             soft_max_line_length;     // wrapping: c3f_wrap_cost_soft per character past it (0: every character)
+	sz             soft_max_line_length;     // wrapping: c3f_wrap_cost_soft per character past it (0: every character, which changes no break)
 	float          wrap_cost_soft;
 	float          wrap_cost_hard;
 	float          wrap_cost_break;
@@ -314,7 +314,7 @@ fn String allowed_values(Key k)
 		case ALIGN_COMMENTS: return enum_names(CommentAlign);
 		case TRAILING_COMMENT_SPACES: return "keep, or 1 to 16";
 		case LINE_BREAKS: return enum_names(LineBreaks);
-		case SOFT_MAX_LINE_LENGTH: return "0 (off) to 10000";
+		case SOFT_MAX_LINE_LENGTH: return "0 to 10000";
 		case WRAP_COST_SOFT: case WRAP_COST_HARD: case WRAP_COST_BREAK: return "a number, 0 or more";
 		case WRAP_MAX_TOKENS: return "0 to 10000";
 		case SORT_IMPORTS: return enum_names(SortImports);

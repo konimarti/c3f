@@ -194,7 +194,11 @@ Values are given with their default first.
 	A trailing comma keeps one item per line when wrapping.
 
 *c3f_soft_max_line_length* = 0
-	0 (off) to 10000. A second, soft limit for wrapping.
+	0 to 10000. A second, soft limit for wrapping: every column past it costs
+	*c3f_wrap_cost_soft*, so a line is broken earlier than *max_line_length* if that is cheaper.
+	0 is not a switch: it puts the limit at column 0, so every column costs the same and
+	the line breaks stay where *max_line_length* puts them. With *c3f_line_breaks* = *reflow*,
+	a statement written on one line is left alone when this is 0 and laid out again otherwise.
 
 *c3f_wrap_cost_hard* = 100
 	The cost of a column past *max_line_length*.
