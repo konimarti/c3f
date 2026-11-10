@@ -17,7 +17,8 @@
     "src/c3f/**"
   ],
   "test-sources": [
-    "test/**"
+    "test/**",
+    "src/cli/**"
   ],
   "build-dir": "build",
   "output": "build",

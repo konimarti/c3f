@@ -111,8 +111,8 @@ fn Status run_file(Options* opt, String path)
 
 <*
  Format one input and act on the mode (-w is only given with files: stdin is printed).
- A place kept as written is exit status 3 for --check and -w; printing the result or the diff
- is a success (the notes go to stderr), so format-on-save works on code in progress.
+ A place kept as written is exit status 3 for --check only; -w, printing the result and the
+ diff succeed (the notes go to stderr), so format-on-save works on code in progress.
 *>
 fn Status run(Options* opt, String name, String src, c3f::Config* cfg)
 {
@@ -128,11 +128,11 @@ fn Status run(Options* opt, String name, String src, c3f::Config* cfg)
 			return OK;
 		case WRITE:
 			if (r.changed && !write_atomic(name, r.text)) return ERROR;
+			return OK;
 		default:
 			// printed (for an editor: the whole file; the notes went to stderr)
 			return print_out(r.text) ? Status.OK : Status.ERROR;
 	}
-	return s;
 }
 
 fn Status report(String name, c3f::FormatResult* r)
