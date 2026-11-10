@@ -210,7 +210,7 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 	{
 		if (s.key == Key.STYLE.name && !cfg.apply_preset(s.value.to_lower_tcopy(), s.origin))
 		{
-			*error = string::tformat("%s: c3f_style: unknown preset '%s' (use %s)", s.origin, s.value, allowed_values(STYLE));
+			*error = string::tformat("%s: c3f_style: unknown preset '%s'; valid values: %s", s.origin, s.value, allowed_values(STYLE));
 			return BAD_CONFIG~;
 		}
 	}
@@ -224,11 +224,11 @@ fn Config? load_config(String file, String explicit = "", String[] sets = {}, St
 			if (!s.key.starts_with("c3f_") && s.origin != "--set") continue;
 			if (err == UNKNOWN_KEY)
 			{
-				*error = string::tformat("%s: unknown option '%s'", s.origin, s.key);
+				*error = string::tformat("%s: unknown option '%s'; valid options: %s", s.origin, s.key, option_names());
 			}
 			else
 			{
-				*error = string::tformat("%s: %s: invalid value '%s' (use %s)", s.origin, s.key, s.value, allowed_values(key_from_name(s.key)!!));
+				*error = string::tformat("%s: %s: invalid value '%s'; valid values: %s", s.origin, s.key, s.value, allowed_values(key_from_name(s.key)!!));
 			}
 			return BAD_CONFIG~;
 		}

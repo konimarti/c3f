@@ -187,7 +187,7 @@ macro parse_enum($Type, String v)
 	$Type? r = BAD_VALUE~;
 	foreach (e : $Type::values)
 	{
-		if (enum_text(e) == v.treplace("-", "_"))
+		if (enum_text(e) == v)
 		{
 			r = e;
 			break;
@@ -272,6 +272,19 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 
 const sz MAX_COLUMNS = 10000;
 const sz WRAP_TOKENS_LIMIT = 10000;
+
+<* The names of all options, for error messages. *>
+fn String option_names()
+{
+	DString d;
+	d.tinit();
+	foreach (i, k : Key::values)
+	{
+		if (i) d.append(", ");
+		d.append(k.name);
+	}
+	return d.str_view();
+}
 
 <* The values an option takes, for error messages. *>
 fn String allowed_values(Key k)

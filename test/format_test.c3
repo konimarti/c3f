@@ -927,3 +927,64 @@ fn void man_page_documents_every_option() @test
 		}
 	}
 }
+
+<* The error text for one `--set key=value`. *>
+fn String set_error(String key, String value)
+{
+	String error;
+	String[1] sets = { string::tformat("%s=%s", key, value) };
+	assert(@catch(c3f::load_config("x.c3", "", &sets, &error)) == c3f::BAD_CONFIG, "%s=%s was accepted", key, value);
+	return error;
+}
+
+fn void removed_option_names_are_errors_that_list_the_valid_ones() @test
+{
+	String[] old = { "c3f_decl_spacing", "c3f_bracket_padding", "c3f_ct_indent", "c3f_wrap_budget" };
+	String valid = c3f::option_names();
+	foreach (name : old)
+	{
+		c3f::Config c = c3f::defaults();
+		assert(@catch(c.set(name, "keep")) == c3f::UNKNOWN_KEY, "%s", name);
+		String error = set_error(name, "keep");
+		assert(error.contains(string::tformat("unknown option '%s'", name)), "%s", error);
+		assert(error.contains(string::tformat("valid options: %s", valid)), "%s", error);
+	}
+	foreach (k : c3f::Key::values) assert(valid.contains(k.name));
+}
+
+fn void removed_option_values_are_errors_that_list_the_valid_ones() @test
+{
+	String[2][] old = {
+		{ "c3f_continuation", "tab" },
+		{ "c3f_align", "preserve" },
+		{ "c3f_align_comments", "preserve" },
+		{ "c3f_line_breaks", "preserve" },
+		{ "c3f_line_breaks", "wrap_fit" },
+		{ "c3f_line_breaks", "wrap-fit" },
+		{ "c3f_blank_lines_between_decls", "one" },
+		{ "c3f_else_style", "cuddle" },
+		{ "c3f_while_style", "cuddle" },
+		{ "c3f_else_style", "own-line" },
+		{ "c3f_space_inside_brackets", "none" },
+		{ "c3f_space_inside_braces", "space" },
+	};
+	foreach (kv : old)
+	{
+		c3f::Config c = c3f::defaults();
+		assert(@catch(c.set(kv[0], kv[1])) == c3f::BAD_VALUE, "%s=%s", kv[0], kv[1]);
+		String error = set_error(kv[0], kv[1]);
+		assert(error.contains(string::tformat("invalid value '%s'", kv[1])), "%s", error);
+		assert(error.contains(string::tformat("valid values: %s", c3f::allowed_values(c3f::key_from_name(kv[0])!!))), "%s", error);
+	}
+	assert(set_error("c3f_line_breaks", "wrap_fit").contains("keep, wrap, wrap_rewrite, reflow"));
+}
+
+fn void every_option_lists_its_valid_values_in_the_error() @test
+{
+	foreach (k : c3f::Key::values)
+	{
+		if (k == c3f::Key.STYLE) continue;
+		assert(c3f::allowed_values(k).len > 0, "%s", k.name);
+		assert(set_error(k.name, "no such value").contains(c3f::allowed_values(k)), "%s", k.name);
+	}
+}
