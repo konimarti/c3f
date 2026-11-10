@@ -3,7 +3,7 @@
 A fast, token-based formatter for [C3](https://c3-lang.org).
 
 - **Token-based.** It works on tokens, not a grammar, so half-typed code and new syntax do not stop it.
-- **Fast.** The whole standard library in 0.13 s, and in 0.30 s wrapped at 120 columns.
+- **Fast.** The whole standard library in 0.14 s, and in 0.37 s wrapped at 120 columns.
 
 - **Stable.** Formatting twice gives the same bytes: no flapping in CI, no fights with format-on-save.
 - **Verified.** Every result is lexed again and compared, token by token, with your code.
@@ -42,26 +42,32 @@ fn void main()
 
 ## How it compares
 
-The C3 standard library (364 files), every tool built with `-O3` and wrapping at 120 columns.
-c3f runs on one thread; c3fmt uses all 28 cores. Versions: c3fmt c74d563, c3tools 32b5f03,
-standard library c23910038 (0.8.6).
+The C3 standard library of c3c 0.8.6 (74faaa9, 365 files), each formatter with its default
+settings, and c3f once more wrapping at 120 columns (c3fmt's default limit). Both built from their
+git HEAD with `-O3`: c3f b357cb4, [c3fmt](https://github.com/lmichaudel/c3fmt) a53fe85 (v0.3.5).
+4 cores (AMD EPYC 9355P).
 
-| | c3f | c3f, 120 columns | [c3fmt](https://github.com/lmichaudel/c3fmt) | [c3tools](https://github.com/alexveden/c3tools) c3fmt |
-|---|---|---|---|---|
-| Time (median of 5 runs) | 0.13 s | 0.30 s | 2.4 s ⁴ | 99 s ² |
-| Peak memory | 10 MB | 17 MB | 78 MB | 17 MB |
-| Lines changed | 1,858 | 2,910 | 14,069 | 14,854 |
-| Lines over 120 columns left (1,329 before) | 1,325 | 317 ³ | 522 | 738 |
-| Files whose code or comments changed | 0 ¹ | 0 ¹ | 77 | 110 |
-| Files that change again on a second run | 0 | 0 | 31 | 5 |
-| Files it fails on | 0 | 0 | 0 | 69 |
-| c3c's unit tests still pass afterwards | yes | yes | yes | no (does not compile) |
-| Formats a file with a syntax error (e.g. while typing) | yes | yes | no | no |
+| | c3f | c3f, 120 columns | c3fmt |
+|---|---|---|---|
+| Time (median of 5 runs) | 0.14 s | 0.37 s | 3.05 s ¹ |
+| Peak memory | 13 MB | 19 MB | 29 MB |
+| Lines changed | 1,845 | 2,906 | 14,122 |
+| Lines over 120 columns left (1,331 before) | 1,331 | 315 ² | 503 |
+| Files whose code changed (whitespace aside) | 0 | 0 | 9 ³ |
+| Files that change again on a second run | 0 | 0 | 31 |
+| ... and still on a third run | 0 | 0 | 5 |
+| c3c's unit tests (1,878) still pass afterwards | yes | yes | yes |
+| Formats a file with a syntax error (e.g. while typing) | yes | yes | no ⁴ |
 
-¹ Two files: the indentation of the inner lines of multi-line comments moved with the comment.<br>
-² Nearly all on the 69 files it fails on, about 1.4 s each.<br>
-³ Mostly comments, contract text and long strings; also one-line blocks, aligned rows and lines with several statements.<br>
-⁴ The same on one core.
+¹ The same on one core: c3fmt starts a thread per core, but formats one file at a time.<br>
+² Mostly comments, contract text and long strings; also one-line blocks, aligned rows and lines with several statements.<br>
+³ Empty `;` removed after `$endif`, `$endswitch` and `}`, and in 4 files `tlocal` dropped from a thread-local variable.<br>
+⁴ It leaves the file as it is (exit status 0); from stdin, as editors call it, it crashes.
+
+c3fmt's own stdlib snapshot (364 files) gives the same picture. *Lines changed* counts the lines
+of the input that were changed or removed. [c3tools](https://github.com/alexveden/c3tools) c3fmt
+(32b5f03) no longer builds with c3c 0.8.6. To run the comparison yourself:
+`tools/bench.py --c3fmt <path to c3fmt>` (`--help` for the options).
 
 The formatter of the C3 plugin for IntelliJ and CLion runs only inside the IDE, so it is not in the
 table; see [IntelliJ IDEA and CLion](#intellij-idea-and-clion).
