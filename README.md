@@ -129,12 +129,12 @@ require("conform").setup({
 })
 ```
 
-Helix (`languages.toml`):
+Helix 25.07 or later (`languages.toml`):
 
 ```toml
 [[language]]
 name = "c3"
-formatter = { command = "c3f", args = ["-"] }
+formatter = { command = "c3f", args = ["--stdin-filename", "%{buffer_name}", "-"] }
 auto-format = true
 ```
 
@@ -154,7 +154,7 @@ are not formatted ([`contrib/pre-commit`](contrib/pre-commit)). An existing hook
 Options come from `.editorconfig` (the nearest file wins) and `--set key=value`:
 
 ```ini
-[*.c3]
+[*.{c3,c3i}]
 c3f_style = strict            # stdlib (default), knr or strict
 indent_style = tab
 max_line_length = 100
