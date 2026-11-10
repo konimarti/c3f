@@ -72,28 +72,14 @@ of the input that were changed or removed. [c3tools](https://github.com/alexvede
 (32b5f03) no longer builds with c3c 0.8.6. To run the comparison yourself:
 `tools/bench.py --c3fmt <path to c3fmt>` (`--help` for the options).
 
-The formatter of the C3 plugin for IntelliJ and CLion runs only inside the IDE, so it is not in the
-table; see [IntelliJ IDEA and CLion](#intellij-idea-and-clion).
-
 ## Install
 
-Download a binary for Linux, macOS or Windows from the
-[releases](https://github.com/konimarti/c3f/releases), or build it with
-[c3c](https://github.com/c3lang/c3c) 0.8.5 or later. Build and install `c3f` and its man page to
-`~/.local` in one command:
+Download a binary for Linux, macOS or Windows from the [releases](https://github.com/konimarti/c3f/releases).
+Or build and install it with [c3c](https://github.com/c3lang/c3c) 0.8.5 or later:
 
 ```sh
 git clone --recurse-submodules https://github.com/konimarti/c3f && make -C c3f install PREFIX=$HOME/.local
 ```
-
-`make install` takes `PREFIX` (default `/usr/local`) and `DESTDIR`; `make` alone builds `build/c3f`.
-
-The only dependency, [lexer.c3l](https://github.com/konimarti/lexer.c3l), is a git submodule in
-`lib/`, so building needs no package manager. Its version is pinned in `c3l.lock` and managed with
-[c3l](https://github.com/konimarti/c3l): `c3l sync` checks it out in a clone made without
-`--recurse-submodules` (as does `git submodule update --init`), `c3l verify` checks it,
-`c3l update lexer` moves it to a newer release. GitHub's "Download ZIP" leaves out submodules: clone
-instead.
 
 ## Use
 
@@ -160,7 +146,8 @@ purpose. With a custom path it still compares the `--version` of the binary with
 c3fmt release and may offer "New version of c3fmt available"; *Ignore* is enough, the configured
 path stays in use.
 
-JetBrains IDEs: see [IntelliJ IDEA and CLion](#intellij-idea-and-clion).
+JetBrains IDEs: run `c3f -w $FilePath$` as an External Tool, or as a File Watcher for format on
+save; [`contrib/intellij.editorconfig`](contrib/intellij.editorconfig) gives the C3 plugin's style.
 
 **CI.** Fail the build if anything is not formatted:
 
@@ -192,26 +179,6 @@ c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay mult
 | `c3f_align`, `c3f_align_comments` | `keep` leaves alignment of declarations and trailing comments as written; `decls` and `always` apply it; `off` removes it. |
 
 All options and their values are in the man page: `man c3f` (source: [`c3f.1.scd`](c3f.1.scd)).
-
-## IntelliJ IDEA and CLion
-
-The C3 plugin for IntelliJ and CLion ([c3lang/c3intellij](https://github.com/c3lang/c3intellij))
-has a formatter of its own, which runs only inside the IDE. c3f also works in any editor, in CI and
-in a git hook, reads `.editorconfig`, wraps to a column limit and sorts imports.
-
-**The plugin's style.** [`contrib/intellij.editorconfig`](contrib/intellij.editorconfig) is an
-`.editorconfig` section that makes c3f format like the plugin's defaults: Allman braces, tabs, one
-statement per line, blank lines kept up to two, no wrapping. Copy it into your `.editorconfig`.
-A comment on each key names the plugin setting it mirrors, and commented-out lines give the K&R
-variant. A *Known differences* block at the end lists what c3f does differently: one blank-line
-limit instead of three, indented continuation lines, normalized spaces around comments, casts
-and `?:`.
-
-**Run c3f from the IDE.** Add an external tool (*Settings | Tools | External Tools*) with Program the
-full path of `c3f`, Arguments `-w $FilePath$`, Working directory `$FileDir$` and *Synchronize files
-after execution* ticked. For format on save use the *File Watchers* plugin (IntelliJ IDEA: Ultimate)
-with the C3 file type, Program `c3f`, Arguments `-w $FilePath$`, and *Trigger the watcher
-regardless of syntax errors* ticked.
 
 ## License
 
