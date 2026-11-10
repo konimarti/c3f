@@ -615,7 +615,7 @@ fn void a_lone_underscore_is_spaced_like_a_name() @test
 	      "fn void f() { foo(a, _); foo(_, a); x = _; int _ = 3; y = b[_] + _; foreach (_, x : y) {} }\n", &c);
 }
 
-fn void wrap_fit_splits_a_long_literal_at_spaces() @test
+fn void wrap_rewrite_splits_a_long_literal_at_spaces() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");
@@ -627,7 +627,7 @@ fn void wrap_fit_splits_a_long_literal_at_spaces() @test
 	check(src, "fn void f()\n{\n\tString s =\n\t\t\"one two three four five six seven eight nine ten\";\n}\n", &c);
 }
 
-fn void wrap_fit_keeps_escapes_conversions_and_utf8_whole() @test
+fn void wrap_rewrite_keeps_escapes_conversions_and_utf8_whole() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "30");
@@ -644,7 +644,7 @@ fn void wrap_fit_keeps_escapes_conversions_and_utf8_whole() @test
 	assert(fmt_with(got, &c) == got);
 }
 
-fn void wrap_fit_leaves_assert_attributes_and_messages_alone() @test
+fn void wrap_rewrite_leaves_assert_attributes_and_messages_alone() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "30");
@@ -668,7 +668,7 @@ fn void a_comment_at_the_end_of_a_line_is_not_part_of_its_length() @test
 	      "fn void f()\n{\n\tfoo(aaaaaaaaaaaa,\n\t\tbbbbbbbbbbbb,\n\t\tcccccccccccc); // note\n}\n", &c);
 }
 
-fn void wrap_fit_braces_a_body_that_is_too_long_for_its_line() @test
+fn void wrap_rewrite_braces_a_body_that_is_too_long_for_its_line() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");
@@ -682,7 +682,7 @@ fn void wrap_fit_braces_a_body_that_is_too_long_for_its_line() @test
 	assert(!fmt_with("fn int f()\n{\n\tif (!is_lf(self.peek())) return INVALID_NEWLINE~;\n}\n", &w).contains("{\n\t\treturn"));
 }
 
-fn void wrap_fit_leaves_short_nested_and_deferred_bodies_alone() @test
+fn void wrap_rewrite_leaves_short_nested_and_deferred_bodies_alone() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");
@@ -695,7 +695,7 @@ fn void wrap_fit_leaves_short_nested_and_deferred_bodies_alone() @test
 	assert(!fmt_with(deferred, &c).contains("{\n\t\tdefer"));
 }
 
-fn void wrap_fit_keeps_a_comment_after_the_body_on_its_line() @test
+fn void wrap_rewrite_keeps_a_comment_after_the_body_on_its_line() @test
 {
 	c3f::Config c = c3f::defaults();
 	(void)c.set("max_line_length", "40");

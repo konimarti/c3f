@@ -167,7 +167,7 @@ c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay mult
 | `max_line_length`, `c3f_line_breaks` | `keep` (default) never moves your line breaks; `wrap` breaks only the statements with a line over the limit; `reflow` also lays out multi-line statements again; `wrap_rewrite` is `wrap` plus two changes that add tokens: a string that is still too long is split into `"a " "b"`, which the compiler joins, and a braceless `if`/`else`/`while`/`for`/`foreach` body that is too long for its line gets `{ }` and its own line (c3c does not allow the body of an `if` on the line after it). The joined value and the added braces are checked. |
 | `indent_style`, `indent_size`, `tab_width` | `tab`, 4, 4. |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all`, `split` (one module per `import`). |
-| `c3f_align`, `c3f_align_comments` | Keep (`keep`), apply (`decls`, `always`) or remove (`off`) alignment of declarations and trailing comments. |
+| `c3f_align`, `c3f_align_comments` | `keep` leaves alignment of declarations and trailing comments as written; `decls` and `always` apply it; `off` removes it. |
 
 All options and their values are in the man page: `man c3f` (source: [`c3f.1.scd`](c3f.1.scd)).
 
