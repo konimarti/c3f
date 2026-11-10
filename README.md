@@ -57,11 +57,15 @@ git HEAD with `-O3`: c3f b357cb4, [c3fmt](https://github.com/lmichaudel/c3fmt) a
 | Files that change again on a second run | 0 | 0 | 31 |
 | ... and still on a third run | 0 | 0 | 5 |
 | c3c's unit tests (1,878) still pass afterwards | yes | yes | yes |
-| Formats a file with a syntax error (e.g. while typing) | yes | yes | no |
+| Formats a file with a syntax error (e.g. while typing) | yes | yes | no ⁴ |
 
 ¹ The same when pinned to one core.<br>
 ² Mostly comments, contract text and long strings; also one-line blocks, aligned rows and lines with several statements.<br>
-³ Differences that remain after removing all whitespace from both files.
+³ Differences that remain after removing all whitespace from both files.<br>
+⁴ Test file: an unclosed `(` in an `if`. c3fmt leaves a file as it is and reports
+`SOURCE_CODE_CONTAINS_ERROR` (exit status 0); from stdin, as editors call it, it stops with
+that error unhandled (exit status 132). c3f formats up to the `(`, keeps the rest as written and
+names the line on stderr.
 
 c3fmt's own stdlib snapshot (364 files) gives the same picture. *Lines changed* counts the lines
 of the input that were changed or removed. [c3tools](https://github.com/alexveden/c3tools) c3fmt
