@@ -22,7 +22,7 @@ struct Options
 <* Flags may come before or after paths; "--" ends flags, "-" means stdin. *>
 fn void? Options.parse(&self, String[] args)
 {
-	bool flags_done;
+	bool flags_done, stdout_flag;
 	for (sz i = 1; i < args.len; i++)
 	{
 		String a = args[i];
@@ -57,7 +57,9 @@ fn void? Options.parse(&self, String[] args)
 			case "-h": case "--help": self.help = true;
 			case "--version": self.version = true;
 			case "--git-hook": self.git_hook = true;
-			case "--config": case "--set": case "--stdin-filename": case "--exclude":
+			case "--stdin": self.stdin = true;      // the flags of the C3 VS Code extension
+			case "--stdout": stdout_flag = true;
+			case "--config": case "--set": case "--stdin-filename": case "--stdin-filepath": case "--exclude":
 				if (!has_value)
 				{
 					if (++i >= args.len)
@@ -71,13 +73,18 @@ fn void? Options.parse(&self, String[] args)
 				{
 					case "--config": self.config = value;
 					case "--set": self.sets.push(value);
-					case "--stdin-filename": self.stdin_filename = value;
+					case "--stdin-filename": case "--stdin-filepath": self.stdin_filename = value;
 					default: self.excludes.push(value);
 				}
 			default:
 				io::eprintfn("c3f: unknown flag '%s' (see c3f --help)", a);
 				return UNKNOWN_FLAG~;
 		}
+	}
+	if (stdout_flag && self.mode != STDOUT)
+	{
+		io::eprintn("c3f: --stdout cannot be combined with -w, --check, --diff and --print-config");
+		return USAGE~;
 	}
 	if (self.stdin && self.paths.len())
 	{
@@ -122,6 +129,8 @@ flags:
       --set <key>=<value>  set an option (repeatable); applied after .editorconfig
       --print-config       print the effective options and where they come from
       --stdin-filename <p> with '-': the path used for .editorconfig and messages
+      --stdin, --stdout, --stdin-filepath <p>   the same as -, the default output and --stdin-filename
+                           (for the C3 VS Code extension)
       --exclude <glob>     skip matching paths (repeatable)
       --git-hook           install a pre-commit hook in this git repository that rejects
                            commits with unformatted C3 files (an existing hook is kept)

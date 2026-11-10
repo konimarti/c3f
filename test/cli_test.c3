@@ -34,3 +34,42 @@ fn void check_keeps_exit_3() @test
 	assert(cli::Status.KEPT.ordinal == 3);
 	assert(cli::run(&opt, "changed.c3", "fn void f(){int a=1;}\n", &cfg) == cli::Status.CHANGED);
 }
+
+fn bool same_options(cli::Options* a, cli::Options* b) @local
+{
+	return a.mode == b.mode && a.stdin == b.stdin && a.help == b.help && a.version == b.version
+		&& a.git_hook == b.git_hook && a.config == b.config && a.stdin_filename == b.stdin_filename
+		&& a.sets.len() == b.sets.len() && a.excludes.len() == b.excludes.len() && a.paths.len() == b.paths.len();
+}
+
+fn void vscode_flags_are_the_stdin_flags() @test
+{
+	cli::Options want;
+	assert(@ok(want.parse({ "c3f", "-", "--stdin-filename", "/x/a.c3" })));
+	assert(want.stdin && want.stdin_filename == "/x/a.c3");
+	cli::Options got;
+	assert(@ok(got.parse({ "c3f", "--stdin", "--stdout", "--stdin-filepath=/x/a.c3" })));
+	assert(same_options(&want, &got));
+	cli::Options spaced;
+	assert(@ok(spaced.parse({ "c3f", "--stdin", "--stdout", "--stdin-filepath", "/x/a.c3" })));
+	assert(same_options(&want, &spaced));
+}
+
+fn void stdout_does_not_combine_with_other_modes() @test
+{
+	String[4] modes = { "-w", "--check", "--diff", "--print-config" };
+	foreach (mode : modes)
+	{
+		cli::Options a;
+		assert(!@ok(a.parse({ "c3f", "--stdout", mode, "x.c3" })));
+		cli::Options b;
+		assert(!@ok(b.parse({ "c3f", mode, "--stdout", "x.c3" })));
+	}
+	cli::Options ok;
+	assert(@ok(ok.parse({ "c3f", "--stdout", "x.c3" })));
+}
+
+fn void help_lists_the_vscode_flags() @test
+{
+	assert(cli::HELP.contains("--stdin-filepath"));
+}
