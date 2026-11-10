@@ -55,7 +55,7 @@ fn FormatResult format(Allocator a, String input, Config* cfg) => @pool()
 
 fn String format_pass(FormatResult* r, Allocator a, String input, Config* settled) @local
 {
-	bool wraps = settled.line_breaks != PRESERVE && settled.max_line_length != 0;
+	bool wraps = settled.line_breaks != KEEP && settled.max_line_length != 0;
 	WrapMemo memo;
 	if (wraps) memo.init();
 	defer if (wraps) memo.free();

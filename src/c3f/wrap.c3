@@ -606,7 +606,7 @@ fn void WrapMemo.free(&self)
 <* Re-break the statements that need it (in `reflow`: every statement that spans lines). *>
 fn void Fmt.wrap(&self)
 {
-	if (self.cfg.line_breaks == PRESERVE || self.cfg.max_line_length == 0) return;
+	if (self.cfg.line_breaks == KEEP || self.cfg.max_line_length == 0) return;
 	Src* s = self.src;
 	sz a = 0;
 	while (a < s.len())

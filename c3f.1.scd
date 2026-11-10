@@ -101,8 +101,8 @@ Values are given with their default first.
 *max_line_length* = off
 	*off*, or 1 to 10000. The column limit used by wrapping and alignment.
 
-*c3f_line_breaks* = preserve | wrap | wrap_fit | reflow
-	What *c3f* may do with line breaks. It needs a *max_line_length*. *preserve* never
+*c3f_line_breaks* = keep | wrap | wrap_fit | reflow
+	What *c3f* may do with line breaks. It needs a *max_line_length*. *keep* never
 	moves them; *wrap* breaks the statements that have a line over the limit; *reflow*
 	also lays out again every statement that spans several lines, so a break made by hand
 	is joined if the statement fits on one line. A statement on one line that fits is
@@ -175,11 +175,11 @@ Values are given with their default first.
 *c3f_decl_spacing* = keep | 1
 	*1* puts exactly one blank line between declarations.
 
-*c3f_align* = preserve | decls | off
+*c3f_align* = keep | decls | off
 	Align the names, _=_ and _=>_ of consecutive lines (*decls*), keep the alignment as
-	written (*preserve*), or remove it (*off*).
+	written (*keep*), or remove it (*off*).
 
-*c3f_align_comments* = preserve | always | off
+*c3f_align_comments* = keep | always | off
 	The same for trailing comments.
 
 *c3f_trailing_comment_spaces* = keep

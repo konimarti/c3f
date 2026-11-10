@@ -14,9 +14,9 @@ enum SpacingMode : char { STDLIB, STRICT }
 enum PointerStyle : char { KEEP, TYPE, NAME }
 enum BracketPadding : char { KEEP, NONE, SPACE }
 enum DeclSpacing : char { KEEP, ONE }
-enum AlignMode : char { PRESERVE, DECLS, OFF }
-enum CommentAlign : char { PRESERVE, ALWAYS, OFF }
-enum LineBreaks : char { PRESERVE, WRAP, WRAP_FIT, REFLOW }
+enum AlignMode : char { KEEP, DECLS, OFF }
+enum CommentAlign : char { KEEP, ALWAYS, OFF }
+enum LineBreaks : char { KEEP, WRAP, WRAP_FIT, REFLOW }
 enum SortImports : char { OFF, LINES, LISTS, ALL, SPLIT }
 enum CtIndent : char { KEEP, INDENT, FLUSH }
 
@@ -104,8 +104,8 @@ fn Config defaults()
 		.case_indent = true, .ct_indent = KEEP, .continuation = KEEP,
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .bracket_padding = KEEP,
 		.max_blank_lines = 2, .trim_block_blanks = true, .decl_spacing = KEEP,
-		.align = PRESERVE, .align_comments = PRESERVE,
-		.line_breaks = PRESERVE, .magic_comma = true,
+		.align = KEEP, .align_comments = KEEP,
+		.line_breaks = KEEP, .magic_comma = true,
 		.wrap_cost_soft = 0.05, .wrap_cost_hard = 100, .wrap_cost_break = 2, .wrap_budget = 2000,
 		.sort_imports = OFF, .style = "stdlib",
 	};

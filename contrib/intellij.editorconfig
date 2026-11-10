@@ -42,12 +42,12 @@ c3f_pointer_style = type
 c3f_bracket_padding = keep
 c3f_space_after_cast = false
 c3f_align = off
-c3f_align_comments = preserve
+c3f_align_comments = keep
 # trailing comments: alignment as written (the plugin keeps the spaces before a comment, see the known differences)
 c3f_trailing_comment_spaces = keep
 
 # No wrapping, no import sorting, no final newline added
-c3f_line_breaks = preserve
+c3f_line_breaks = keep
 max_line_length = off
 c3f_sort_imports = off
 insert_final_newline = false
