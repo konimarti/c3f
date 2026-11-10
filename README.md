@@ -70,15 +70,21 @@ table; see [IntelliJ IDEA and CLion](#intellij-idea-and-clion).
 
 Download a binary for Linux, macOS or Windows from the
 [releases](https://github.com/konimarti/c3f/releases), or build it with
-[c3c](https://github.com/c3lang/c3c) 0.8.5 or later and [c3l](https://github.com/konimarti/c3l):
+[c3c](https://github.com/c3lang/c3c) 0.8.5 or later. Build and install `c3f` and its man page to
+`~/.local` in one command:
 
 ```sh
-git clone https://github.com/konimarti/c3f && cd c3f
-c3l sync
-c3c build c3f        # → build/c3f
+git clone --recurse-submodules https://github.com/konimarti/c3f && make -C c3f install PREFIX=$HOME/.local
 ```
 
-`make install` builds and installs `c3f` and its man page (`PREFIX`, `DESTDIR`).
+`make install` takes `PREFIX` (default `/usr/local`) and `DESTDIR`; `make` alone builds `build/c3f`.
+
+The only dependency, [lexer.c3l](https://github.com/konimarti/lexer.c3l), is a git submodule in
+`lib/`, so building needs no package manager. Its version is pinned in `c3l.lock` and managed with
+[c3l](https://github.com/konimarti/c3l): `c3l sync` checks it out in a clone made without
+`--recurse-submodules` (as does `git submodule update --init`), `c3l verify` checks it,
+`c3l update lexer` moves it to a newer release. GitHub's "Download ZIP" leaves out submodules: clone
+instead.
 
 ## Use
 
