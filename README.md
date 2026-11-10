@@ -144,6 +144,13 @@ formatter = { command = "c3f", args = ["--stdin-filename", "%{buffer_name}", "-"
 auto-format = true
 ```
 
+VS Code: install the C3 extension, set `c3.format.path` to the full path of c3f and turn on
+`editor.formatOnSave` for `[c3]` ([`contrib/vscode/settings.json`](contrib/vscode/settings.json)).
+The extension calls `c3f --stdin --stdout --stdin-filepath=<file>`, which c3f accepts for this
+purpose. With a custom path it still compares the `--version` of the binary with the latest
+c3fmt release and may offer "New version of c3fmt available"; *Ignore* is enough, the configured
+path stays in use.
+
 JetBrains IDEs: see [IntelliJ IDEA and CLion](#intellij-idea-and-clion).
 
 **CI.** Fail the build if anything is not formatted:

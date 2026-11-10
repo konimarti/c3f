@@ -46,6 +46,11 @@ The code between the comments *// c3f off* and *// c3f on* is left untouched.
 *--stdin-filename* _path_
 	With *-*, the path used to find _.editorconfig_ and in messages.
 
+*--stdin*, *--stdout*, *--stdin-filepath* _path_
+	The same as *-*, the default output (to standard output; it cannot be combined with *-w*,
+	*--check*, *--diff* and *--print-config*) and *--stdin-filename*. They are the flags the
+	C3 extension for VS Code passes to the formatter set in its _c3.format.path_ setting.
+
 *--exclude* _glob_
 	Skip matching paths; repeatable. A glob is matched against the path below the directory
 	given, and against each part of it that starts after a _/_: _gen/\*_ skips

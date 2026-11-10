@@ -1,0 +1,17 @@
+{
+	// The C3 extension (c3lang.vscode-c3) runs this formatter instead of the one it downloads:
+	// c3f --stdin --stdout --stdin-filepath=<file>
+	// Use the full path; on Windows the path of c3f.exe.
+	"c3.format.path": "/usr/local/bin/c3f",
+
+	// The extension's default is false.
+	"[c3]": {
+		"editor.formatOnSave": true
+	}
+
+	// With a custom path the extension still compares the --version of the binary with the
+	// latest c3fmt release and may offer "New version of c3fmt available". Answering Ignore is
+	// enough (the configured path still wins). Or turn the check off with the setting below;
+	// note that this also stops the c3-lsp update check.
+	// "c3.tools.checkForUpdate": false
+}
