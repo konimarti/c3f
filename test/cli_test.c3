@@ -6,7 +6,7 @@ const String BROKEN = "fn void g(){int a=1;}\nfn void f()\n{\n\tif (x>0 {\n\t\tf
 <* Writes `text` to a new file in the temp directory and returns its path. *>
 fn String temp_file(String name, String text) @local
 {
-	String path = string::tformat("%s/c3f_cli_%s", os::getcwd(tmem)!!, name);
+	String path = (String)path::temp_directory(tmem)!!.tappend(string::tformat("c3f_cli_%s", name))!!;
 	assert(@ok(file::save(path, text)));
 	return path;
 }
