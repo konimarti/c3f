@@ -68,6 +68,13 @@ Print the options in effect for the file and where each comes from.\&
 With \fB-\fR, the path used to find \fI.\&editorconfig\fR and in messages.\&
 .PP
 .RE
+\fB--stdin\fR, \fB--stdout\fR, \fB--stdin-filepath\fR \fIpath\fR
+.RS 4
+The same as \fB-\fR, the default output (to standard output; it cannot be combined with \fB-w\fR,
+\fB--check\fR, \fB--diff\fR and \fB--print-config\fR) and \fB--stdin-filename\fR.\& They are the flags the
+C3 extension for VS Code passes to the formatter set in its \fIc3.\&format.\&path\fR setting.\&
+.PP
+.RE
 \fB--exclude\fR \fIglob\fR
 .RS 4
 Skip matching paths; repeatable.\& A glob is matched against the path below the directory
