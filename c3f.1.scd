@@ -149,7 +149,7 @@ Values are given with their default first.
 	The contents of *$if*, *$switch* and *$foreach* blocks: as written, indented, or at the
 	level of the directive.
 
-*c3f_continuation* = keep | tab | align
+*c3f_continuation* = keep | indent | align
 	How the lines of a broken statement are continued: as written, one more level, or
 	aligned under the opening bracket.
 

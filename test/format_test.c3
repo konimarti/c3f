@@ -461,7 +461,7 @@ fn void later_wrap_passes_settle() @test
 {
 	// a pass that wraps nothing may still re-indent what was wrapped (tab and align continuations)
 	String call = "fn void f()\n{\n\tx = aaaa(bbbbbbbbbbbbbbbb, cccccccccccccccccccccccccccccccc, dddddddddd(eeeeeeeeeeeeeeee, ffffffffffffffff, gggggggggggggggg, hhhhhhhhhhhhhh));\n}\n";
-	stable_with(call, { "max_line_length", "50", "c3f_line_breaks", "wrap", "c3f_continuation", "tab" });
+	stable_with(call, { "max_line_length", "50", "c3f_line_breaks", "wrap", "c3f_continuation", "indent" });
 	stable_with(call, { "max_line_length", "60", "c3f_line_breaks", "wrap", "c3f_continuation", "align" });
 	// an aligned gap before a name does not move the continuation lines that align after its '('
 	stable_with("fn int\tget_value(char r,\n\tint b)\n{\n\treturn 1;\n}\n", { "c3f_continuation", "align" });
@@ -469,7 +469,7 @@ fn void later_wrap_passes_settle() @test
 	stable_with("fn void f()\n{\n\tp[i,j]    = 1;\n\tvalue     = call(a,\n\t                 b);\n}\n", { "c3f_continuation", "align" });
 	// a compile-time header over two lines: the body is judged by the line after its ':'
 	check("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", "fn void f()\n{\n\t$if $a &&\n\t$b:\n\t\tfoo();\n\t$endif\n}\n");
-	stable_with("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", { "c3f_continuation", "tab" });
+	stable_with("fn void f()\n{\n\t$if $a &&\n $b:\n\t\tfoo();\n\t$endif\n}\n", { "c3f_continuation", "indent" });
 	// several statements on one line are not wrapped (each pass would settle only one more)
 	stable_with("const Foo A = { 0x4c5c32ff, 0xbb9d, 0x43b0, x\"b5b42d72e54eaaa4\" };  const Foo B = { 0xb7bede81, 0xdf94, 0x4682, x\"a7d857a52620b86f\" };  const Foo C = { 0xA63293E8, 0x664E, 0x48DB, x\"A079DF759E0509F7\" };\n",
 		{ "max_line_length", "40", "c3f_line_breaks", "wrap" });
@@ -741,7 +741,7 @@ fn void multi_line_faultdef_members_are_indented() @test
 	String[] sources = { "faultdef\nALREADY_EXISTS,\nBUSY;\nfaultdef A,B;\nfn void f(){}\n", "faultdef\n\t\tALREADY_EXISTS,\n  BUSY;\nfaultdef A, B;\nfn void f() {}\n" };
 	foreach (src : sources)
 	{
-		foreach (mode : (String[]){ "keep", "tab", "align" })
+		foreach (mode : (String[]){ "keep", "indent", "align" })
 		{
 			c3f::Config c = c3f::defaults();
 			(void)c.set("c3f_continuation", mode);

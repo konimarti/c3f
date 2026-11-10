@@ -13,7 +13,7 @@ indent_size = 4
 tab_width = 4
 # the plugin's indent rules only give brace contents, compile-time bodies and case bodies a level (C3Block.getIndent
 # returns a normal or no indent), so it adds none to the lines of a broken statement. c3f cannot leave them
-# flush: keep is the closest, it takes their indent from the source instead of adding a level (tab would)
+# flush: keep is the closest, it takes their indent from the source instead of adding a level (indent would)
 c3f_continuation = keep
 c3f_case_indent = indent
 c3f_ct_indent = indent

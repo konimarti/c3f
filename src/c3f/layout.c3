@@ -510,8 +510,8 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 	switch (self.cfg.continuation)
 	{
 		case KEEP:
-			// relative to the line the statement started on (none: one level, as `tab` does)
-			if (!f.has_head) nextcase TAB;
+			// relative to the line the statement started on (none: one level, as `indent` does)
+			if (!f.has_head) nextcase INDENT;
 			String extra = self.relative(s.indent_of(i), f.head_src);
 			// inside an initializer that opened on an earlier line and has no lines of its own
 			// (`= { { 1, 2 },` then `{ 3, 4 },`): at least one level in, a closer excepted
@@ -527,8 +527,8 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 				sz pad = self.out[o + 1].col - self.indent_width(line);
 				if (pad > 0) return { line.levels, line.extra.tconcat(spaces(pad)) };
 			}
-			nextcase TAB;
-		case TAB:
+			nextcase INDENT;
+		case INDENT:
 			return is_closer(t.type) && i == j ? base : base.deeper();
 	}
 }
