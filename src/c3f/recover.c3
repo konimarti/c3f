@@ -1,4 +1,5 @@
 module c3f;
+import c3::lexer;
 
 <*
  Where a damaged file is picked up again: a line that starts at column 0 with one of these words (or
@@ -55,4 +56,68 @@ fn bool is_break_token(Tok* t, bool at_line_start)
 		default:
 			return false;
 	}
+}
+
+<* The cause of an unterminated token that runs to the end of the input, or "". *>
+fn String unterminated_cause(Token* t)
+{
+	if (!t.unterminated) return "";
+	switch (t.type)
+	{
+		case STRING: return t.text.starts_with("`") ? "unterminated raw string" : "";
+		case BLOCK_COMMENT: return "unterminated comment";
+		case CONTRACT: return "unterminated doc comment";
+		default: return "";
+	}
+}
+
+<*
+ The lexer, with a recovery: a raw string, block comment or doc comment that is never closed ends just
+ before the next break line (without the whitespace in front of it), and lexing goes on there. The
+ offsets and lines of the tokens after it are those of the whole text.
+*>
+struct Recovering
+{
+	Lexer  lx;
+	String text;
+	sz     base;        // offset of the text the lexer has
+	sz     line_add;    // lines before it
+	sz     first_nl;    // newlines before the first token after a cut, or NO
+	bool   cut;         // the token returned last was cut short
+	sz     last_line;   // then: the line of its last byte
+}
+
+fn void Recovering.init(&self, String text)
+{
+	*self = { .text = text, .first_nl = NO };
+	self.lx.init(text);
+}
+
+fn Token? Recovering.next(&self)
+{
+	Token t = self.lx.next()!;
+	self.cut = false;
+	t.offset += self.base;
+	t.ln += self.line_add;
+	if (self.first_nl != NO)
+	{
+		t.nl_before = self.first_nl;
+		self.first_nl = NO;
+	}
+	if (unterminated_cause(&t).len == 0) return t;
+	sz bp = find_break(self.text, t.offset);
+	self.last_line = t.ln + t.text.count("\n");
+	if (bp == NO) return t;
+	sz e = bp;
+	while (e > t.offset && (self.text[e - 1] == ' ' || self.text[e - 1] == '\t' || self.text[e - 1] == '\r' || self.text[e - 1] == '\n')) e--;
+	String gap = self.text[e:bp - e];
+	t.text = self.text[t.offset:e - t.offset];
+	t.len = t.text.len;
+	self.last_line = t.ln + t.text.count("\n");
+	self.cut = true;
+	self.first_nl = gap.count("\n");
+	self.line_add = t.ln + self.text[t.offset:bp - t.offset].count("\n") - 1;
+	self.base = bp;
+	self.lx.init(self.text[bp..]);
+	return t;
 }

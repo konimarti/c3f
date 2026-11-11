@@ -36,6 +36,8 @@ struct Tok
 	bool      code;        // not a comment or contract
 	bool      unterminated;
 	bool      cut;         // the first token after a damaged place: what comes before is not part of its statement or brackets
+	bool      dangling;    // a '{' left open by a raw string or comment that is not closed: no partner, but it still indents
+	bool      damaged;     // a raw string, comment or doc comment that is never closed
 }
 
 struct Src
@@ -47,6 +49,7 @@ struct Src
 	bool       bom;
 	List{char} memo;          // cached answers of is_cast_close / is_type_star
 	List{Damage} unbalanced;  // brackets without a partner: tokens tok..last are kept as written
+	List{Damage} broken;      // unterminated raw strings and comments, cut at the next top-level declaration
 }
 
 struct Damage
@@ -105,10 +108,11 @@ fn void Src.init(&self, String text)
 		self.line_start.push(i + 1);
 		if (self.line_start.len() == 2) self.crlf = i > 0 && text[i - 1] == '\r';
 	}
-	Lexer lx;
+	Recovering lx;
 	lx.init(text);
 	sz last_code = NO;
 	bool in_faultdef;
+	bool after_cut;
 	while (try t = lx.next())
 	{
 		if (t.type == EOF) break;
@@ -119,6 +123,21 @@ fn void Src.init(&self, String text)
 			.type = t.type, .text = t.text, .start = t.offset, .line = t.ln, .nl = t.nl_before, .src_nl = t.nl_before,
 			.match = NO, .encl = NO, .parent = NO, .code = code, .unterminated = t.unterminated, .fault_member = in_faultdef,
 			.prev = (int)last_code, .next = (int)NO, .row = (int)(i == 0 || t.nl_before > 0 ? i : self.toks[i - 1].row) });
+		if (after_cut)
+		{
+			// the damaged place ends where this line starts: its gap is kept as written
+			self.toks[i].cut = true;
+			self.toks[i].keep = true;
+			in_faultdef = false;
+			after_cut = false;
+		}
+		String cause = unterminated_cause(&t);
+		if (cause.len)
+		{
+			self.toks[i].damaged = true;
+			self.broken.push({ .tok = i, .last = i, .cause = cause, .line = lx.last_line });
+			after_cut = lx.cut;
+		}
 		if (t.type == EOS) in_faultdef = false;
 		if (!code) continue;
 		// this is the next code token of the last one and of the comments after it
@@ -255,6 +274,7 @@ fn void Src.match_brackets(&self)
 	}
 	for (sz r = 0; r < ranges.len(); r += 2) self.keep_range(ranges[r], ranges[r + 1]);
 	foreach (b : cuts) self.toks[b].cut = true;
+	foreach (d : self.broken) self.unbalanced.push(d);
 	for (sz i = 1; i < self.len(); i++) if (self.toks[i].cut) self.sever(i);
 }
 
@@ -293,6 +313,7 @@ fn sz Src.pair_brackets(&self, List{sz}* cuts, List{sz}* ranges)
 	foreach (&t : self.toks)
 	{
 		t.match = NO;
+		t.dangling = false;
 	}
 	List{sz} stack;
 	stack.tinit();
@@ -304,11 +325,22 @@ fn sz Src.pair_brackets(&self, List{sz}* cuts, List{sz}* ranges)
 		Tok* t = &self.toks[i];
 		bool cut = next_cut < cuts.len() && (*cuts)[next_cut] == i;
 		if (cut) next_cut++;
-		if (cut)
+		if (stack.len() && (cut || t.cut))
 		{
-			ranges.push(stack[0] + 1);
-			ranges.push(i);
-			while (stack.len()) self.unbalanced.push(self.damage(stack.pop()!!, i - 1));
+			// (after a raw string or comment that is not closed the brackets before it are left alone: it is the damage)
+			if (!cut)
+			{
+				// unless a top-level declaration starts between them
+				for (sz j = stack[0] + 1; j < i; j++) if (self.is_break(j)) return j;
+			}
+			if (cut)
+			{
+				ranges.push(stack[0] + 1);
+				ranges.push(i);
+				while (stack.len()) self.unbalanced.push(self.damage(stack.pop()!!, i - 1));
+			}
+			foreach (o : stack) self.toks[o].dangling = !cut;
+			stack.clear();
 		}
 		t.encl = stack.len() ? stack[^1] : NO;
 		if (is_opener(t.type))
@@ -338,10 +370,21 @@ fn sz Src.pair_brackets(&self, List{sz}* cuts, List{sz}* ranges)
 	}
 	if (stack.len())
 	{
-		for (sz j = stack[0] + 1; j < self.len(); j++) if (self.is_break(j)) return j;
-		ranges.push(stack[0] + 1);
-		ranges.push(self.len() - 1);
-		while (stack.len()) self.unbalanced.push(self.damage(stack.pop()!!, self.len() - 1));
+		sz last_damaged = NO;
+		foreach (j, &t : self.toks) if (t.damaged) last_damaged = j;
+		bool damaged = last_damaged != NO && last_damaged > stack[0];
+		for (sz j = stack[0] + 1; j <= (damaged ? last_damaged : self.len() - 1); j++) if (self.is_break(j)) return j;
+		if (damaged)
+		{
+			foreach (o : stack) self.toks[o].dangling = true;
+			stack.clear();   // the unterminated token at the end is the damage
+		}
+		else
+		{
+			ranges.push(stack[0] + 1);
+			ranges.push(self.len() - 1);
+			while (stack.len()) self.unbalanced.push(self.damage(stack.pop()!!, self.len() - 1));
+		}
 	}
 	// a stray closer: the span around it is kept (at top level, its line)
 	sz kept_to = NO;   // the end of the range kept for the stray closer before

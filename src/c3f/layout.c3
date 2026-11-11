@@ -355,7 +355,7 @@ fn void Fmt.layout(&self)
 		{
 			self.frames.pop()!!;
 		}
-		else if (t.type == LBRACE && t.match != NO && self.opens_lines(i))
+		else if (t.type == LBRACE && (t.match != NO || t.dangling) && self.opens_lines(i))
 		{
 			Indent content = t.is_switch && !c.case_indent ? line : line.deeper();
 			self.frames.push({ .kind = BRACE, .opener = i, .owner = NO, .anchor = i, .base = line, .content = content });

@@ -110,6 +110,12 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	{
 		r.fallback = true;
 		Tok* t = &s.toks[d.tok];
+		if (d.cause.len)
+		{
+			String upto = d.last == s.len() - 1 ? "to the end of the file" : string::tformat("up to line %d", d.line);
+			r.notes.push({ t.line, string::format(a, "%s; kept as written %s", d.cause, upto) });
+			continue;
+		}
 		String what = is_opener(t.type) ? "unclosed" : "unopened";
 		String upto = d.last == s.len() - 1 ? "to the end of the file" : string::tformat("up to line %d", s.toks[d.last].line);
 		r.notes.push({ t.line, string::format(a, "%s '%s'; kept as written %s", what, t.text, upto) });
@@ -164,7 +170,7 @@ fn List{String} token_texts(String text, bool split) @local
 {
 	List{String} l;
 	l.tinit();
-	Lexer lx;
+	Recovering lx;
 	lx.init(text);
 	while (try t = lx.next())
 	{

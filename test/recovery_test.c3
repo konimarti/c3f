@@ -55,6 +55,38 @@ fn void unclosed_bracket() @test
 		{ "unclosed '['; kept as written up to line 1" }, { 1 });
 }
 
+fn void unterminated_raw_string() @test
+{
+	// the part of the function before the string is formatted too; the string and what follows are as written
+	recovered("fn void a()\n{\n  int b=1;\n  String s = `abc;\n  foo( );\n}\n".tconcat(TAIL),
+		"fn void a()\n{\n\tint b = 1;\n\tString s = `abc;\n  foo( );\n}\n".tconcat(TAIL_OUT),
+		{ "unterminated raw string; kept as written up to line 6" }, { 4 });
+}
+
+fn void unterminated_comment() @test
+{
+	recovered("fn void a()\n{\n\t/* abc\n\t\t   foo( );\n}\n".tconcat(TAIL), "fn void a()\n{\n\t/* abc\n\t\t   foo( );\n}\n".tconcat(TAIL_OUT),
+		{ "unterminated comment; kept as written up to line 5" }, { 3 });
+}
+
+fn void unterminated_nested_comment() @test
+{
+	recovered("fn void a()\n{\n\t/* a /* b */\n\tfoo( );\n}\n".tconcat(TAIL), "fn void a()\n{\n\t/* a /* b */\n\tfoo( );\n}\n".tconcat(TAIL_OUT),
+		{ "unterminated comment; kept as written up to line 5" }, { 3 });
+}
+
+fn void unterminated_doc_comment_before_a_function() @test
+{
+	recovered("<* doc\nfn void a()\n{\n  foo( );\n}\n", "<* doc\nfn void a()\n{\n\tfoo();\n}\n",
+		{ "unterminated doc comment; kept as written up to line 1" }, { 1 });
+}
+
+fn void unterminated_doc_comment_at_the_end() @test
+{
+	recovered("fn void a() {}\n<* doc\n  foo( );\n", "fn void a() {}\n<* doc\n  foo( );\n",
+		{ "unterminated doc comment; kept as written to the end of the file" }, { 2 });
+}
+
 fn void no_break_point_keeps_the_rest() @test
 {
 	recovered("const X = foo(1, 2;\n  int y=1;\n", "const X = foo(1, 2;\n  int y=1;\n",
@@ -79,4 +111,42 @@ fn void a_word_that_starts_with_a_keyword_is_no_break_point() @test
 {
 	recovered("const X = foo(1, 2;\nfnord  y=1;\n".tconcat(TAIL), "const X = foo(1, 2;\nfnord  y=1;\n".tconcat(TAIL_OUT),
 		{ "unclosed '('; kept as written up to line 2" }, { 1 });
+}
+
+fn void a_terminated_doc_comment_is_fine() @test
+{
+	c3f::Config d = c3f::defaults();
+	c3f::FormatResult r = c3f::format(tmem, "fn void a() {}\n<* doc *>\nfn void b(){}\n", &d);
+	assert(!r.fallback && r.notes.len() == 0);
+	assert(r.text == "fn void a() {}\n<* doc *>\nfn void b() {}\n");
+}
+
+fn void two_errors_two_notes() @test
+{
+	recovered("const X = foo(1, 2;\nfn void a()\n{\n\tint s = `abc;\n}\n\nfn void z()\n{\n  q=1;\n}\n",
+		"const X = foo(1, 2;\nfn void a()\n{\n\tint s = `abc;\n}\n\nfn void z()\n{\n\tq = 1;\n}\n",
+		{ "unclosed '('; kept as written up to line 1", "unterminated raw string; kept as written up to line 5" }, { 1, 4 });
+}
+
+fn void crlf_file() @test
+{
+	recovered("fn void a()\r\n{\r\n\tint s = `abc;\r\n}\r\n\r\nfn void z()\r\n{\r\n  q=1+2;\r\n}\r\n",
+		"fn void a()\r\n{\r\n\tint s = `abc;\r\n}\r\n\r\nfn void z()\r\n{\r\n\tq = 1 + 2;\r\n}\r\n",
+		{ "unterminated raw string; kept as written up to line 4" }, { 3 });
+}
+
+fn void check_exits_3_for_every_recovery() @test
+{
+	c3f::Config cfg = c3f::defaults();
+	cli::Options opt;
+	opt.mode = CHECK;
+	String[] damaged = {
+		"fn void a()\n{\n\tif (x) {\n}\n\nfn void z() {}\n",
+		"const X = foo(1;\n",
+		"fn void a()\n{\n\tString s = `abc;\n}\n\nfn void z() {}\n",
+		"fn void a()\n{\n\t/* abc\n}\n\nfn void z() {}\n",
+		"fn void z() {}\n<* doc\n",
+		"fn void z() {}\n<* doc\nfn void y() {}\n",
+	};
+	foreach (src : damaged) assert(cli::run(&opt, "damaged.c3", src, &cfg) == cli::Status.KEPT, "for %s", src);
 }
