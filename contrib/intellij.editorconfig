@@ -7,10 +7,11 @@
 # Run c3f from the IDE:
 # - External tool (Settings | Tools | External Tools): Program = full path of c3f,
 #   Arguments = -w $FilePath$, Working directory = $FileDir$, tick "Synchronize files after execution".
-# - Format on save: File Watchers plugin (IntelliJ IDEA: Ultimate), file type C3, Program = c3f,
-#   Arguments = -w $FilePath$, tick "Trigger the watcher regardless of syntax errors".
+# - Format on save: File Watchers plugin (IntelliJ IDEA: Ultimate), file type Any, Scope = a custom
+#   scope with the pattern file:*.c3||file:*.c3i||file:*.c3t, Program = c3f, Arguments = -w $FilePath$,
+#   tick "Trigger the watcher regardless of syntax errors".
 
-[*.{c3,c3i}]
+[*.{c3,c3i,c3t}]
 # base: the spacing rules of c3f's strict preset, which the plugin's operator, comma and bracket spacing matches
 c3f_style = strict
 c3f_spacing = strict

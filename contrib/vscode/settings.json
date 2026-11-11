@@ -7,6 +7,12 @@
 	// The extension's default is false.
 	"[c3]": {
 		"editor.formatOnSave": true
+	},
+
+	// Interface and test files are C3 too, so they get the same formatter and format on save.
+	"files.associations": {
+		"*.c3i": "c3",
+		"*.c3t": "c3"
 	}
 
 	// With a custom path the extension still compares the --version of the binary with the

@@ -74,7 +74,7 @@ the search. The standard keys (*indent_style*, *indent_size*, *tab_width*, *end_
 _c3f\__ are c3f's own. For example:
 
 ```
-[*.{c3,c3i}]
+[*.{c3,c3i,c3t}]
 indent_style = tab
 max_line_length = 100
 c3f_line_breaks = wrap

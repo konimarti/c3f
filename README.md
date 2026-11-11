@@ -75,6 +75,7 @@ of the input that were changed or removed. [c3tools](https://github.com/alexvede
 ## Install
 
 Download a binary for Linux, macOS or Windows from the [releases](https://github.com/konimarti/c3f/releases).
+
 Or build and install it with [c3c](https://github.com/c3lang/c3c) 0.8.5 or later:
 
 ```sh
@@ -96,11 +97,30 @@ c3f -w --exclude 'gen/*' .  # skip paths matching a glob
 `// c3f off` … `// c3f on` leaves a region untouched. Exit status: 0 ok, 1 `--check` found
 changes, 2 usage or I/O error, 3 `--check` found a place it kept as written (`man c3f` has the details).
 
-## Format on save, in CI, before every commit
+## Editors
 
-**Editors.** Pipe the buffer through `c3f --stdin-filename <path> -`: the formatted file comes
-out on stdout, notes (such as an unclosed bracket) on stderr. Vim (`.vimrc`); the buffer is only
-replaced if c3f succeeds, and the notes are shown as warnings:
+Every editor integration does the same thing: it pipes the buffer through
+
+```sh
+c3f --stdin-filename <path> -
+```
+
+The formatted file comes out on stdout, notes (such as an unclosed bracket) on stderr.
+`--stdin-filename` sets the path used to find `.editorconfig` and in messages; the file itself is not read.
+The setups below cover `.c3`, `.c3i` and `.c3t` files.
+
+| Editor | How | Format on save |
+|---|---|---|
+| [Vim](#vim) | `.vimrc` function | `BufWritePre` autocommand |
+| [Neovim](#neovim) | conform.nvim | `format_on_save` |
+| [Helix](#helix) | `languages.toml` | `auto-format` |
+| [VS Code](#vs-code) | C3 extension | `editor.formatOnSave` |
+| [JetBrains IDEs](#jetbrains-ides) | External Tool | File Watcher |
+
+### Vim
+
+Add to your `.vimrc`. The buffer is only replaced if c3f succeeds, and its notes are shown as
+warnings:
 
 ```vim
 function! C3fFormat() abort
@@ -117,12 +137,17 @@ function! C3fFormat() abort
 	endfor
 	call delete(l:err)
 endfunction
-autocmd BufWritePre *.c3,*.c3i call C3fFormat()
+autocmd BufWritePre *.c3,*.c3i,*.c3t call C3fFormat()
 ```
 
-Neovim with [conform.nvim](https://github.com/stevearc/conform.nvim):
+### Neovim
+
+With [conform.nvim](https://github.com/stevearc/conform.nvim). The `vim.filetype.add` line makes
+sure all three extensions get the `c3` filetype, also on Neovim versions that do not detect it:
 
 ```lua
+vim.filetype.add({ extension = { c3 = "c3", c3i = "c3", c3t = "c3" } })
+
 require("conform").setup({
 	formatters = { c3f = { command = "c3f", args = { "--stdin-filename", "$FILENAME", "-" } } },
 	formatters_by_ft = { c3 = { "c3f" } },
@@ -130,24 +155,46 @@ require("conform").setup({
 })
 ```
 
-Helix 25.07 or later (`languages.toml`):
+### Helix
+
+Helix 25.07 or later, in `languages.toml`:
 
 ```toml
 [[language]]
 name = "c3"
+file-types = ["c3", "c3i", "c3t"]
 formatter = { command = "c3f", args = ["--stdin-filename", "%{buffer_name}", "-"] }
 auto-format = true
 ```
 
-VS Code: install the C3 extension, set `c3.format.path` to the full path of c3f and turn on
-`editor.formatOnSave` for `[c3]` ([`contrib/vscode/settings.json`](contrib/vscode/settings.json)).
+### VS Code
+
+1. Install the C3 extension (`c3lang.vscode-c3`).
+2. Set `c3.format.path` to the full path of c3f.
+3. Turn on `editor.formatOnSave` for `[c3]`, and map `.c3i` and `.c3t` to C3 with
+   `files.associations`.
+
+All of it is in [`contrib/vscode/settings.json`](contrib/vscode/settings.json).
+
 The extension calls `c3f --stdin --stdout --stdin-filepath=<file>`, which c3f accepts for this
 purpose. With a custom path it still compares the `--version` of the binary with the latest
 c3fmt release and may offer "New version of c3fmt available"; *Ignore* is enough, the configured
 path stays in use.
 
-JetBrains IDEs: run `c3f -w $FilePath$` as an External Tool, or as a File Watcher for format on
-save; [`contrib/intellij.editorconfig`](contrib/intellij.editorconfig) gives the C3 plugin's style.
+### JetBrains IDEs
+
+IntelliJ IDEA, CLion and the others, with the C3 plugin:
+
+- **On demand:** add an External Tool (*Settings | Tools | External Tools*) that runs
+  `c3f -w $FilePath$`.
+- **On save:** add a File Watcher with the same program and arguments. Give it a custom scope
+  with the pattern `file:*.c3||file:*.c3i||file:*.c3t`, so that it runs on all three extensions
+  whichever ones the plugin's file type knows.
+- **Matching the plugin's style:** [`contrib/intellij.editorconfig`](contrib/intellij.editorconfig)
+  has the c3f settings that reproduce the C3 plugin's default formatting, and the exact
+  External Tool and File Watcher settings.
+
+## CI and git hook
 
 **CI.** Fail the build if anything is not formatted:
 
@@ -156,14 +203,15 @@ save; [`contrib/intellij.editorconfig`](contrib/intellij.editorconfig) gives the
 ```
 
 **Git hook.** `c3f --git-hook` installs a pre-commit hook that refuses commits whose staged C3 files
-are not formatted ([`contrib/pre-commit`](contrib/pre-commit)). An existing hook is left as it is.
+(`.c3`, `.c3i`, `.c3t`) are not formatted ([`contrib/pre-commit`](contrib/pre-commit)). An existing
+hook is left as it is.
 
 ## Configure
 
 Options come from `.editorconfig` (the nearest file wins) and `--set key=value`:
 
 ```ini
-[*.{c3,c3i}]
+[*.{c3,c3i,c3t}]
 c3f_style = strict            # stdlib (default), knr or strict
 indent_style = tab
 max_line_length = 100
