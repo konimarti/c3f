@@ -23,17 +23,18 @@
 token by token, with the input.\& A place it cannot verify, or that is unbalanced (a bracket
 still being typed), is kept as written, so it is safe to run on a file while editing it.\&
 .PP
-A bracket that is never closed, and a raw string (backtick), block comment or doc comment that
-is never terminated, damage the file from there on.\& c3f picks it up again at the next line that
+A bracket that is never closed, and a raw string (backtick) or doc comment that is never
+terminated, damage the file from there on.\& c3f picks it up again at the next line that
 starts at column 0 with a top-level declaration (\fBfn\fR, \fBmacro\fR, \fBstruct\fR, \fBunion\fR, \fBenum\fR,
 \fBbitstruct\fR, \fBinterface\fR, \fBfaultdef\fR, \fBalias\fR, \fBtypedef\fR, \fBconst\fR, \fBconstdef\fR, \fBconstset\fR, \fBmodule\fR,
 \fBimport\fR, \fBextern\fR, \fBattrdef\fR, \fBattrmacro\fR) or with a doc comment (\fB<*\fR).\& The text from the error
 to there is kept byte for byte as written, and nothing is inserted or changed; from there on the
 file is formatted as usual.\& \fB$if\fR and the other \fB$\fR keywords do not count, as code may write
 them flush left inside a function.\& Without such a line the rest of the file is kept.\& Each one is a
-note on standard error with its line: \fBunclosed '\&{'\&\fR, \fBunterminated raw string\fR, \fBunterminated
-comment\fR or \fBunterminated doc comment\fR, followed by \fBkept as written up to line N\fR (\fBto the end of
-the file\fR if nothing is picked up again).\&
+note on standard error with its line: \fBunclosed '\&{'\&\fR, \fBunterminated raw string\fR or \fBunterminated
+doc comment\fR, followed by \fBkept as written up to line N\fR (\fBto the end of the file\fR if nothing is
+picked up again).\& A block comment that runs to the end of the file is valid code (the rest of the
+file is a comment): it is kept as written, without a note.\&
 .PP
 With one file and none of \fB-w\fR, \fB--check\fR and \fB--diff\fR, the formatted file is written to
 standard output.\& With \fB-\fR, standard input is read and the result written to standard output.\&
