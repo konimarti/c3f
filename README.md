@@ -230,6 +230,7 @@ c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay mult
 | `c3f_align`, `c3f_align_comments` | `keep` leaves alignment of declarations and trailing comments as written; `decls` and `always` apply it; `off` removes it. |
 
 All options and their values are in the man page: `man c3f` (source: [`c3f.1.scd`](c3f.1.scd)).
+Every option with a before / after example: [`doc/options.md`](doc/options.md).
 
 ## License
 
