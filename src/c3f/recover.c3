@@ -58,21 +58,20 @@ fn bool is_break_token(Tok* t, bool at_line_start)
 	}
 }
 
-<* The cause of an unterminated token that runs to the end of the input, or "". *>
+<* The cause of an unterminated raw string or doc comment, which c3c rejects, or "". (A block comment that runs to the end of the file is valid: it is a comment.) *>
 fn String unterminated_cause(Token* t)
 {
 	if (!t.unterminated) return "";
 	switch (t.type)
 	{
 		case STRING: return t.text.starts_with("`") ? "unterminated raw string" : "";
-		case BLOCK_COMMENT: return "unterminated comment";
 		case CONTRACT: return "unterminated doc comment";
 		default: return "";
 	}
 }
 
 <*
- The lexer, with a recovery: a raw string, block comment or doc comment that is never closed ends just
+ The lexer, with a recovery: a raw string or doc comment that is never closed ends just
  before the next break line (without the whitespace in front of it), and lexing goes on there. The
  offsets and lines of the tokens after it are those of the whole text.
 *>

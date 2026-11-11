@@ -37,7 +37,7 @@ struct Tok
 	bool      unterminated;
 	bool      cut;         // the first token after a damaged place: what comes before is not part of its statement or brackets
 	bool      dangling;    // a '{' left open by a raw string or comment that is not closed: no partner, but it still indents
-	bool      damaged;     // a raw string, comment or doc comment that is never closed
+	bool      damaged;     // a raw string or doc comment that is never closed
 }
 
 struct Src
@@ -49,7 +49,7 @@ struct Src
 	bool       bom;
 	List{char} memo;          // cached answers of is_cast_close / is_type_star
 	List{Damage} unbalanced;  // brackets without a partner: tokens tok..last are kept as written
-	List{Damage} broken;      // unterminated raw strings and comments, cut at the next top-level declaration
+	List{Damage} broken;      // unterminated raw strings and doc comments, cut at the next top-level declaration
 }
 
 struct Damage
@@ -327,7 +327,7 @@ fn sz Src.pair_brackets(&self, List{sz}* cuts, List{sz}* ranges)
 		if (cut) next_cut++;
 		if (stack.len() && (cut || t.cut))
 		{
-			// (after a raw string or comment that is not closed the brackets before it are left alone: it is the damage)
+			// (after a raw string or doc comment that is not closed the brackets before it are left alone: it is the damage)
 			if (!cut)
 			{
 				// unless a top-level declaration starts between them

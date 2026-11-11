@@ -63,16 +63,34 @@ fn void unterminated_raw_string() @test
 		{ "unterminated raw string; kept as written up to line 6" }, { 4 });
 }
 
-fn void unterminated_comment() @test
+<*
+ A block comment that runs to the end of the file is valid (c3c reads the rest as a comment): kept to
+ the end as before, with no note of its own, no fallback, and `--check` exits 0.
+*>
+fn void block_comment_to_the_end_of_the_file_is_valid() @test
 {
-	recovered("fn void a()\n{\n\t/* abc\n\t\t   foo( );\n}\n".tconcat(TAIL), "fn void a()\n{\n\t/* abc\n\t\t   foo( );\n}\n".tconcat(TAIL_OUT),
-		{ "unterminated comment; kept as written up to line 5" }, { 3 });
-}
-
-fn void unterminated_nested_comment() @test
-{
-	recovered("fn void a()\n{\n\t/* a /* b */\n\tfoo( );\n}\n".tconcat(TAIL), "fn void a()\n{\n\t/* a /* b */\n\tfoo( );\n}\n".tconcat(TAIL_OUT),
-		{ "unterminated comment; kept as written up to line 5" }, { 3 });
+	c3f::Config d = c3f::defaults();
+	String[] files = {
+		"module m;\n/*\nfn void a()\n{\n  foo( );\n}\n",
+		"module m;\n/*\n/* nested */\nfn void a()\n{\n  foo( );\n}\n",
+		"fn void z()\n{\n  q=1;\n}\n/* a /* b */\nfn void a()\n{\n  foo( );\n}\n",
+	};
+	foreach (src : files)
+	{
+		c3f::FormatResult r = c3f::format(tmem, src, &d);
+		assert(!r.fallback && r.notes.len() == 0, "for %s", src);
+		assert(squash(r.text) == squash(src));
+		// the comment is kept as written
+		assert(r.text.contains("/*") && r.text.contains("fn void a()\n{\n  foo( );\n}\n"), "for %s", r.text);
+		cli::Options opt;
+		opt.mode = CHECK;
+		cli::Status st = cli::run(&opt, "x.c3", src, &d);
+		assert(st == cli::Status.OK || st == cli::Status.CHANGED, "for %s", src);
+		assert(st != cli::Status.KEPT);
+	}
+	// nothing but the part before the comment changes
+	c3f::FormatResult r = c3f::format(tmem, files[2], &d);
+	assert(r.text.starts_with("fn void z()\n{\n\tq = 1;\n}\n/* a /* b */"));
 }
 
 fn void unterminated_doc_comment_before_a_function() @test
@@ -144,7 +162,6 @@ fn void check_exits_3_for_every_recovery() @test
 		"fn void a()\n{\n\tif (x) {\n}\n\nfn void z() {}\n",
 		"const X = foo(1;\n",
 		"fn void a()\n{\n\tString s = `abc;\n}\n\nfn void z() {}\n",
-		"fn void a()\n{\n\t/* abc\n}\n\nfn void z() {}\n",
 		"fn void z() {}\n<* doc\n",
 		"fn void z() {}\n<* doc\nfn void y() {}\n",
 	};
