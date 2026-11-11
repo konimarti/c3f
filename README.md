@@ -169,12 +169,15 @@ auto-format = true
 
 ### VS Code
 
-1. Install the C3 extension (`c3lang.vscode-c3`).
-2. Set `c3.format.path` to the full path of c3f.
-3. Turn on `editor.formatOnSave` for `[c3]`, and map `.c3i` and `.c3t` to C3 with
-   `files.associations`.
+1. Install the C3 extension (`c3.vscode-c3`).
+2. Set `c3.format.path` to the full path of c3f. On Windows, double the backslashes in
+   `settings.json`: `"C:\\Users\\you\\bin\\c3f.exe"`.
+3. Turn on `editor.formatOnSave` for `[c3]`. The extension's default is `false`.
+4. Only if your version of the extension does not already treat `.c3i` and `.c3t` as C3 (0.4.1
+   does), map them with `files.associations`.
 
-All of it is in [`contrib/vscode/settings.json`](contrib/vscode/settings.json).
+Formatting is on by default (`c3.format.enable`). All of it is in
+[`contrib/vscode/settings.json`](contrib/vscode/settings.json).
 
 The extension calls `c3f --stdin --stdout --stdin-filepath=<file>`, which c3f accepts for this
 purpose. With a custom path it still compares the `--version` of the binary with the latest
