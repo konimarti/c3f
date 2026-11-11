@@ -19,6 +19,7 @@ enum CommentAlign : char { KEEP, ALWAYS, OFF }
 enum LineBreaks : char { KEEP, WRAP, WRAP_REWRITE, REFLOW }
 enum SortImports : char { OFF, LINES, LISTS, ALL, SPLIT }
 enum CtIndent : char { KEEP, INDENT, FLUSH }
+enum WrapLists : char { FILL, ONE_PER_LINE }
 
 struct Config
 {
@@ -48,6 +49,7 @@ struct Config
 	sz             trailing_comment_spaces;  // before a trailing // comment; 0 = keep
 	LineBreaks     line_breaks;
 	bool           magic_comma;
+	WrapLists      wrap_lists;
 	sz             soft_max_line_length;     // wrapping: c3f_wrap_cost_soft per character past it (0: every character, which changes no break)
 	float          wrap_cost_soft;
 	float          wrap_cost_hard;
@@ -88,6 +90,7 @@ enum Key : char (String name)
 	TRAILING_COMMENT_SPACES { "c3f_trailing_comment_spaces" },
 	LINE_BREAKS          { "c3f_line_breaks" },
 	MAGIC_COMMA          { "c3f_magic_comma" },
+	WRAP_LISTS           { "c3f_wrap_lists" },
 	SOFT_MAX_LINE_LENGTH { "c3f_soft_max_line_length" },
 	WRAP_COST_SOFT       { "c3f_wrap_cost_soft" },
 	WRAP_COST_HARD       { "c3f_wrap_cost_hard" },
@@ -107,7 +110,7 @@ fn Config defaults()
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .space_inside_brackets = KEEP, .space_inside_braces = KEEP,
 		.max_blank_lines = 2, .trim_block_blanks = true, .blank_lines_between_decls = KEEP,
 		.align = KEEP, .align_comments = KEEP,
-		.line_breaks = KEEP, .magic_comma = true,
+		.line_breaks = KEEP, .magic_comma = true, .wrap_lists = FILL,
 		.wrap_cost_soft = 0.05, .wrap_cost_hard = 100, .wrap_cost_break = 2, .wrap_max_tokens = 2000,
 		.sort_imports = OFF, .style = "stdlib",
 	};
@@ -256,6 +259,7 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 			if ((self.trailing_comment_spaces == 0 && v != "keep") || self.trailing_comment_spaces > 16) return BAD_VALUE~;
 		case LINE_BREAKS: self.line_breaks = parse_enum(LineBreaks, v)!;
 		case MAGIC_COMMA: self.magic_comma = parse_bool(v)!;
+		case WRAP_LISTS: self.wrap_lists = parse_enum(WrapLists, v)!;
 		case SOFT_MAX_LINE_LENGTH:
 			self.soft_max_line_length = parse_uint(v)!;
 			if (self.soft_max_line_length > MAX_COLUMNS) return BAD_VALUE~;
@@ -314,6 +318,7 @@ fn String allowed_values(Key k)
 		case ALIGN_COMMENTS: return enum_names(CommentAlign);
 		case TRAILING_COMMENT_SPACES: return "keep, or 1 to 16";
 		case LINE_BREAKS: return enum_names(LineBreaks);
+		case WRAP_LISTS: return enum_names(WrapLists);
 		case SOFT_MAX_LINE_LENGTH: return "0 to 10000";
 		case WRAP_COST_SOFT: case WRAP_COST_HARD: case WRAP_COST_BREAK: return "a number, 0 or more";
 		case WRAP_MAX_TOKENS: return "0 to 10000";
@@ -375,6 +380,7 @@ fn String Config.value_text(&self, Key k)
 		case TRAILING_COMMENT_SPACES: return self.trailing_comment_spaces ? string::tformat("%d", self.trailing_comment_spaces) : "keep";
 		case LINE_BREAKS: return enum_text(self.line_breaks);
 		case MAGIC_COMMA: return bool_text(self.magic_comma);
+		case WRAP_LISTS: return enum_text(self.wrap_lists);
 		case SOFT_MAX_LINE_LENGTH: return string::tformat("%d", self.soft_max_line_length);
 		case WRAP_COST_SOFT: return string::tformat("%g", self.wrap_cost_soft);
 		case WRAP_COST_HARD: return string::tformat("%g", self.wrap_cost_hard);

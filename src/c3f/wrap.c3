@@ -37,6 +37,7 @@ struct Seq @local
 	List{float} mults;
 	sz          depth;      // bracket nesting (breaks cost more the deeper they are)
 	bool        magic;      // a trailing comma: one item per line
+	bool        listed;     // c3f_wrap_lists = one_per_line: a list with commas, inline or one item per line
 	bool        frozen;     // inside a one-line block: never breaks
 	sz          tail;       // width of the text that has to follow it on its last line
 }
@@ -163,7 +164,7 @@ fn void Wrap.set_tails(&self, sz seq, sz tail)
 		{
 			Seq* q = &self.seqs[seq];
 			Point p = q.points[k];
-			if (!q.frozen && p != NONE && (p != CLOSE || q.magic))
+			if (!q.frozen && p != NONE && (p != CLOSE || q.stacks()))
 			{
 				to_end = false;
 				break;
@@ -290,8 +291,25 @@ fn sz Wrap.build_span(&self, sz open, sz depth)
 		}
 	}
 	self.push_run(index, close, close > open + 1 ? Point.CLOSE : Point.NONE, depth);
+	self.seqs[index].listed = self.f.cfg.wrap_lists == ONE_PER_LINE && self.is_list(index, open);
 	return index;
 }
+
+<*
+ Is the span a list whose elements go one per line when it wraps: arguments, parameters, initializer
+ elements (it has a comma of its own; a parenthesized expression, a single argument and the
+ header of a control statement or loop have none or are not lists)?
+*>
+fn bool Wrap.is_list(&self, sz seq, sz open)
+{
+	Src* s = self.f.src;
+	if (self.seqs[seq].frozen || (open > 0 && is_control(s.toks[open - 1].type))) return false;
+	Seq* q = &self.seqs[seq];
+	foreach (j, p : q.points) if (j > 0 && p == COMMA) return true;
+	return false;
+}
+
+fn bool Seq.stacks(&self) @inline => self.magic || self.listed;
 
 fn void Wrap.push_run(&self, sz seq, sz tok, Point p, sz depth)
 {
@@ -405,8 +423,8 @@ fn bool Wrap.allowed(&self, Seq* q, sz j, Layout l)
 	{
 		case NONE: return false;
 		case OPEN: return l != INLINE;
-		case CLOSE: return q.magic && l == STACK;
-		default: return true;
+		case CLOSE: return q.stacks() && l == STACK;
+		default: return !q.listed || l == STACK;
 	}
 }
 
@@ -417,7 +435,7 @@ fn bool Wrap.forced(&self, Seq* q, sz j, Layout l)
 	{
 		case OPEN: return l != INLINE;
 		case COMMA: return l == STACK;
-		case CLOSE: return q.magic && l == STACK;
+		case CLOSE: return q.stacks() && l == STACK;
 		default: return false;
 	}
 }
@@ -447,7 +465,9 @@ fn Table Wrap.step(&self, sz seq, Layout l, sz open, sz j, sz cur)
 	Elem el = self.elems[q.elems[j]];
 	Table t = self.new_table();
 	int first_layout = el.kind == SPAN && self.seqs[el.seq].magic ? 2 : 0;
-	int last_layout = el.kind == SPAN ? 2 : 0;
+	// the lists inside a list that is on one line are on one line (a list one item per line has its own lines)
+	int last_layout = el.kind == SPAN ? (l == INLINE && q.listed ? 0 : 2) : 0;
+	int no_layout = el.kind == SPAN && self.seqs[el.seq].listed ? Layout.HANG.ordinal : -1;   // a list is on one line or one item per line
 	bool more = j + 1 < n;
 	// what follows: after a break (the same for every column), or on the line (by the depth it is at)
 	bool can_break = more && self.allowed(q, j + 1, l);
@@ -457,7 +477,7 @@ fn Table Wrap.step(&self, sz seq, Layout l, sz open, sz j, sz cur)
 	float break_cost = can_break ? self.cb * q.mults[j + 1] : 0;
 	sz gap = more ? self.join_w[self.elems[q.elems[j + 1]].first - self.first] : 0;
 	Table[3] lay;       // a span's tables under each layout
-	if (el.kind == SPAN) for (int k = first_layout; k <= last_layout; k++) lay[k] = self.step(el.seq, (Layout)k, cur, 0, cur);
+	if (el.kind == SPAN) for (int k = first_layout; k <= last_layout; k++) if (k != no_layout) lay[k] = self.step(el.seq, (Layout)k, cur, 0, cur);
 	sz tail = el.kind == SPAN ? self.seqs[el.seq].tail : 0;
 	Table[4] stay;      // the step after j on the line, for the depths seen so far
 	sz[4] stay_depth;
@@ -467,6 +487,7 @@ fn Table Wrap.step(&self, sz seq, Layout l, sz open, sz j, sz cur)
 		t.cost[c] = float::inf;
 		for (int k = first_layout; k <= last_layout; k++)
 		{
+			if (k == no_layout) continue;
 			sz end;
 			sz depth = cur;
 			float cost;
@@ -745,7 +766,7 @@ fn String Wrap.model_key(&self, sz start)
 	foreach (&q : self.seqs)
 	{
 		bool brace = q.elems.len() && self.f.src.toks[self.elems[q.elems[0]].first].type == LBRACE;
-		put(&d, { q.elems.len(), q.tail, q.magic ? 1 : 0, q.frozen ? 1 : 0, brace ? 1 : 0 });
+		put(&d, { q.elems.len(), q.tail, q.magic ? 1 : 0, q.frozen ? 1 : 0, brace ? 1 : 0, q.listed ? 1 : 0 });
 		foreach (j, e : q.elems) put(&d, { e, q.points[j].ordinal, (sz)bitcast(q.mults[j], uint) });
 	}
 	return d.str_view();

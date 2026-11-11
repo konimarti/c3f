@@ -212,6 +212,17 @@ Values are given with their default first.
 *c3f_magic_comma* = true | false
 	A trailing comma keeps one item per line when wrapping.
 
+*c3f_wrap_lists* = fill | one_per_line
+	How a list that has to wrap is laid out. *fill* puts as many items on each line as fit.
+	*one_per_line* puts each item on a line of its own and the closing bracket on a line of its
+	own, as a trailing comma does (*c3f_magic_comma*), but adds no comma. It applies to the lists
+	with at least one comma between brackets: the arguments of a call, the parameters of a
+	function, the elements of an initializer list. A list that fits on its line stays on it, also
+	inside a list that is broken; a list inside a list on one line is on one line. A single
+	argument, a parenthesized expression, the header of a loop and the lists of generic arguments,
+	indexes and attributes are not lists in this sense. It needs *c3f_line_breaks* other than
+	*keep* and a *max_line_length*.
+
 *c3f_soft_max_line_length* = 0
 	0 to 10000. A second, soft limit for wrapping: every column past it costs
 	*c3f_wrap_cost_soft*, so a line is broken earlier than *max_line_length* if that is cheaper.
