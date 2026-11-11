@@ -288,6 +288,8 @@ fn void Fmt.layout(&self)
 		Tok* t = &s.toks[i];
 		Out* o = &self.out[i];
 		bool line_start = i == 0 || o.nl > 0;
+		// a damaged place ended before this token: its open blocks are not this one's
+		if (t.cut) while (self.frames.len() > 1) self.frames.pop()!!;
 
 		// frames that end or change at this token
 		bool closes, ct_else, case_line;

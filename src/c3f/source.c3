@@ -35,6 +35,7 @@ struct Tok
 	bool      keep;        // the gap before this token is copied as written
 	bool      code;        // not a comment or contract
 	bool      unterminated;
+	bool      cut;         // the first token after a damaged place: what comes before is not part of its statement or brackets
 }
 
 struct Src
@@ -52,6 +53,8 @@ struct Damage
 {
 	sz tok;    // the bracket without a partner
 	sz last;   // the last token kept as written because of it
+	String cause;   // "" for a bracket; else what is wrong with the token itself
+	sz line;        // the line of the last place kept
 }
 
 fn bool is_comment_type(TokenType t) => t == LINE_COMMENT || t == BLOCK_COMMENT || t == CONTRACT;
@@ -222,7 +225,7 @@ fn String Src.line_indent(&self, sz line)
 *>
 fn String Src.indent_of(&self, sz k) => self.line_indent(self.toks[self.toks[k].row].line);
 
-fn sz Src.prev_code(&self, sz i) @inline => i <= 0 ? NO : self.toks[i - 1].code ? i - 1 : self.toks[i - 1].prev;
+fn sz Src.prev_code(&self, sz i) @inline => i <= 0 || self.toks[i].cut ? NO : self.toks[i - 1].code ? i - 1 : self.toks[i - 1].prev;
 fn sz Src.next_code(&self, sz i) @inline => self.toks[i].next;
 
 fn TokenType Src.type_at(&self, sz i) @inline => i == NO || i >= self.len() ? TokenType.INVALID : self.toks[i].type;
@@ -235,17 +238,78 @@ fn void Src.keep_range(&self, sz from, sz to)
 
 <*
  Pair brackets with a stack. Damage stays local: the inside of an unclosed or
- mismatched bracket is kept as written.
+ mismatched bracket is kept as written. An opener that is never closed keeps everything up to the
+ next top-level declaration (BREAK_WORDS), where the brackets start again from none.
 *>
 fn void Src.match_brackets(&self)
 {
+	List{sz} cuts;   // the tokens where an unclosed bracket ends
+	cuts.tinit();
+	List{sz} ranges;   // from, to of what is kept as written
+	ranges.tinit();
+	while (true)
+	{
+		sz b = self.pair_brackets(&cuts, &ranges);
+		if (b == NO) break;
+		cuts.push(b);
+	}
+	for (sz r = 0; r < ranges.len(); r += 2) self.keep_range(ranges[r], ranges[r + 1]);
+	foreach (b : cuts) self.toks[b].cut = true;
+	for (sz i = 1; i < self.len(); i++) if (self.toks[i].cut) self.sever(i);
+}
+
+<* Token i starts a new statement: nothing before it is its previous code token, and the other way round. *>
+fn void Src.sever(&self, sz i)
+{
+	for (sz k = i - 1; k >= 0; k--)
+	{
+		self.toks[k].next = (int)NO;
+		if (self.toks[k].code) break;
+	}
+	for (sz k = i; k < self.len(); k++)
+	{
+		self.toks[k].prev = (int)NO;
+		if (self.toks[k].code) break;
+	}
+}
+
+fn Damage Src.damage(&self, sz tok, sz last) @inline => { .tok = tok, .last = last, .cause = "", .line = self.toks[last].line };
+
+<* Is token i a line that starts at column 0 with a top-level declaration? *>
+fn bool Src.is_break(&self, sz i)
+{
+	Tok* t = &self.toks[i];
+	return t.start == self.line_start[t.line - 1] && is_break_token(t, true);
+}
+
+<*
+ One pass of the pairing. Returns NO, or the token where one more unclosed bracket ends (the next
+ pass then starts again from none there); `cuts` are the ones known.
+*>
+fn sz Src.pair_brackets(&self, List{sz}* cuts, List{sz}* ranges)
+{
+	self.unbalanced.clear();
+	ranges.clear();
+	foreach (&t : self.toks)
+	{
+		t.match = NO;
+	}
 	List{sz} stack;
 	stack.tinit();
 	List{sz} strays;   // stray closers whose enclosing span is only known at the end
 	strays.tinit();
+	sz next_cut = 0;
 	for (sz i = 0; i < self.len(); i++)
 	{
 		Tok* t = &self.toks[i];
+		bool cut = next_cut < cuts.len() && (*cuts)[next_cut] == i;
+		if (cut) next_cut++;
+		if (cut)
+		{
+			ranges.push(stack[0] + 1);
+			ranges.push(i);
+			while (stack.len()) self.unbalanced.push(self.damage(stack.pop()!!, i - 1));
+		}
 		t.encl = stack.len() ? stack[^1] : NO;
 		if (is_opener(t.type))
 		{
@@ -262,14 +326,23 @@ fn void Src.match_brackets(&self)
 			continue;
 		}
 		// the openers left inside it are unclosed; their spans nest, so the outermost is kept
-		if ((sz)stack.len() - 1 > k) self.keep_range(stack[k + 1] + 1, i);
-		while ((sz)stack.len() - 1 > k) self.unbalanced.push({ stack.pop()!!, i });
+		if ((sz)stack.len() - 1 > k)
+		{
+			ranges.push(stack[k + 1] + 1);
+			ranges.push(i);
+		}
+		while ((sz)stack.len() - 1 > k) self.unbalanced.push(self.damage(stack.pop()!!, i));
 		sz o = stack.pop()!!;
 		t.match = o;
 		self.toks[o].match = i;
 	}
-	if (stack.len()) self.keep_range(stack[0] + 1, self.len() - 1);
-	while (stack.len()) self.unbalanced.push({ stack.pop()!!, self.len() - 1 });
+	if (stack.len())
+	{
+		for (sz j = stack[0] + 1; j < self.len(); j++) if (self.is_break(j)) return j;
+		ranges.push(stack[0] + 1);
+		ranges.push(self.len() - 1);
+		while (stack.len()) self.unbalanced.push(self.damage(stack.pop()!!, self.len() - 1));
+	}
 	// a stray closer: the span around it is kept (at top level, its line)
 	sz kept_to = NO;   // the end of the range kept for the stray closer before
 	foreach (i : strays)
@@ -277,7 +350,7 @@ fn void Src.match_brackets(&self)
 		if (kept_to != NO && i <= kept_to)
 		{
 			// in the same span or on the same line as the one before: the same range
-			self.unbalanced.push({ i, kept_to });
+			self.unbalanced.push(self.damage(i, kept_to));
 			continue;
 		}
 		sz e = self.toks[i].encl;
@@ -291,11 +364,14 @@ fn void Src.match_brackets(&self)
 		else if (self.toks[e].match == NO)
 		{
 			to = self.len() - 1;
+			foreach (d : self.unbalanced) if (d.tok == e) to = d.last;
 		}
-		self.unbalanced.push({ i, to });
-		self.keep_range(from, to);
+		self.unbalanced.push(self.damage(i, to));
+		ranges.push(from);
+		ranges.push(to);
 		kept_to = to;
 	}
+	return NO;
 }
 
 <* First code token of the statement containing token i (stops at ; { } or an open bracket). *>
@@ -483,6 +559,7 @@ fn void Src.match_ct(&self)
 	for (sz i = 0; i < self.len(); i++)
 	{
 		Tok* t = &self.toks[i];
+		if (t.cut) stack.clear();
 		if (is_ct_open(t.type))
 		{
 			stack.push(i);
@@ -515,6 +592,7 @@ fn sz Src.header_colon(&self, sz i, bool skip_first, bool semicolons = false)
 	for (sz k = i + 1; k < self.len(); k++)
 	{
 		Tok* t = &self.toks[k];
+		if (t.cut) return NO;
 		if (!t.code) continue;
 		if (is_opener(t.type) && t.match != NO)
 		{
@@ -594,6 +672,7 @@ fn void Src.mark_ternaries(&self)
 	for (sz i = 0; i < self.len(); i++)
 	{
 		Tok* t = &self.toks[i];
+		if (t.cut) open.clear();
 		if (!t.code) continue;
 		if (open.len())
 		{
