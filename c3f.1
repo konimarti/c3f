@@ -310,6 +310,19 @@ always removed.\&
 A trailing comma keeps one item per line when wrapping.\&
 .PP
 .RE
+\fBc3f_wrap_lists\fR = fill | one_per_line
+.RS 4
+How a list that has to wrap is laid out.\& \fBfill\fR puts as many items on each line as fit.\&
+\fBone_per_line\fR puts each item on a line of its own and the closing bracket on a line of its
+own, as a trailing comma does (\fBc3f_magic_comma\fR), but adds no comma.\& It applies to the lists
+with at least one comma between brackets: the arguments of a call, the parameters of a
+function, the elements of an initializer list.\& A list that fits on its line stays on it, also
+inside a list that is broken; a list inside a list on one line is on one line.\& A single
+argument, a parenthesized expression, the header of a loop and the lists of generic arguments,
+indexes and attributes are not lists in this sense.\& It needs \fBc3f_line_breaks\fR other than
+\fBkeep\fR and a \fBmax_line_length\fR.\&
+.PP
+.RE
 \fBc3f_soft_max_line_length\fR = 0
 .RS 4
 0 to 10000.\& A second, soft limit for wrapping: every column past it costs
