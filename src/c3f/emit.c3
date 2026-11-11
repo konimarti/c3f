@@ -27,6 +27,25 @@ fn String Fmt.line_text(&self, sz i)
 	return self.indent_text(first.indent);
 }
 
+<* A `//` comment without the spaces and tabs at its end (a '\r' of CRLF stays at the end). Text kept as written is not touched. *>
+fn String line_comment_text(Tok* t)
+{
+	String x = t.text;
+	if (t.keep || !x.starts_with("//")) return x;
+	String body = x.ends_with("\r") ? x[:x.len - 1] : x;
+	String trimmed = body.trim_right(" \t");
+	return trimmed.len == body.len ? x : (body.len == x.len ? trimmed : x[:trimmed.len].tconcat("\r"));
+}
+
+<* Is `now` the comment `was` with nothing but spaces and tabs removed from its end (before a final '\r')? *>
+fn bool same_but_blanks(String was, String now)
+{
+	String a = was.ends_with("\r") ? was[:was.len - 1] : was;
+	String b = now.ends_with("\r") ? now[:now.len - 1] : now;
+	if (was.ends_with("\r") != now.ends_with("\r") || !a.starts_with(b)) return false;
+	return a[b.len..].trim_right(" \t").len == 0;
+}
+
 <*
  Token text as written. The inner lines of a multi-line comment or contract move with its
  first line, but only if every one of them starts with the old indentation.
@@ -34,6 +53,7 @@ fn String Fmt.line_text(&self, sz i)
 fn String Fmt.token_text(&self, sz i)
 {
 	Tok* t = &self.src.toks[i];
+	if (t.type == LINE_COMMENT) return line_comment_text(t);
 	if ((t.type != CONTRACT && t.type != BLOCK_COMMENT) || t.unterminated || !t.text.contains("\n")) return t.text;
 	// only a line that starts with a token moves (`*/ x /*` starts inside the comment before)
 	if (self.src.toks[self.out[i].line_tok].line != t.line) return t.text;
@@ -165,6 +185,8 @@ fn sz Fmt.verify(&self, String output, List{String}* texts)
 			continue;
 		}
 		if (t.type != s.toks[k].type || t.text != (*texts)[k]) return k;
+		// the only change to a `//` comment: its trailing blanks
+		if (t.type == LINE_COMMENT && !same_but_blanks(s.toks[k].text, (*texts)[k])) return k;
 		k++;
 	}
 	return k == s.len() ? NO : k;
