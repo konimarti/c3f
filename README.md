@@ -64,8 +64,8 @@ git HEAD with `-O3`: c3f b357cb4, [c3fmt](https://github.com/lmichaudel/c3fmt) a
 ³ Differences that remain after removing all whitespace from both files.<br>
 ⁴ Test file: an unclosed `(` in an `if`. c3fmt leaves a file as it is and reports
 `SOURCE_CODE_CONTAINS_ERROR` (exit status 0); from stdin, as editors call it, it stops with
-that error unhandled (exit status 132). c3f formats up to the `(`, keeps the rest as written and
-names the line on stderr.
+that error unhandled (exit status 132). c3f formats up to the `(`, keeps the damaged part as written (up to the next top-level
+declaration) and names the line on stderr.
 
 c3fmt's own stdlib snapshot (364 files) gives the same picture. *Lines changed* counts the lines
 of the input that were changed or removed. [c3tools](https://github.com/alexveden/c3tools) c3fmt

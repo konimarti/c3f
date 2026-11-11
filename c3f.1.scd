@@ -15,6 +15,18 @@ C3F(1)
 token by token, with the input. A place it cannot verify, or that is unbalanced (a bracket
 still being typed), is kept as written, so it is safe to run on a file while editing it.
 
+A bracket that is never closed, and a raw string (backtick), block comment or doc comment that
+is never terminated, damage the file from there on. c3f picks it up again at the next line that
+starts at column 0 with a top-level declaration (*fn*, *macro*, *struct*, *union*, *enum*,
+*bitstruct*, *interface*, *faultdef*, *alias*, *typedef*, *const*, *constdef*, *constset*, *module*,
+*import*, *extern*, *attrdef*, *attrmacro*) or with a doc comment (*<\**). The text from the error
+to there is kept byte for byte as written, and nothing is inserted or changed; from there on the
+file is formatted as usual. *$if* and the other *$* keywords do not count, as code may write
+them flush left inside a function. Without such a line the rest of the file is kept. Each one is a
+note on standard error with its line: *unclosed '{'*, *unterminated raw string*, *unterminated
+comment* or *unterminated doc comment*, followed by *kept as written up to line N* (*to the end of
+the file* if nothing is picked up again).
+
 With one file and none of *-w*, *--check* and *--diff*, the formatted file is written to
 standard output. With *-*, standard input is read and the result written to standard output.
 For directories, every file ending in _.c3_, _.c3i_ and _.c3t_ below them is formatted;
