@@ -203,7 +203,8 @@ Values are given with their default first.
 	written (*keep*), or remove it (*off*).
 
 *c3f_align_comments* = keep | always | off
-	The same for trailing comments.
+	The same for trailing comments. The spaces and tabs at the end of a _//_ comment are
+	always removed.
 
 *c3f_trailing_comment_spaces* = keep
 	*keep*, or 1 to 16. The spaces before a trailing _//_ comment.
