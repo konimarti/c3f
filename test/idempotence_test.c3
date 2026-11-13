@@ -31,3 +31,16 @@ fn void sorted_imports_with_no_blank_lines_allowed() @test
 	got = settle("module t;\n// c\n\nimport z;\nimport a;\n\n// d\nimport y;\n", { "c3f_style", "strict", "c3f_max_blank_lines", "0" });
 	assert(got == "module t;\nimport a;\n// d\nimport y;\n// c\nimport z;\n", "got:\n%s", got);
 }
+
+fn void expanded_lambda_in_an_initializer() @test
+{
+	// the lambda's body goes on lines of its own, so the initializer spans lines: its elements start on a line after the '{'
+	String src = "module t;\nfn void f()\n{\n\tCb c = { fn () { io::printn(\"x\"); } };\n}\n";
+	String got = settle(src, { "c3f_one_line_blocks", "expand" });
+	assert(got == "module t;\nfn void f()\n{\n\tCb c = {\n\t\tfn () {\n\t\t\tio::printn(\"x\");\n\t\t} };\n}\n", "got:\n%s", got);
+	// an initializer inside another one
+	(void)settle("fn void f()\n{\n\tCb c = { { fn () { a(); b(); } }, { 1, 2 } };\n}\n", { "c3f_one_line_blocks", "expand" });
+	// one on a line stays as it is
+	got = settle("fn void f()\n{\n\tint[] a = { 1, 2 };\n}\n", { "c3f_one_line_blocks", "expand" });
+	assert(got == "fn void f()\n{\n\tint[] a = { 1, 2 };\n}\n", "got:\n%s", got);
+}

@@ -158,9 +158,11 @@ fn void Fmt.expand_breaks(&self, sz i, bool in_for_header)
 			if (in_for_header || (t.encl != NO && s.toks[t.encl].type != LBRACE)) return;
 			self.break_after(i);
 		case RBRACE:
-			// a block or a type body, not a lambda or a block in an expression
 			if (t.match == NO) return;
 			Tok* o = &s.toks[t.match];
+			// an initializer list: here, where the breaks inside it are known (a lambda in it may have been expanded)
+			if (o.brace == INIT) self.break_initializer(t.match);
+			// a block or a type body, not a lambda or a block in an expression
 			if ((o.brace != BLOCK && o.brace != BODY) || s.is_lambda_body(t.match)) return;
 			if (o.encl != NO && s.toks[o.encl].type != LBRACE) return;
 			self.break_after(i);
@@ -175,8 +177,6 @@ fn void Fmt.expand_breaks(&self, sz i, bool in_for_header)
 			if (colon != NO && !self.fixed(colon)) self.break_after(colon);
 		case FAULTDEF:
 			self.break_faultdef(i);
-		case LBRACE:
-			self.break_initializer(i);
 		default:
 	}
 }
@@ -222,7 +222,11 @@ fn void Fmt.break_initializer(&self, sz o)
 	Src* s = self.src;
 	Tok* t = &s.toks[o];
 	sz m = t.match;
-	if (t.brace != INIT || m == NO || m <= o + 1 || s.toks[m].line == t.line || self.fixed(m)) return;
+	if (t.brace != INIT || m == NO || m <= o + 1 || self.fixed(m)) return;
+	// on several lines, in the source or after the breaks made inside it
+	bool multi = s.toks[m].line != t.line;
+	for (sz k = o + 1; k <= m && !multi; k++) multi = self.out[k].nl > 0;
+	if (!multi) return;
 	self.break_after(o);
 	sz p = s.prev_code(m);
 	if (s.type_at(p) == COMMA && self.out[m].nl == 0 && !self.fixed(m)) self.out[m].nl = 1;
