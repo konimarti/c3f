@@ -667,9 +667,11 @@ fn bool Fmt.wants_wrap(&self, sz a, sz b)
 	Config* c = self.cfg;
 	if (b == a || b - a + 1 > c.wrap_max_tokens) return false;
 	bool too_long;
+	bool has_init;
 	for (sz k = a; k <= b; k++)
 	{
 		Tok* t = &s.toks[k];
+		if (t.type == LBRACE && t.brace == INIT) has_init = true;
 		if (!t.code || t.keep || self.out[k].verbatim || t.text.contains("\n") || t.unterminated) return false;
 		if (is_ct_open(t.type) || is_ct_end(t.type) || t.type == CT_ELSE || t.type == CT_CASE || t.type == CT_DEFAULT) return false;
 		// (the '{' that ends a header, K&R style, opens a block of its own: it is part of the line, not of an open bracket)
@@ -680,6 +682,11 @@ fn bool Fmt.wants_wrap(&self, sz a, sz b)
 		bool eol = k == b || self.out[k + 1].nl > 0;
 		if (eol && self.end_col(k) > c.max_line_length) too_long = true;
 	}
+	// (expand lays an initializer that spans lines out on lines of its own, which moves the block of a header that
+	// ends in '{': a header with an initializer is left as written, as it was before such headers were wrapped)
+	Tok* last = &s.toks[b];
+	bool block_header = last.type == LBRACE && last.match != NO && (last.brace == BLOCK || last.brace == BODY) && !s.is_lambda_body(b);
+	if (block_header && has_init && c.one_line_blocks == EXPAND) return false;
 	if (c.wraps_only() && !too_long) return false;
 	return too_long || c.soft_max_line_length != 0 || !self.fits_as_is(a, b);
 }

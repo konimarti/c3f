@@ -79,3 +79,28 @@ fn void aligned_names_and_comments_settle_in_one_run() @test
 		"\tvoid*              func;     // CompiledFunction*, opaque to avoid a circular dependency\n"
 		"\tvoid*              func_obj; // HObject* of the generator function itself, opaque.\n}\n", "got:\n%s", got);
 }
+
+fn void header_with_an_initializer_under_expand() @test
+{
+	String src = "module m;\nfn Element* f(Ui* ui)\n{\n\treturn @subtree(ui)\n\t{\n"
+		"\t\t@tree((Column) { .size = { 380, 0 }, .gap = ANIM_GAP })\n\t\t{\n\t\t\tif (count == 0)\n\t\t\t{\n\t\t\t\ta();\n\t\t\t}\n\t\t\telse\n\t\t\t{\n"
+		"\t\t\t\t@tree((Scroll) { .size = { 0, list_h } })\n\t\t\t\t{\n\t\t\t\t\t@tree((Column) { .gap = 4 })\n\t\t\t\t\t{\n"
+		"\t\t\t\t\t\tfor (usz i = 0; i < count; i++)\n\t\t\t\t\t\t{\n\t\t\t\t\t\t\t@node(x);\n\t\t\t\t\t\t}\n\t\t\t\t\t};\n\t\t\t\t};\n\t\t\t}\n\t\t};\n\t};\n}\n";
+	foreach (style : (String[]){ "c3f_style", "c3f_brace_style" })
+	{
+		String kind = style == "c3f_style" ? "knr" : "linux";
+		foreach (width : (String[]){ "40", "50", "60", "65", "70", "75" })
+		{
+			foreach (mode : (String[]){ "reflow", "wrap" })
+			{
+				String got = settle(src, { style, kind, "c3f_line_breaks", mode, "max_line_length", width, "c3f_one_line_blocks", "expand" });
+				// the header with the initializer stays on one line
+				assert(got.contains("@tree((Column) { .gap = 4 }) {\n"), "got:\n%s", got);
+			}
+		}
+	}
+	// a header without an initializer is still wrapped
+	String got = settle("module m;\nfn void g()\n{\n\tif (aaaaaaaaaaaaaaaaaaa && bbbbbbbbbbbbbbbbbbbbbb && cccccccccccccc) {\n\t\ty();\n\t}\n}\n",
+		{ "c3f_style", "knr", "c3f_line_breaks", "wrap", "max_line_length", "40", "c3f_one_line_blocks", "expand" });
+	assert(got.contains("\t\t&& bbbbbbbbbbbbbbbbbbbbbb"), "got:\n%s", got);
+}
