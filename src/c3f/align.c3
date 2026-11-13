@@ -179,6 +179,9 @@ fn void Fmt.align(&self)
 			self.set_spacing(k, pad == old ? s.gap(k) : spaces(pad));
 		}
 	}
+	// the comments first as well: a name column is not widened past the limit, and a line is only as long
+	// as it will be once its comment has been moved (the second run would see the shorter line and align more)
+	if (self.cfg.align == DECLS && self.cfg.align_comments == ALWAYS) self.align_trailing_comments();
 	if (self.cfg.align == DECLS) self.align_decls();
 	if (self.cfg.align_comments == ALWAYS) self.align_trailing_comments();
 }

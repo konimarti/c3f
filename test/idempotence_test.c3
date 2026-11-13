@@ -60,3 +60,15 @@ fn void braces_under_compile_time_branches_with_knr_braces() @test
 	got = settle(one, { "c3f_style", "knr" });
 	assert(got == "macro f() {\n\t$if Y: { c(); } $else { d(); } $endif\n}\n", "got:\n%s", got);
 }
+
+fn void aligned_names_and_comments_settle_in_one_run() @test
+{
+	// a name column is not widened past the limit, but the limit is judged on the lines as they will be written
+	String src = "struct GeneratorState {\n    GeneratorStateType state;\n"
+		"    void* func;               // CompiledFunction*, opaque to avoid a circular dependency\n"
+		"    void* func_obj;           // HObject* of the generator function itself, opaque.\n}\n";
+	String got = settle(src, { "c3f_align", "decls", "c3f_align_comments", "always", "max_line_length", "100" });
+	assert(got == "struct GeneratorState\n{\n\tGeneratorStateType state;\n"
+		"\tvoid*              func;     // CompiledFunction*, opaque to avoid a circular dependency\n"
+		"\tvoid*              func_obj; // HObject* of the generator function itself, opaque.\n}\n", "got:\n%s", got);
+}
