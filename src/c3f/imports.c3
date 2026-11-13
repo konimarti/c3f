@@ -67,10 +67,10 @@ fn bool Src.has_keep(&self, sz a, sz b)
  writes one module per statement (a statement with a comment is only sorted). Comments directly
  above a statement and after it on the same line move with it. Returns the new text.
 *>
-fn String sort_imports(String text, SortImports mode)
+fn String sort_imports(String text, SortImports mode, sz max_blank = 2)
 {
 	if (mode == OFF) return text;
-	if (text.starts_with("\xEF\xBB\xBF")) return "\xEF\xBB\xBF".tconcat(sort_imports(text[3..], mode));
+	if (text.starts_with("\xEF\xBB\xBF")) return "\xEF\xBB\xBF".tconcat(sort_imports(text[3..], mode, max_blank));
 	Src s;
 	s.init(text);
 	List{Unit} stmts;
@@ -90,7 +90,7 @@ fn String sort_imports(String text, SortImports mode)
 		while (u.first > 0 && !s.toks[u.first - 1].code)
 		{
 			bool same_line = s.toks[u.first].nl == 0;
-			bool own_line_above = s.toks[u.first].nl == 1 && (u.first - 1 == 0 || s.toks[u.first - 1].nl > 0);
+			bool own_line_above = blank_limited(s.toks[u.first].nl, max_blank) == 1 && (u.first - 1 == 0 || s.toks[u.first - 1].nl > 0);
 			if (!same_line && !own_line_above) break;
 			u.first--;
 		}
@@ -112,7 +112,7 @@ fn String sort_imports(String text, SortImports mode)
 	{
 		// a run: statements separated by exactly one line break
 		sz r2 = r;
-		while (r2 + 1 < stmts.len() && stmts[r2 + 1].first == stmts[r2].last + 1 && s.toks[stmts[r2 + 1].first].nl == 1) r2++;
+		while (r2 + 1 < stmts.len() && stmts[r2 + 1].first == stmts[r2].last + 1 && blank_limited(s.toks[stmts[r2 + 1].first].nl, max_blank) == 1) r2++;
 		// the pieces that move: statements, or single modules when splitting
 		List{Unit} run;
 		run.tinit();
@@ -159,6 +159,9 @@ fn String sort_imports(String text, SortImports mode)
 	out.append(text[copied..]);
 	return out.str_view();
 }
+
+<* Line breaks before a token as they will be written: blank lines past the limit are cut (formatting removes them after sorting). *>
+fn sz blank_limited(sz nl, sz max_blank) @local => nl > max_blank + 1 ? max_blank + 1 : nl;
 
 <* The modules of a list statement (`import a, b @attr;`), or none if it is not a list or holds a comment. *>
 fn List{Unit} list_items(Src* s, Unit* u) @local

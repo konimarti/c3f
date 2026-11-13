@@ -99,7 +99,7 @@ fn String format_text(String original, Config* cfg, FormatResult* r, Allocator a
 	String input = original;
 	if (sort && cfg.sort_imports != OFF)
 	{
-		String sorted = sort_imports(original, cfg.sort_imports);
+		String sorted = sort_imports(original, cfg.sort_imports, cfg.max_blank_lines);
 		if (sorted != original && same_tokens(original, sorted, cfg.sort_imports == SPLIT)) input = sorted;
 	}
 	Src s;
