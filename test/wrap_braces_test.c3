@@ -47,3 +47,39 @@ fn sz indent_text_width(String line) @local
 	foreach (c : line) w = c == '\t' ? (w / 4 + 1) * 4 : w + 1;
 	return w;
 }
+
+<* A damaged or switched-off region is kept as it was written, even a header in it that ends in `{`. *>
+fn void damaged_regions_are_kept_with_wrapped_headers() @test
+{
+	String long_header = "fn void f(int very_long_argument_name, int another_very_long_argument_name) {";
+	String if_header = "\tif (aaaaaaaaaaaaaaaaaaa && bbbbbbbbbbbbbbbbbbbbbb && cccccccccccccc) {";
+	String[] sources = {
+		// an unclosed '{' ends the file
+		string::tformat("module m;\n%s\n\treturn 1;\n", long_header),
+		string::tformat("module m;\nfn void f()\n{\n%s\n\t\treturn 1;\n", if_header),
+		// an unclosed '(' or '[' in a header
+		"module m;\nfn void f()\n{\n\tif (aaaaaaaaaaaaaaaaaaa && bbbbbbbbbbbbbbbbbbbbbb && (cccccccccccccc) {\n\t\treturn 1;\n\t}\n}\n",
+		"module m;\nfn void f(int very_long_argument_name, int another_very_long_argument_name[ {\n\treturn 1;\n}\n",
+		// switched off
+		string::tformat("// c3f off\n%s\n%s\n\t\treturn 1;\n\t}\n}\n// c3f on\n", long_header, if_header),
+	};
+	foreach (src : sources)
+	{
+		foreach (style : (String[]){ "c3f_style", "c3f_brace_style" })
+		{
+			String kind = style == "c3f_style" ? "knr" : "linux";
+			c3f::Config plain = c3f::defaults();
+			(void)plain.set(style, kind);
+			String expected = fmt_with(src, &plain);
+			foreach (mode : (String[]){ "wrap", "reflow" })
+			{
+				c3f::Config cfg = c3f::defaults();
+				(void)cfg.set(style, kind);
+				(void)cfg.set("max_line_length", "40");
+				(void)cfg.set("c3f_line_breaks", mode);
+				String got = fmt_with(src, &cfg);
+				assert(got == expected, "changed:\n%s", got);
+			}
+		}
+	}
+}

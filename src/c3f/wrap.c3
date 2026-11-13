@@ -673,7 +673,7 @@ fn bool Fmt.wants_wrap(&self, sz a, sz b)
 		if (!t.code || t.keep || self.out[k].verbatim || t.text.contains("\n") || t.unterminated) return false;
 		if (is_ct_open(t.type) || is_ct_end(t.type) || t.type == CT_ELSE || t.type == CT_CASE || t.type == CT_DEFAULT) return false;
 		// (the '{' that ends a header, K&R style, opens a block of its own: it is part of the line, not of an open bracket)
-		bool block_end = k == b && t.type == LBRACE && (t.brace == BLOCK || t.brace == BODY) && !s.is_lambda_body(k);
+		bool block_end = k == b && t.type == LBRACE && t.match != NO && (t.brace == BLOCK || t.brace == BODY) && !s.is_lambda_body(k);
 		if (is_opener(t.type) && (t.match == NO || t.match > b) && !block_end) return false;
 		// several statements on a line (a table written that way): each pass would only settle one more
 		if (t.type == EOS && k < b && (t.encl == NO || t.encl < a)) return false;
