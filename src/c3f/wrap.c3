@@ -77,7 +77,7 @@ fn sz rank(TokenType t) @local
 {
 	switch (t)
 	{
-		case QUESTION: case ELVIS: return 2;
+		case QUESTION: case COLON: case ELVIS: return 2;
 		case OR: case CT_OR_OP: return 3;
 		case AND: case CT_AND_OP: return 4;
 		case EQEQ: case NOT_EQUAL: case LESS: case GREATER: case LESS_EQ: case GREATER_EQ: return 5;
@@ -335,6 +335,8 @@ fn Point Wrap.point_before(&self, sz k)
 		return e != NO && s.toks[e].type == LPAREN ? Point.NONE : Point.ASSIGN;
 	}
 	if (s.is_binary(k) && !is_assign(s.toks[k].type)) return OPERATOR;
+	// the '?' and the ':' of a ternary (marked in pairs; the '?' of a type and the ':' of a label are not)
+	if ((s.toks[k].type == QUESTION || s.toks[k].type == COLON) && s.toks[k].ternary) return OPERATOR;
 	// strings written one after another (split by `wrap_rewrite`) stay where they are
 	if (prev == STRING && s.toks[k].type == STRING && self.f.cfg.line_breaks == WRAP_REWRITE) return OPERATOR;
 	return NONE;
