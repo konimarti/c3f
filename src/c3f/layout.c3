@@ -350,7 +350,10 @@ fn void Fmt.layout(&self)
 		col = text_width(t.type == BLOCK_COMMENT || t.type == CONTRACT ? self.token_text(i) : t.text, col, c.tab_width);
 
 		// frames that start at this token
-		Indent line = self.out[o.line_tok].indent;
+		// a `{` that ends a continuation line of a header (K&R and linux braces) opens a block of the statement,
+		// whose frame is based on the line the statement started on, not on the continuation line
+		bool block = t.type == LBRACE && (t.brace == BLOCK || t.brace == BODY) && o.nl == 0 && !s.is_lambda_body(i);
+		Indent line = block && self.out[o.line_tok].cont && f.has_head ? f.head : self.out[o.line_tok].indent;
 		if (closes)
 		{
 			self.frames.pop()!!;
