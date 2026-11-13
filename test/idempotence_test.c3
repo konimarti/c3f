@@ -44,3 +44,19 @@ fn void expanded_lambda_in_an_initializer() @test
 	got = settle("fn void f()\n{\n\tint[] a = { 1, 2 };\n}\n", { "c3f_one_line_blocks", "expand" });
 	assert(got == "fn void f()\n{\n\tint[] a = { 1, 2 };\n}\n", "got:\n%s", got);
 }
+
+fn void braces_under_compile_time_branches_with_knr_braces() @test
+{
+	// `$if X:` and `$else` are treated alike: the brace goes to the end of the header line
+	String src = "macro f()\n{\n\t$if X:\n\t\t{\n\t\t\ta();\n\t\t}\n\t$else\n\t\t{\n\t\t\tb();\n\t\t}\n\t$endif\n}\n";
+	String got = settle(src, { "c3f_style", "knr" });
+	assert(got == "macro f() {\n\t$if X: {\n\t\ta();\n\t}\n\t$else {\n\t\tb();\n\t}\n\t$endif\n}\n", "got:\n%s", got);
+	got = settle(src, { "c3f_brace_style", "linux" });
+	assert(got == "macro f()\n{\n\t$if X: {\n\t\ta();\n\t}\n\t$else {\n\t\tb();\n\t}\n\t$endif\n}\n", "got:\n%s", got);
+	// with Allman braces they stay on their own lines
+	(void)settle(src, {});
+	// blocks on one line are left as they are
+	String one = "macro f()\n{\n\t$if Y: { c(); } $else { d(); } $endif\n}\n";
+	got = settle(one, { "c3f_style", "knr" });
+	assert(got == "macro f() {\n\t$if Y: { c(); } $else { d(); } $endif\n}\n", "got:\n%s", got);
+}

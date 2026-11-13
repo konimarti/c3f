@@ -472,7 +472,7 @@ fn BraceKind Src.brace_kind(&self, sz i, BraceKind enclosing)
 				default:
 					return is_type_token(bt) ? BLOCK : INIT;
 			}
-		case ELSE: case DO: case DEFER: case SWITCH: case AT_IDENT:
+		case ELSE: case CT_ELSE: case DO: case DEFER: case SWITCH: case AT_IDENT:
 		case ASM: case TRY: case CATCH:
 			return BLOCK;
 		case RBRACE:
@@ -508,11 +508,11 @@ fn bool Src.after_params(&self, sz i)
 	return false;
 }
 
-<* Is the '{' at o a bare block (after `;`, `{`, `}`, `$else` or `$endif`)? *>
+<* Is the '{' at o a bare block (after `;`, `{`, `}` or `$endif`)? *>
 fn bool Src.starts_statement(&self, sz o)
 {
 	TokenType p = self.type_at(self.prev_code(o));
-	return p == INVALID || p == EOS || p == LBRACE || p == RBRACE || p == CT_ELSE || is_ct_end(p);
+	return p == INVALID || p == EOS || p == LBRACE || p == RBRACE || is_ct_end(p);
 }
 
 <* Is the '{' at o the body of a function or macro (`fn void f() {`, also after `@attr` or `<Type>`)? *>
