@@ -127,7 +127,8 @@ fn void Fmt.brace_breaks(&self, sz o)
 	}
 	else if (self.cfg.brace_style == ALLMAN || (self.cfg.brace_style == LINUX && s.is_function_body(o)))
 	{
-		if (self.out[o].nl == 0) self.out[o].nl = 1;
+		// (the brace of a `$else` stays where it was written; K&R and linux braces join it to the `$else`)
+		if (self.out[o].nl == 0 && s.type_at(s.prev_code(o)) != CT_ELSE) self.out[o].nl = 1;
 	}
 	else if (self.out[o].nl > 0 && !is_comment_type(s.toks[o - 1].type) && !s.starts_statement(o))
 	{

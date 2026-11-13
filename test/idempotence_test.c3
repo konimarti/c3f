@@ -53,6 +53,13 @@ fn void braces_under_compile_time_branches_with_knr_braces() @test
 	assert(got == "macro f() {\n\t$if X: {\n\t\ta();\n\t}\n\t$else {\n\t\tb();\n\t}\n\t$endif\n}\n", "got:\n%s", got);
 	got = settle(src, { "c3f_brace_style", "linux" });
 	assert(got == "macro f()\n{\n\t$if X: {\n\t\ta();\n\t}\n\t$else {\n\t\tb();\n\t}\n\t$endif\n}\n", "got:\n%s", got);
+	// with Allman braces a `$else {` stays as written, on the line or below it
+	String joined = "fn void f()\n{\n\t$if X: a(); $else {\n\t\tb();\n\t}\n\t$endif\n}\n";
+	got = settle(joined, {});
+	assert(got == joined, "got:\n%s", got);
+	String below = "fn void f()\n{\n\t$if X: a();\n\t$else\n\t{\n\t\tb();\n\t}\n\t$endif\n}\n";
+	got = settle(below, {});
+	assert(got == below, "got:\n%s", got);
 	// with Allman braces they stay on their own lines
 	(void)settle(src, {});
 	// blocks on one line are left as they are
