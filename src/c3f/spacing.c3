@@ -317,6 +317,8 @@ fn Space Src.space_rule(&self, sz i, Config* cfg)
 	// `a ** b` is `a * *b`: the binary `*` is spaced on both sides, as written (`a**b` stays tight)
 	if (self.toks[i].type == STAR && self.toks[i - 1].type == STAR && self.same_line(i) && self.is_binary(i - 1) && self.is_unary(i)
 		&& (self.gap(i - 1).len > 0 || self.gap(i).len > 0)) return ONE;
+	// the compile-time operators `&&&`, `|||` and `+++` are always binary: spaced on both sides, in every style
+	if (is_ct_binary_op(self.toks[i].type) || is_ct_binary_op(self.toks[i - 1].type)) return ONE;
 	// a binary operator that starts a line (a wrapped `a\n* b`): the table would read it as `*p`
 	if (self.toks[i - 1].nl > 0 && self.is_binary(i - 1)) return ONE;
 	Space rule = self.gap_rule(i, cfg);
@@ -413,6 +415,8 @@ fn bool is_operand_end(TokenType t)
 			return false;
 	}
 }
+
+fn bool is_ct_binary_op(TokenType t) => t == CT_AND_OP || t == CT_OR_OP || t == CT_CONCAT_OP;
 
 fn bool is_binary_op(TokenType t)
 {
