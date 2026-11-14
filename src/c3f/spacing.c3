@@ -314,6 +314,9 @@ fn bool Src.same_line(&self, sz i) @inline => i > 0 && i < self.len() && self.to
 fn Space Src.space_rule(&self, sz i, Config* cfg)
 {
 	if (self.is_unary(i - 1)) return NONE;
+	// `a ** b` is `a * *b`: the binary `*` is spaced on both sides, as written (`a**b` stays tight)
+	if (self.toks[i].type == STAR && self.toks[i - 1].type == STAR && self.same_line(i) && self.is_binary(i - 1) && self.is_unary(i)
+		&& (self.gap(i - 1).len > 0 || self.gap(i).len > 0)) return ONE;
 	// a binary operator that starts a line (a wrapped `a\n* b`): the table would read it as `*p`
 	if (self.toks[i - 1].nl > 0 && self.is_binary(i - 1)) return ONE;
 	Space rule = self.gap_rule(i, cfg);
