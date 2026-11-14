@@ -135,3 +135,22 @@ fn void write_a_file_with_a_long_name() @test
 		assert(((String)file::load_temp(path)!!).contains("int a = 1;"));
 	$endif
 }
+
+<* On POSIX a backslash is part of a name, not a separator: a long name with one still gets a short temporary name. *>
+fn void write_a_long_name_with_a_backslash() @test
+{
+	$if env::POSIX:
+		String src = "fn void f(){int a=1;}\n";
+		DString name;
+		name.tinit();
+		for (int i = 0; i < 227; i++) name.append_char('x');
+		name.append("\\.c3");
+		String path = temp_file(name.str_view(), src);
+		defer (void)file::delete(path);
+		c3f::Config cfg = c3f::defaults();
+		cli::Options opt;
+		opt.mode = WRITE;
+		assert(cli::run(&opt, path, src, &cfg) == cli::Status.OK);
+		assert(((String)file::load_temp(path)!!).contains("int a = 1;"));
+	$endif
+}
