@@ -25,3 +25,12 @@ fn void expanded_compile_time_branch_stays_inside_its_function() @test
 	String col0 = expanded("module t;\nfn void g()\n{\n$if true:\n\ta();\n$endif\n}\n", {});
 	assert(col0 == "module t;\nfn void g()\n{\n$if true:\n\ta();\n$endif\n}\n", "got:\n%s", col0);
 }
+
+fn void expanded_loop_before_a_while_loop_is_not_a_do_loop() @test
+{
+	String got = expanded("module t;\nfn void f(bool x)\n{\n\tfor (;;) { break; } while (x) { a(); }\n}\n", {});
+	assert(got == "module t;\nfn void f(bool x)\n{\n\tfor (;;)\n\t{\n\t\tbreak;\n\t}\n\twhile (x)\n\t{\n\t\ta();\n\t}\n}\n", "got:\n%s", got);
+	// the tail of a real do loop stays after its block
+	got = expanded("module t;\nfn void f(bool x)\n{\n\tdo { a(); } while (x);\n}\n", {});
+	assert(got == "module t;\nfn void f(bool x)\n{\n\tdo\n\t{\n\t\ta();\n\t} while (x);\n}\n", "got:\n%s", got);
+}

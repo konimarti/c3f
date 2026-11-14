@@ -190,8 +190,13 @@ fn void Fmt.break_after(&self, sz i)
 	if (n >= s.len() || self.out[n].nl > 0 || self.fixed(n) || !s.toks[n].code) return;
 	TokenType nt = s.toks[n].type;
 	if (is_closer(nt) || nt == EOS || nt == COMMA) return;
-	// the `else` or `while` of the statement that has just ended stays after a block
-	if (s.toks[i].type == RBRACE && (nt == ELSE || nt == WHILE)) return;
+	// the `else` of the statement that has just ended stays after a block, and so does the `while` of a `do`
+	if (s.toks[i].type == RBRACE && nt == ELSE) return;
+	if (s.toks[i].type == RBRACE && nt == WHILE)
+	{
+		sz open = s.toks[i].match;
+		if (open != NO && s.type_at(s.prev_code(open)) == DO) return;
+	}
 	self.out[n].nl = 1;
 }
 
