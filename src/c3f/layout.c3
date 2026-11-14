@@ -526,7 +526,11 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 			// inside an initializer that opened on an earlier line and has no lines of its own
 			// (`= { { 1, 2 },` then `{ 3, 4 },`): at least one level in, a closer excepted
 			if (extra.len == 0 && !(is_closer(t.type) && i == j) && self.in_open_initializer(t.encl)) return base.deeper();
-			return { base.levels, base.extra.tconcat(extra) };
+			Indent kept = { base.levels, base.extra.tconcat(extra) };
+			// (written as spaces, a tab of the extra is as wide as it is here: a frame opened below this line
+			// adds levels in front of it, which would move its tab stops)
+			if (self.cfg.indent_style == SPACE && kept.extra.contains("\t")) kept.extra = spaces(self.indent_width(kept) - base.levels * self.cfg.indent_size);
+			return kept;
 		case ALIGN:
 			sz o = t.encl;
 			// (under the first token after the opener; not under a comment there, which aligning moves)

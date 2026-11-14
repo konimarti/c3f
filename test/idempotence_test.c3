@@ -104,3 +104,21 @@ fn void header_with_an_initializer_under_expand() @test
 		{ "c3f_style", "knr", "c3f_line_breaks", "wrap", "max_line_length", "40", "c3f_one_line_blocks", "expand" });
 	assert(got.contains("\t\t&& bbbbbbbbbbbbbbbbbbbbbb"), "got:\n%s", got);
 }
+
+fn void spaces_with_a_wider_tab_settle_in_one_run() @test
+{
+	// continuation lines written with tabs, under a nested initializer, formatted to spaces
+	String src = "enum E : uint (uint w, ulong[2] i)\n{\n\tS { 512,\n\t\t{\n\t\t\t0x1,\n\t\t\t0x2\n\t\t}\n\t},\n}\n";
+	foreach (tw : (String[]){ "2", "4", "8", "16" })
+	{
+		foreach (size : (String[]){ "2", "4", "8", "tab" })
+		{
+			foreach (cont : (String[]){ "keep", "indent", "align" })
+			{
+				(void)settle(src, { "indent_style", "space", "indent_size", size, "tab_width", tw, "c3f_continuation", cont });
+			}
+		}
+	}
+	String got = settle(src, { "indent_style", "space", "indent_size", "4", "tab_width", "8" });
+	assert(got == "enum E : uint (uint w, ulong[2] i)\n{\n    S { 512,\n        {\n            0x1,\n            0x2\n        }\n    },\n}\n", "got:\n%s", got);
+}
