@@ -73,3 +73,46 @@ fn void help_lists_the_vscode_flags() @test
 {
 	assert(cli::HELP.contains("--stdin-filepath"));
 }
+
+extern fn CInt hard_link(ZString existing, ZString created) @cname("link") @feat(POSIX);
+
+<* A file with another hard link is rewritten in place, so both names see the new text. *>
+fn void write_keeps_hard_links() @test
+{
+	$if env::POSIX:
+		String src = "fn void f(){int a=1;}\n";
+		String path = temp_file("write_link_a.c3", src);
+		String other = string::tformat("%s.link", path);
+		defer (void)file::delete(path);
+		defer (void)file::delete(other);
+		(void)file::delete(other);
+		assert(hard_link(path.zstr_tcopy(), other.zstr_tcopy()) == 0);
+		c3f::Config cfg = c3f::defaults();
+		cli::Options opt;
+		opt.mode = WRITE;
+		assert(cli::run(&opt, path, src, &cfg) == cli::Status.OK);
+		String a = (String)file::load_temp(path)!!;
+		String b = (String)file::load_temp(other)!!;
+		assert(a.contains("int a = 1;"), "got: %s", a);
+		assert(b == a, "the other link was left with: %s", b);
+		// no temporary file is left next to it
+		assert(!@ok(file::load_temp(string::tformat("%s.c3f~", path))));
+	$endif
+}
+
+<* The temporary file has a name of its own: a file that happens to have the old fixed name is not touched. *>
+fn void write_leaves_a_file_with_the_old_temporary_name_alone() @test
+{
+	String src = "fn void f(){int a=1;}\n";
+	String path = temp_file("write_tmpname.c3", src);
+	String old = string::tformat("%s.c3f~", path);
+	defer (void)file::delete(path);
+	defer (void)file::delete(old);
+	assert(@ok(file::save(old, "somebody else's file")));
+	c3f::Config cfg = c3f::defaults();
+	cli::Options opt;
+	opt.mode = WRITE;
+	assert(cli::run(&opt, path, src, &cfg) == cli::Status.OK);
+	assert((String)file::load_temp(old)!! == "somebody else's file");
+	assert(((String)file::load_temp(path)!!).contains("int a = 1;"));
+}

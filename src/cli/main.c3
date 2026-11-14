@@ -1,5 +1,5 @@
 module c3f::cli;
-import c3f, libc, std::collections::list, std::io, std::io::path;
+import c3f, libc, std::collections::list, std::io, std::io::path, std::time;
 
 const String VERSION = env::PROJECT_VERSION;
 
@@ -152,11 +152,17 @@ const CUInt MOVEFILE_WRITE_THROUGH = 8;
 
 <*
  Write through a temporary file that takes the original's permissions, then rename it over
- the original. A symbolic link is written through in place, so the link stays a link.
+ the original. A symbolic link is written through in place, so the link stays a link, and so is
+ a file with other hard links: a new file would leave them with the old text.
 *>
 fn bool write_atomic(String path, String text)
 {
 	bool link = @ok(path::tnew(path)) && path::is_link(path::tnew(path)!!);
+	$if env::POSIX:
+		libc::Stat st;
+		bool have_stat = libc::stat(path.zstr_tcopy(), &st) == 0;
+		if (have_stat && st.st_nlink > 1) link = true;
+	$endif
 	if (link)
 	{
 		if (catch save_checked(path, text))
@@ -174,18 +180,14 @@ fn bool write_atomic(String path, String text)
 			return false;
 		}
 	$endif
-	String tmp = path.tconcat(".c3f~");
-	// a file (or a planted link) of that name goes first: deleting a link does not follow it
-	(void)file::delete(tmp);
-	if (catch save_checked(tmp, text))
+	String? tmp = save_new(path, text);
+	if (catch tmp)
 	{
-		io::eprintfn("c3f: %s: cannot write", tmp);
-		(void)file::delete(tmp);
+		io::eprintfn("c3f: %s: cannot write a temporary file", path);
 		return false;
 	}
 	$if env::POSIX:
-		libc::Stat st;
-		if (libc::stat(path.zstr_tcopy(), &st) == 0) (void)chmod(tmp.zstr_tcopy(), st.st_mode & 0o7777);
+		if (have_stat) (void)chmod(tmp.zstr_tcopy(), st.st_mode & 0o7777);
 	$endif
 	$if env::WIN32:
 		// in one step, with UTF-16 paths: rename reads them in the ANSI code page and does not
@@ -206,14 +208,43 @@ fn bool write_atomic(String path, String text)
 }
 
 <*
+ Write the text to a new file next to `path` and return its name. The file is created exclusively
+ (a file or a link that is already there is never written through), under a name made for the
+ purpose; a taken name is skipped.
+*>
+fn String? save_new(String path, String text)
+{
+	ulong seed = (ulong)time::now();
+	for (int attempt = 0; attempt < 100; attempt++)
+	{
+		String tmp = string::tformat("%s.c3f-%x-%d~", path, seed, attempt);
+		File? f = file::open(tmp, "wbx");
+		if (catch f) continue;
+		if (catch err = write_closed(&f, text))
+		{
+			(void)file::delete(tmp);
+			return err~;
+		}
+		return tmp.copy(tmem);
+	}
+	return io::ALREADY_EXISTS~;
+}
+
+<*
  Write a file and report every error: file::save ignores the result of closing it, and that is
  where the end of the text is written (a full disk then left a cut file, and success).
 *>
 fn void? save_checked(String path, char[] data)
 {
 	File f = file::open(path, "wb")!;
+	write_closed(&f, data)!;
+}
+
+<* Write all of the data to an open file and close it, reporting the error of either. *>
+fn void? write_closed(File* f, char[] data)
+{
 	defer (void)f.close();
-	io::write_all(&f, data)!;
+	io::write_all(f, data)!;
 	f.close()!;
 }
 
