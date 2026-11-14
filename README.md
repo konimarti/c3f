@@ -108,13 +108,23 @@ The setups below cover `.c3`, `.c3i` and `.c3t` files.
 
 | Editor | How | Format on save |
 |---|---|---|
-| [Vim](#vim) | `.vimrc` function | `BufWritePre` autocommand |
+| [Vim](#vim) | [c3.vim](https://github.com/konimarti/c3.vim) (or `.vimrc` function) | `g:c3_fmt_autosave = 1` |
 | [Neovim](#neovim) | conform.nvim | `format_on_save` |
 | [Helix](#helix) | `languages.toml` | `auto-format` |
 | [VS Code](#vs-code) | C3 extension | `editor.formatOnSave` |
 | [JetBrains IDEs](#jetbrains-ides) | External Tool | File Watcher |
 
 ### Vim
+
+**With [c3.vim](https://github.com/konimarti/c3.vim) (recommended):**
+
+[c3.vim](https://github.com/konimarti/c3.vim) provides the `:C3Format` command and handles `c3f` natively. To format on save, add to `.vimrc`:
+
+```vim
+let g:c3_fmt_autosave = 1
+```
+
+**Without plugins:**
 
 Add to your `.vimrc`. The buffer is only replaced if c3f succeeds, and its notes are shown as
 warnings:
