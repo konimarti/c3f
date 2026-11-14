@@ -407,7 +407,8 @@ fn bool Fmt.flush_directive(&self, sz i)
 {
 	Src* s = self.src;
 	Tok* t = &s.toks[i];
-	if (self.cfg.compile_time_indent != KEEP || (i > 0 && self.out[i].nl == 0) || t.encl == NO) return false;
+	// (one that did not start its line in the source, as in `{ $if x: a(); $endif }`, has no column to keep)
+	if (self.cfg.compile_time_indent != KEEP || (i > 0 && self.out[i].nl == 0) || t.encl == NO || t.src_nl == 0) return false;
 	if (!is_ct_open(t.type) && !is_ct_end(t.type) && t.type != CT_ELSE) return false;
 	return s.indent_of(i).len == 0;
 }
