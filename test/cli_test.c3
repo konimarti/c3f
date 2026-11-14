@@ -116,3 +116,22 @@ fn void write_leaves_a_file_with_the_old_temporary_name_alone() @test
 	assert((String)file::load_temp(old)!! == "somebody else's file");
 	assert(((String)file::load_temp(path)!!).contains("int a = 1;"));
 }
+
+<* A name of 240 bytes (the limit is 255) leaves no room for a long suffix: the temporary file has a short name of its own. *>
+fn void write_a_file_with_a_long_name() @test
+{
+	$if env::POSIX:
+		String src = "fn void f(){int a=1;}\n";
+		DString name;
+		name.tinit();
+		for (int i = 0; i < 229; i++) name.append_char('x');
+		name.append(".c3");
+		String path = temp_file(name.str_view(), src);
+		defer (void)file::delete(path);
+		c3f::Config cfg = c3f::defaults();
+		cli::Options opt;
+		opt.mode = WRITE;
+		assert(cli::run(&opt, path, src, &cfg) == cli::Status.OK);
+		assert(((String)file::load_temp(path)!!).contains("int a = 1;"));
+	$endif
+}

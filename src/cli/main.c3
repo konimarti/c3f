@@ -215,9 +215,13 @@ fn bool write_atomic(String path, String text)
 fn String? save_new(String path, String text)
 {
 	ulong seed = (ulong)time::now();
+	// (a short name of its own in the same directory: the file's own name may leave no room for a suffix)
+	sz dir_len;
+	foreach (i, c : path) if (c == '/' || c == '\\') dir_len = i + 1;
+	String dir = path[:dir_len];
 	for (int attempt = 0; attempt < 100; attempt++)
 	{
-		String tmp = string::tformat("%s.c3f-%x-%d~", path, seed, attempt);
+		String tmp = string::tformat("%s.c3f-%x-%d~", dir, seed, attempt);
 		File? f = file::open(tmp, "wbx");
 		if (catch f) continue;
 		if (catch err = write_closed(&f, text))
