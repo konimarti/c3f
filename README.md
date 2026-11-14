@@ -3,12 +3,11 @@
 A fast, token-based formatter for [C3](https://c3-lang.org).
 
 - **Token-based.** It works on tokens, not a grammar, so half-typed code and new syntax do not stop it.
-- **Fast.** The whole standard library in 0.14 s, and in 0.37 s wrapped at 120 columns.
 
 - **Stable.** Formatting twice gives the same bytes: no flapping in CI, no fights with format-on-save.
-- **Verified.** Every result is lexed again and compared, token by token, with your code.
 
 - **Stdlib style.** Spacing rules learned from the C3 standard library itself.
+
 - **Optimal wrapping.** Line breaks are determined by a dynamic programming algorithm ([Yelland](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf), as in Google's rfmt). Opt-in.
 
 Format on save, `.editorconfig`, presets, import sorting and a git hook are included.
@@ -67,9 +66,7 @@ git HEAD with `-O3`: c3f b357cb4, [c3fmt](https://github.com/lmichaudel/c3fmt) a
 that error unhandled (exit status 132). c3f formats up to the `(`, keeps the damaged part as written (up to the next top-level
 declaration) and names the line on stderr.
 
-c3fmt's own stdlib snapshot (364 files) gives the same picture. *Lines changed* counts the lines
-of the input that were changed or removed. [c3tools](https://github.com/alexveden/c3tools) c3fmt
-(32b5f03) no longer builds with c3c 0.8.6. To run the comparison yourself:
+To run the comparison yourself:
 `tools/bench.py --c3fmt <path to c3fmt>` (`--help` for the options).
 
 ## Install
