@@ -1068,3 +1068,10 @@ fn void strict_generic_arguments_are_tight_and_initializers_padded() @test
 	// value initializers are padded
 	check("fn void f()\n{\n\tint[] v = {1, 2};\n}\n", "fn void f()\n{\n\tint[] v = { 1, 2 };\n}\n", &strict);
 }
+
+fn void nullable_vector_types_are_tight_before_the_question_mark() @test
+{
+	c3f::Config strict = c3f::defaults();
+	// `[<*>]?` is a nullable vector type, as `[]?` is: no space before the '?', one after it
+	check("fn void f()\n{\n\tint[<*>]?x;\n\tint[<4>]?y;\n\tint[]?z;\n}\n", "fn void f()\n{\n\tint[<*>]? x;\n\tint[<4>]? y;\n\tint[]? z;\n}\n", &strict);
+}

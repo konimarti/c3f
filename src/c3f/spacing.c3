@@ -571,6 +571,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	// `s[a:b]`: in strict mode a slice's ':' sits tight (the stdlib writes both `[a:b]` and `[a : b]`)
 	if (cfg.spacing == STRICT && ((next.type == COLON && self.is_slice_colon(i)) || (prev.type == COLON && self.is_slice_colon(i - 1)))) return NONE;
 	if (prev.type == RPAREN && self.is_cast_close(i - 1)) return cfg.space_after_cast ? Space.ONE : Space.NONE;
+	// `int[<*>]?x`: the '?' of a nullable vector type is tight after its `>]`, as after `]`
+	if (next.type == QUESTION && prev.type == RVEC && self.closes_type(i - 1) && !next.ternary) return NONE;
 	// `int[2]*? p`: a nullable pointer type is tight after a suffix too, as `Foo*? p`
 	if (next.type == STAR && i + 1 < self.len() && self.toks[i + 1].type == QUESTION
 		&& (prev.type == RBRACKET || prev.type == RVEC || prev.type == RBRACE) && self.closes_type(i - 1)) return NONE;

@@ -10,5 +10,5 @@ fn int a()=>0;fn int main(){int[<*>]?x={unreachable(),a()};}
 fn int a() => 0;
 fn int main()
 {
-	int[<*>]?x = {unreachable(), a()};
+	int[<*>]? x = {unreachable(), a()};
 }
