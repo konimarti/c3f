@@ -273,6 +273,11 @@ fn bool print_out(String text)
 fn void print_config(String name, c3f::Config* cfg)
 {
 	io::printfn("# %s", name);
+	io::printn("# To use these options as an .editorconfig, save them in a file named .editorconfig in the");
+	io::printn("# project root, starting with these lines:");
+	io::printn("#   root = true");
+	io::printn("#   [*.c3]");
+	io::printn("# Then keep each option and its value, and drop the text in parentheses (where it comes from).");
 	foreach (k : c3f::Key::values)
 	{
 		io::printfn("%-26s = %-10s (%s)", k.name, cfg.value_text(k), cfg.origin[k.ordinal]);
