@@ -1,5 +1,5 @@
 module c3f_test;
-import c3f, std::io;
+import c3f, std::collections::list, std::io;
 
 <* Tests run inside the runner's temporary scope; tmem results live until the test ends. *>
 fn String fmt_with(String src, c3f::Config* cfg)
@@ -1102,4 +1102,235 @@ fn void the_wrap_tuning_options_are_read_back() @test
 	assert(c.value_text(c3f::Key.WRAP_COST_HARD) == "200");
 	assert(c.value_text(c3f::Key.WRAP_COST_BREAK) == "3");
 	assert(c.value_text(c3f::Key.WRAP_MAX_TOKENS) == "500");
+}
+
+fn void a_generic_wider_than_the_line_is_not_broken_by_wrapping() @test
+{
+	// no break point inside the arguments of a generic: wrapping leaves them whole, and so does a second run
+	c3f::Config wrap = c3f::defaults();
+	(void)wrap.set("max_line_length", "30");
+	(void)wrap.set("c3f_line_breaks", "wrap_rewrite");
+	check("fn void f()\n{\n\tHashMap{String, UrlQueryValueList, FooBarBaz, QuuxQuuxQuux, AnotherLongName} x;\n}\n",
+	      "fn void f()\n{\n\tHashMap{String, UrlQueryValueList, FooBarBaz, QuuxQuuxQuux, AnotherLongName} x;\n}\n", &wrap);
+}
+
+<* Formats under `settings` (key, value, ...) with the option that expands one-line blocks. *>
+fn String expanded(String src, String[] settings) @local
+{
+	c3f::Config cfg = config_with(settings);
+	assert(@ok(cfg.set("c3f_one_line_blocks", "expand")));
+	return settled_cfg(src, &cfg);
+}
+
+fn void expanded_compile_time_branch_stays_inside_its_function() @test
+{
+	String src = "module t;\nfn void f7() { $if true: a(); $else b(); $endif }\n";
+	String keep = expanded(src, { "c3f_compile_time_indent", "keep" });
+	assert(keep == "module t;\nfn void f7()\n{\n\t$if true:\n\ta();\n\t$else\n\tb();\n\t$endif\n}\n", "got:\n%s", keep);
+	String indent = expanded(src, { "c3f_compile_time_indent", "indent" });
+	assert(indent == "module t;\nfn void f7()\n{\n\t$if true:\n\t\ta();\n\t$else\n\t\tb();\n\t$endif\n}\n", "got:\n%s", indent);
+	String flush = expanded(src, { "c3f_compile_time_indent", "flush" });
+	assert(flush == keep, "got:\n%s", flush);
+	// a directive written at column 0 in the source stays there under keep
+	String col0 = expanded("module t;\nfn void g()\n{\n$if true:\n\ta();\n$endif\n}\n", { "c3f_compile_time_indent", "keep" });
+	assert(col0 == "module t;\nfn void g()\n{\n$if true:\n\ta();\n$endif\n}\n", "got:\n%s", col0);
+}
+
+fn void expanded_loop_before_a_while_loop_is_not_a_do_loop() @test
+{
+	String got = expanded("module t;\nfn void f(bool x)\n{\n\tfor (;;) { break; } while (x) { a(); }\n}\n", {});
+	assert(got == "module t;\nfn void f(bool x)\n{\n\tfor (;;)\n\t{\n\t\tbreak;\n\t}\n\twhile (x)\n\t{\n\t\ta();\n\t}\n}\n", "got:\n%s", got);
+	// the tail of a real do loop stays after its block
+	got = expanded("module t;\nfn void f(bool x)\n{\n\tdo { a(); } while (x);\n}\n", {});
+	assert(got == "module t;\nfn void f(bool x)\n{\n\tdo\n\t{\n\t\ta();\n\t} while (x);\n}\n", "got:\n%s", got);
+}
+
+fn void a_star_before_a_dereference_is_a_spaced_operator() @test
+{
+	String src = "module t;\nfn void f(int a, int b, int* p)\n{\n\tint c = a ** b;\n\tint d = a * *p;\n\tint e = a**b;\n\tint g = **p;\n}\n";
+	foreach (style : (String[]){ "stdlib", "strict", "knr" })
+	{
+		String got = settled(src, { "c3f_style", style });
+		assert(got.contains("\tint c = a * *b;\n"), "got:\n%s", got);
+		assert(got.contains("\tint d = a * *p;\n"), "got:\n%s", got);
+		assert(got.contains("\tint e = a**b;\n"), "got:\n%s", got);
+		assert(got.contains("\tint g = **p;\n"), "got:\n%s", got);
+	}
+}
+
+fn void compile_time_operators_are_spaced_in_every_style() @test
+{
+	String src = "module t;\nmacro bool m($a, $b, $c)\n{\n\treturn $a&&&$b|||$c;\n}\nmacro m2($a, $b)\n{\n\treturn $a+++$b;\n}\n";
+	foreach (style : (String[]){ "stdlib", "strict", "knr" })
+	{
+		String got = settled(src, { "c3f_style", style });
+		assert(got.contains("\treturn $a &&& $b ||| $c;\n"), "got:\n%s", got);
+		assert(got.contains("\treturn $a +++ $b;\n"), "got:\n%s", got);
+	}
+}
+
+<* Formats `src`, compares with `want`, and checks that formatting again changes nothing. *>
+fn void keeps(String src, String want) @local
+{
+	c3f::Config c = c3f::defaults();
+	String got = fmt_with(src, &c);
+	if (got != want) io::eprintfn("--- want ---\n%s--- got ---\n%s---", want, got);
+	assert(got == want);
+	String again = fmt_with(got, &c);
+	if (again != got) io::eprintfn("--- not idempotent ---\n%s---", again);
+	assert(again == got);
+}
+
+fn String body(String line) @local => "fn void f()\n{\n".tconcat(line).tconcat("\n}\n");
+
+// ---- trailing blanks at the end of a `//` comment ----
+
+fn void line_comment_loses_trailing_blanks() @test
+{
+	keeps(body("\t// trailing   "), body("\t// trailing"));
+	keeps(body("\tfoo(); // a \t \t"), body("\tfoo(); // a"));
+	keeps(body("\t/// doc  "), body("\t/// doc"));
+	// the text stays as it is, also the blanks inside it
+	keeps(body("\t// a   b \t c  "), body("\t// a   b \t c"));
+}
+
+fn void blank_line_comment_becomes_empty() @test
+{
+	keeps(body("\t//   "), body("\t//"));
+	keeps(body("\t//\t"), body("\t//"));
+}
+
+fn void blanks_stay_where_the_source_is_kept() @test
+{
+	// off regions are copied as written
+	keeps(body("\t// c3f off\n\t// kept   \n\t// c3f on"), body("\t// c3f off\n\t// kept   \n\t// c3f on"));
+	// the inner lines of a block comment are not touched
+	String s = body("\t/* a   \n\t   b   */");
+	keeps(s, s);
+}
+
+fn void line_comment_blanks_with_crlf() @test
+{
+	c3f::Config c = c3f::defaults();
+	String got = fmt_with("fn void f()\r\n{\r\n\t// a  \r\n\tx(); //   \r\n}\r\n", &c);
+	assert(got == "fn void f()\r\n{\r\n\t// a\r\n\tx(); //\r\n}\r\n");
+	// at the end of the file, without a line break
+	assert(fmt_with("int x; // a  ", &c) == "int x; // a\n");
+}
+
+<* The width of a line's indentation, tabs counted as `tw` columns. *>
+fn sz indent_width(String line, sz tw) @local
+{
+	sz w;
+	foreach (c : line)
+	{
+		if (c == '\t')
+		{
+			w = (w / tw + 1) * tw;
+		}
+		else if (c == ' ')
+		{
+			w++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	return w;
+}
+
+fn sz line_with(String[] lines, String marker) @local
+{
+	foreach (i, l : lines) if (l.trim().starts_with(marker)) return i;
+	unreachable("no line with %s", marker);
+}
+
+<*
+ A header that goes over two lines and ends in '{' (K&R and linux braces): the body is one level
+ in from the line the header starts on, and the '}' is in its column, whatever the continuation
+ line's own indent is.
+*>
+fn void check_header(String first, String cont, String body, String open_line, String[] settings, sz tw, sz unit) @local
+{
+	String src = string::tformat("fn void g()\n{\n\t%s\n\t\t\t%s\n\t\t%s\n\t}\n}\n", first, cont, body);
+	c3f::Config cfg = c3f::defaults();
+	for (sz i = 0; i + 1 < settings.len; i += 2) assert(@ok(cfg.set(settings[i], settings[i + 1])));
+	String once = fmt_with(src, &cfg);
+	assert(fmt_with(once, &cfg) == once, "not idempotent:\n%s", once);
+	String[] lines = once.tsplit("\n");
+	sz head = line_with(lines, open_line);
+	sz b = line_with(lines, body);
+	sz hw = indent_width(lines[head], tw);
+	assert(indent_width(lines[b], tw) == hw + unit, "body of '%s' in:\n%s", first, once);
+	assert(indent_width(lines[b + 1], tw) == hw, "closing brace of '%s' in:\n%s", first, once);
+}
+
+fn void braces_after_a_continued_header_follow_the_statement() @test
+{
+	String[][] styles = {
+		{ "c3f_style", "knr" },
+		{ "c3f_brace_style", "linux" },
+	};
+	String[] continuations = { "keep", "indent", "align" };
+	foreach (st : styles)
+	{
+		foreach (cont : continuations)
+		{
+			// tabs, and spaces with a tab width that is not the indent width
+			String[][] indents = {
+				{ "indent_style", "tab" },
+				{ "indent_style", "space", "tab_width", "8", "indent_size", "4" },
+			};
+			foreach (ind : indents)
+			{
+				List{String} l;
+				l.tinit();
+				l.push(st[0]);
+				l.push(st[1]);
+				l.push("c3f_continuation");
+				l.push(cont);
+				foreach (x : ind) l.push(x);
+				String[] set = l.array_view();
+				sz tw = ind.len > 2 ? 8 : 4;
+				sz unit = 4;
+				check_header("if (a &&", "b) {", "body();", "if (a", set, tw, unit);
+				check_header("while (a &&", "b) {", "body();", "while (a", set, tw, unit);
+				check_header("foreach (i,", "v : list) {", "body();", "foreach (i", set, tw, unit);
+				check_header("for (int i = 0;", "i < 3; i++) {", "body();", "for (int", set, tw, unit);
+				check_header("struct Foo @align(", "4) {", "int a;", "struct Foo", set, tw, unit);
+			}
+		}
+	}
+}
+
+<* Formats `src`, compares with `want`, and checks that formatting again changes nothing. *>
+fn void expect(String src, String want, c3f::Config* cfg) @local
+{
+	String got = fmt_with(src, cfg);
+	assert(got == want, "want:\n%s\ngot:\n%s", want, got);
+	assert(fmt_with(got, cfg) == got, "not idempotent:\n%s", got);
+}
+
+fn void top_level_function_headers_and_lambdas() @test
+{
+	c3f::Config knr = c3f::defaults();
+	assert(@ok(knr.set("c3f_style", "knr")));
+	expect("fn void f(int a,\n\t\tint b) {\n\tx();\n}\n", "fn void f(int a,\n\t\tint b) {\n\tx();\n}\n", &knr);
+	expect("fn void f(int a,\n    int b) {\n    x();\n}\n", "fn void f(int a,\n    int b) {\n\tx();\n}\n", &knr);
+	c3f::Config linux = c3f::defaults();
+	assert(@ok(linux.set("c3f_brace_style", "linux")));
+	expect("fn void f(int a,\n\t\tint b) {\n\tx();\n}\n", "fn void f(int a,\n\t\tint b)\n{\n\tx();\n}\n", &linux);
+	// a lambda body in an argument list keeps its layout
+	expect("fn void f()\n{\n\tfoo(a,\n\t\tfn void() {\n\t\t\tx();\n\t\t}, b);\n\tfoo(fn void(int q) {\n\t\ty();\n\t});\n}\n",
+	      "fn void f() {\n\tfoo(a,\n\t\tfn void() {\n\t\t\tx();\n\t\t}, b);\n\tfoo(fn void(int q) {\n\t\ty();\n\t});\n}\n", &knr);
+}
+
+fn void the_generated_table_spaces_shifts_and_keeps_products_in_a_literal_tight() @test
+{
+	// the spacing table learned from the standard library: `a << 4` (363 of 364 cases); a product inside a
+	// matrix literal is written tight, as the quaternion module writes it (a plain expression is spaced)
+	c3f::Config stdlib = config_with({ "c3f_style", "stdlib" });
+	check("fn void f()\n{\n\tm = {\n\t\t1 - 2*y*y - 2*z*z,   2*x*y + 2*z*w,\n\t};\n\tch = a << 4;\n}\n",
+	      "fn void f()\n{\n\tm = {\n\t\t1 - 2*y*y - 2*z*z,   2*x*y + 2*z*w,\n\t};\n\tch = a << 4;\n}\n", &stdlib);
 }

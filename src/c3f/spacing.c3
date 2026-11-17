@@ -8,11 +8,13 @@ struct Rule
 {
 	char      level;      // 4: (p2, p1, next, bracket, before bracket)  3: (p2, p1, next)  2: (p1, next)
 	TokenType p2, p1, nx, co, cb;
+	bool      ty;         // the token before the gap ends a type (`]`, `>]`, `}` of generic arguments, `*` of a pointer type)
+	BraceKind bk;         // the brace the gap is inside (NONE: none)
 	uint      n0, n1;
 }
 
 <* Context of the gap before token i. *>
-struct GapKey { TokenType p2, p1, nx, co, cb; }
+struct GapKey { TokenType p2, p1, nx, co, cb; bool ty; BraceKind bk; }
 
 <* A lone `_` is spaced like any other name (the stdlib has too few of them to learn it). *>
 fn TokenType name_of(TokenType t) @inline => t == UNDERSCORE ? IDENT : t;
@@ -26,13 +28,34 @@ fn GapKey Src.gap_key(&self, sz i)
 		.nx = name_of(self.toks[i].type),
 		.co = o == NO ? TokenType.INVALID : self.toks[o].type,
 		.cb = o == NO || o == 0 ? TokenType.INVALID : name_of(self.toks[o - 1].type),
+		.ty = i >= 1 && self.ends_type_before(i - 1),
+		.bk = self.gap_brace(i),
 	};
 }
 
-fn ulong pack(char level, TokenType p2, TokenType p1, TokenType nx, TokenType co, TokenType cb)
+<* The brace kind of the gap before token i: the '{' before it, or the '}' after it (NONE: neither). *>
+fn BraceKind Src.gap_brace(&self, sz i)
+{
+	if (i >= 1 && self.toks[i - 1].type == LBRACE) return self.toks[i - 1].brace;
+	if (self.toks[i].type == RBRACE && self.toks[i].match != NO) return self.toks[self.toks[i].match].brace;
+	return NONE;
+}
+
+<* Does token j end a type: a closing `]`, `>]` or `}` of a type, or the `*` of a pointer type? (A value's `]` is not.) *>
+fn bool Src.ends_type_before(&self, sz j)
+{
+	switch (self.toks[j].type)
+	{
+		case RBRACKET: case RVEC: case RBRACE: return self.closes_type(j);
+		case STAR: return self.is_type_star(j);
+		default: return false;
+	}
+}
+
+fn ulong pack(char level, TokenType p2, TokenType p1, TokenType nx, TokenType co, TokenType cb, bool ty, BraceKind bk)
 {
 	return (ulong)level << 40 | (ulong)p2.ordinal << 32 | (ulong)p1.ordinal << 24
-		| (ulong)nx.ordinal << 16 | (ulong)co.ordinal << 8 | (ulong)cb.ordinal;
+		| (ulong)nx.ordinal << 16 | (ulong)co.ordinal << 8 | (ulong)cb.ordinal | (ty ? 1UL << 48 : 0) | (ulong)bk.ordinal << 49;
 }
 
 <* The table cell of this context at a level: the fields the level does not look at are left out. *>
@@ -45,14 +68,16 @@ fn Rule GapKey.cell(&self, char level)
 		.nx = self.nx,
 		.co = level == 4 ? self.co : TokenType.INVALID,
 		.cb = level == 4 ? self.cb : TokenType.INVALID,
+		.ty = self.ty,
+		.bk = self.bk,
 	};
 }
 
 fn ulong GapKey.pack(&self, char level) => self.cell(level).pack();
 
-fn GapKey Rule.key(&self) => { self.p2, self.p1, self.nx, self.co, self.cb };
+fn GapKey Rule.key(&self) => { self.p2, self.p1, self.nx, self.co, self.cb, self.ty, self.bk };
 
-fn ulong Rule.pack(&self) => pack(self.level, self.p2, self.p1, self.nx, self.co, self.cb);
+fn ulong Rule.pack(&self) => pack(self.level, self.p2, self.p1, self.nx, self.co, self.cb, self.ty, self.bk);
 
 // The table as open addressing over a fixed array: built once, never allocated.
 const sz SLOTS = 8192;
@@ -394,23 +419,42 @@ fn Space Src.space_rule(&self, sz i, Config* cfg)
 		if (a == KEEP || b == KEEP || a != b) return (self.gap(open + 1).len > 0) == (self.gap(close).len > 0) ? Space.KEEP : lopsided;
 	}
 	if (rule == KEEP) return KEEP;
-	if (is_operator_text(self.toks[i].text) && self.same_line(i + 1))
+	// the other side of the operator next to this gap: when it disagrees, the operator is looked at as a whole
+	Space side;
+	if (is_operator_text(self.toks[i].text) && self.same_line(i + 1) && self.lopsided_operator(i, true, rule, cfg, &side)) return side;
+	if (is_operator_text(self.toks[i - 1].text) && self.same_line(i - 1) && self.lopsided_operator(i - 1, false, rule, cfg, &side)) return side;
+	return rule;
+}
+
+<*
+ The gap on one side of operator o (after it when `after`, before it otherwise) is decided by `rule`; the other side
+ disagrees. A symmetric source stays, a lopsided one gets spaces. Returns true, with the space in `out`, when the
+ other side settles it. A prefix operator (`f(x) * -1`) is spaced by what comes before it alone.
+*>
+fn bool Src.lopsided_operator(&self, sz o, bool after, Space rule, Config* cfg, Space* out)
+{
+	Space other = self.gap_rule(after ? o + 1 : o, cfg);
+	if (after)
 	{
-		Space after = self.gap_rule(i + 1, cfg);
-		// (a prefix operator, `f(x) * -1`, is spaced by what comes before it alone)
-		if (after != rule && !self.is_unary(i))
+		if (other == rule || self.is_unary(o)) return false;
+		if (other == KEEP)
 		{
-			if (after == KEEP) return KEEP;
-			if (self.is_binary(i)) return self.symmetric(i);
+			*out = KEEP;
+			return true;
 		}
 	}
-	if (is_operator_text(self.toks[i - 1].text) && self.same_line(i - 1))
+	else
 	{
-		Space before = self.gap_rule(i - 1, cfg);
-		if (before == KEEP) return KEEP;
-		if (before != rule && self.is_binary(i - 1)) return self.symmetric(i - 1);
+		if (other == KEEP)
+		{
+			*out = KEEP;
+			return true;
+		}
+		if (other == rule) return false;
 	}
-	return rule;
+	if (!self.is_binary(o)) return false;
+	*out = self.symmetric(o);
+	return true;
 }
 
 <* The table disagrees about the two sides of binary operator o: a symmetric source stays, a lopsided one gets spaces. *>

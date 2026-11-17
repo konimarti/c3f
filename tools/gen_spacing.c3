@@ -94,7 +94,7 @@ fn int main(String[] args)
 	io::printn("const Rule[] SPACING_RULES = {");
 	foreach (r : rules)
 	{
-		io::printfn("\t{ %d, %s, %s, %s, %s, %s, %d, %d },", r.level, r.p2, r.p1, r.nx, r.co, r.cb, r.n0, r.n1);
+		io::printfn("\t{ %d, %s, %s, %s, %s, %s, %s, %s, %d, %d },", r.level, r.p2, r.p1, r.nx, r.co, r.cb, r.ty ? "true" : "false", r.bk, r.n0, r.n1);
 	}
 	io::printn("};");
 	return 0;

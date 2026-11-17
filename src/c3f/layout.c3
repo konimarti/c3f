@@ -48,6 +48,7 @@ struct Fmt
 	List{Out}   out;
 	List{Frame} frames;
 	List{sz}    after;    // while aligning: output column after each token
+	List{sz}    ct_before; // ct_before[k]: the compile-time body starts (see is_ct_body_start) before token k
 	WrapMemo*   memo;     // breaks of statements wrapped before (null: none kept)
 }
 
@@ -56,6 +57,7 @@ fn void Fmt.init(&self, Src* src, Config* cfg)
 	*self = { .src = src, .cfg = cfg };
 	self.out.tinit();
 	self.frames.tinit();
+	self.ct_before.tinit();
 }
 
 fn Tok* Fmt.tok(&self, sz i) @inline => &self.src.toks[i];
@@ -65,6 +67,14 @@ fn Tok* Fmt.tok(&self, sz i) @inline => &self.src.toks[i];
 fn void Fmt.breaks(&self)
 {
 	Src* s = self.src;
+	self.ct_before.clear();
+	sz starts = 0;
+	for (sz k = 0; k < s.len(); k++)
+	{
+		self.ct_before.push(starts);
+		if (is_ct_body_start(s.toks[k].type)) starts++;
+	}
+	self.ct_before.push(starts);
 	Config* c = self.cfg;
 	self.out.clear();
 	// every attempt starts from the source's line breaks (wrapping changes Tok.nl)
@@ -110,22 +120,9 @@ fn void Fmt.breaks(&self)
 	}
 	self.symmetric_closers();
 	self.generic_joins();
-	self.decl_joins();
-	self.empty_joins();
-	self.semicolon_joins();
+	self.token_joins();
 	// the spacing rules look at line breaks: let them see these, as the next run will
 	for (sz i = 1; i < s.len(); i++) s.toks[i].nl = self.out[i].nl;
-}
-
-<* An empty pair of braces is written `{}`: a line break between them is joined. The '{' keeps its place (the brace style). *>
-fn void Fmt.empty_joins(&self)
-{
-	Src* s = self.src;
-	for (sz i = 1; i < s.len(); i++)
-	{
-		if (!s.is_empty_closer(i) || self.fixed(i) || self.fixed(i - 1)) continue;
-		self.out[i].nl = 0;
-	}
 }
 
 <* A statement after a `$endif` starts a line of its own. *>
@@ -139,26 +136,47 @@ fn void Fmt.after_endif_break(&self, sz i)
 	self.out[i].nl = 1;
 }
 
-<* A declaration's name stays on the line of its type: `Aa{int} x;`, `int y = 1;`. *>
-fn void Fmt.decl_joins(&self)
-{
-	Src* s = self.src;
-	for (sz i = 1; i + 1 < s.len(); i++)
-	{
-		Tok* t = &s.toks[i];
-		if (t.type != IDENT || !t.code || self.out[i].nl == 0 || self.fixed(i) || self.fixed(i - 1)) continue;
-		Tok* p = &s.toks[i - 1];
-		bool type_end = is_base_type(p.type) || p.type == TYPE_IDENT || p.type == RBRACKET || p.type == QUESTION
-			|| (p.type == RBRACE && p.match != NO && s.toks[p.match].brace == GENERIC) || (p.type == STAR && s.is_type_star(i - 1));
-		if (!p.code || !type_end) continue;
-		TokenType n = s.toks[i + 1].type;
-		if (n != EOS && n != EQ && n != COMMA) continue;
-		self.out[i].nl = 0;
-	}
-}
-
 <* A compile-time construct whose body starts a line of its own in the `line` mode. *>
 fn bool is_ct_body_start(TokenType t) => t == CT_IF || t == CT_ELSE || t == CT_FOR || t == CT_FOREACH || t == CT_CASE || t == CT_DEFAULT;
+
+<*
+ Joins of single tokens: a token that the source broke off the line before it is put back on that line where the
+ layout leaves no reason for the break: the closer of an empty `{}`, a declaration's name after its type, and a
+ statement's ';'. Each joins only its own token, so the order of the three does not matter.
+*>
+fn void Fmt.token_joins(&self)
+{
+	Src* s = self.src;
+	for (sz i = 1; i < s.len(); i++)
+	{
+		if (self.fixed(i) || self.fixed(i - 1)) continue;
+		Tok* t = &s.toks[i];
+		Tok* p = &s.toks[i - 1];
+		// an empty pair of braces: `{}`
+		if (s.is_empty_closer(i))
+		{
+			self.out[i].nl = 0;
+			continue;
+		}
+		// a declaration's name after a type-ending token, when followed by ';', '=' or ','
+		if (t.type == IDENT && t.code && self.out[i].nl != 0 && i + 1 < s.len() && p.code)
+		{
+			bool type_end = is_base_type(p.type) || p.type == TYPE_IDENT || p.type == RBRACKET || p.type == QUESTION
+				|| (p.type == RBRACE && p.match != NO && s.toks[p.match].brace == GENERIC) || (p.type == STAR && s.is_type_star(i - 1));
+			TokenType n = s.toks[i + 1].type;
+			if (type_end && (n == EOS || n == EQ || n == COMMA))
+			{
+				self.out[i].nl = 0;
+				continue;
+			}
+		}
+		// a statement's ';' after code on the previous line
+		if (s.is_statement_semi(i) && t.code && self.out[i].nl != 0 && p.code && !is_comment_type(p.type))
+		{
+			self.out[i].nl = 0;
+		}
+	}
+}
 
 <* Strict: the arguments of a generic type are tight, on one line: a line break inside `Aa{ ... }` is joined. *>
 fn void Fmt.generic_joins(&self)
@@ -174,20 +192,6 @@ fn void Fmt.generic_joins(&self)
 			if (self.out[k].nl == 0 || !s.toks[k].code || !s.toks[k - 1].code || is_comment_type(s.toks[k - 1].type)) continue;
 			self.out[k].nl = 0;
 		}
-	}
-}
-
-<* A ';' that ends a statement is written after the code before it, not on a line of its own. *>
-fn void Fmt.semicolon_joins(&self)
-{
-	Src* s = self.src;
-	for (sz i = 1; i < s.len(); i++)
-	{
-		Tok* t = &s.toks[i];
-		if (!s.is_statement_semi(i) || self.fixed(i) || !t.code || self.out[i].nl == 0) continue;
-		Tok* p = &s.toks[i - 1];
-		if (!p.code || is_comment_type(p.type) || self.fixed(i - 1)) continue;
-		self.out[i].nl = 0;
 	}
 }
 
@@ -218,11 +222,7 @@ fn void Fmt.brace_breaks(&self, sz o)
 	// (expand: a block or a type body on one line is written on several; an empty one only gets its brace placed)
 	bool expand = self.cfg.one_line_blocks == EXPAND;
 	// (a block with a compile-time body that the line mode will split is multi-line too, as it is on the next run)
-	bool ct_split = false;
-	if (self.cfg.compile_time_body == LINE)
-	{
-		for (sz k = o + 1; k < m && !ct_split; k++) ct_split = is_ct_body_start(s.toks[k].type);
-	}
+	bool ct_split = self.cfg.compile_time_body == LINE && self.ct_before[m] > self.ct_before[o + 1];
 	bool multi = s.toks[m].line > t.line || expand || ct_split;
 	if (!multi) return;
 	// a lambda body or a block inside an expression keeps its brace where it is
