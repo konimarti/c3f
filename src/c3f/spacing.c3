@@ -327,6 +327,21 @@ fn bool is_operator_text(String t)
 
 fn bool Src.same_line(&self, sz i) @inline => i > 0 && i < self.len() && self.toks[i].nl == 0;
 
+<* Is the ':' at c the colon of a `case` or `default` label? The label starts after the last statement boundary before it. *>
+fn bool Src.is_case_colon(&self, sz c)
+{
+	if (self.toks[c].type != COLON) return false;
+	sz k = c;
+	while (k > 0)
+	{
+		TokenType p = self.toks[k - 1].type;
+		if (p == EOS || p == LBRACE || p == RBRACE || p == COLON) break;
+		k--;
+	}
+	TokenType first = self.toks[k].type;
+	return first == CASE || first == DEFAULT || first == CT_CASE || first == CT_DEFAULT;
+}
+
 <*
  Is the gap before token i inside a binary operator followed by a prefix operator (`a + *q`, `a - -b`),
  either before the binary operator or before the prefix one? `**` is left out: `a**b` stays tight.
@@ -542,6 +557,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	if ((next.type == COLON && self.is_foreach_colon(i)) || (prev.type == COLON && self.is_foreach_colon(i - 1))) return ONE;
 	// the ':' of a label or compile-time header is tight: `case X:`, `$if cond:`
 	if (next.type == COLON && next.label) return NONE;
+	// the statement after the ':' of a case or default label is spaced off it: `case 0: defer 0;` (the stdlib writes the space almost always)
+	if (prev.type == COLON && self.is_case_colon(i - 1) && self.same_line(i)) return ONE;
 	// strict: the parameter list of a function type is tight, `fn Type(...)` like `fn void(...)`
 	if (cfg.spacing == STRICT && next.type == LPAREN && i >= 2 && self.toks[i - 2].type == FUNC && is_type_token(prev.type)) return NONE;
 	// `$assert cond : "message"`
