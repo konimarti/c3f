@@ -1,5 +1,5 @@
 // c3f_style=strict
-// c3f_blank_lines_between_decls=keep
+// c3f_top_level_decls=line
 // c3f_brace_style=allman
 // c3f_line_breaks=keep
 // c3f_one_line_blocks=keep
@@ -9,4 +9,5 @@
 // max_line_length=off
 fn void b(int...x,int a){}fn int x(){b();}
 // Output
-fn void b(int... x, int a) {}fn int x() { b(); }
+fn void b(int... x, int a) {}
+fn int x() { b(); }

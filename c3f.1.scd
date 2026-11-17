@@ -196,8 +196,12 @@ Values are given with their default first.
 *c3f_trim_block_blanks* = true | false
 	Remove blank lines after an opening and before a closing brace.
 
-*c3f_blank_lines_between_decls* = keep | 1
-	*1* puts exactly one blank line between declarations.
+*c3f_top_level_decls* = line | keep | blank
+	How top-level declarations (not those inside a block) are separated. *line* starts each one on
+	its own line, after the *}* of a block or body or the *;* of a statement (the *strict* default).
+	*keep* leaves the layout as written (the *stdlib* default). *blank* puts exactly one blank line
+	between declarations. The old name *c3f_blank_lines_between_decls* is still accepted, with *1*
+	meaning *blank*.
 
 *c3f_align* = keep | decls | off
 	Align the names, _=_ and _=>_ of consecutive lines (*decls*), keep the alignment as

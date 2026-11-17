@@ -5,4 +5,5 @@
 // insert_final_newline=true
 alias Aa=Aa;fn int Aa.x(){}
 // Output
-alias Aa = Aa;fn int Aa.x() {}
+alias Aa = Aa;
+fn int Aa.x() {}

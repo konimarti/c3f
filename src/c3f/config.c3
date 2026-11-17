@@ -13,7 +13,7 @@ enum Continuation : char { KEEP, INDENT, ALIGN }
 enum SpacingMode : char { STDLIB, STRICT }
 enum PointerStyle : char { KEEP, TYPE, NAME }
 enum Padding : char { KEEP, FALSE, TRUE }   // keep, or never / always a space
-enum DeclBlankLines : char { KEEP, ONE }
+enum TopLevelDecls : char { KEEP, LINE, BLANK }   // LINE: each top-level declaration on its own line; BLANK: one blank line between them
 enum AlignMode : char { KEEP, DECLS, OFF }
 enum CommentAlign : char { KEEP, ALWAYS, OFF }
 enum LineBreaks : char { KEEP, WRAP, WRAP_REWRITE, REFLOW }
@@ -43,7 +43,7 @@ struct Config
 	Padding        space_inside_braces;
 	sz             max_blank_lines;
 	bool           trim_block_blanks;
-	DeclBlankLines    blank_lines_between_decls;
+	TopLevelDecls     top_level_decls;
 	AlignMode      align;
 	CommentAlign   align_comments;
 	sz             trailing_comment_spaces;  // before a trailing // comment; 0 = keep
@@ -84,7 +84,7 @@ enum Key : char (String name)
 	SPACE_INSIDE_BRACES  { "c3f_space_inside_braces" },
 	MAX_BLANK_LINES      { "c3f_max_blank_lines" },
 	TRIM_BLOCK_BLANKS    { "c3f_trim_block_blanks" },
-	BLANK_LINES_BETWEEN_DECLS { "c3f_blank_lines_between_decls" },
+	TOP_LEVEL_DECLS      { "c3f_top_level_decls" },
 	ALIGN                { "c3f_align" },
 	ALIGN_COMMENTS       { "c3f_align_comments" },
 	TRAILING_COMMENT_SPACES { "c3f_trailing_comment_spaces" },
@@ -108,7 +108,7 @@ fn Config stdlib_base() @local
 		.brace_style = ALLMAN, .else_style = FOLLOW, .one_line_blocks = KEEP,
 		.case_indent = true, .compile_time_indent = INDENT, .continuation = KEEP,
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .space_inside_brackets = KEEP, .space_inside_braces = KEEP,
-		.max_blank_lines = 2, .trim_block_blanks = true, .blank_lines_between_decls = KEEP,
+		.max_blank_lines = 2, .trim_block_blanks = true, .top_level_decls = KEEP,
 		.align = KEEP, .align_comments = KEEP,
 		.line_breaks = KEEP, .magic_comma = true, .wrap_lists = FILL,
 		.wrap_cost_soft = 0.05, .wrap_cost_hard = 100, .wrap_cost_break = 2, .wrap_max_tokens = 2000,
@@ -124,6 +124,7 @@ fn Config defaults()
 	Config c = stdlib_base();
 	c.spacing = STRICT;
 	c.pointer_style = TYPE;
+	c.top_level_decls = LINE;
 	c.style = "strict";
 	return c;
 }
@@ -150,6 +151,8 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	}
 	if (name == "strict")
 	{
+		self.top_level_decls = LINE;
+		self.origin[Key.TOP_LEVEL_DECLS.ordinal] = from;
 		self.spacing = STRICT;
 		self.pointer_style = TYPE;
 		self.origin[Key.SPACING.ordinal] = from;
@@ -221,6 +224,12 @@ fn void? Config.set(&self, String key, String value, String origin = "--set")
 
 fn void? Config.set_value(&self, String key, String value, String origin)
 {
+	// the old name of top_level_decls: `1` was one blank line between declarations
+	if (key == "c3f_blank_lines_between_decls")
+	{
+		key = "c3f_top_level_decls";
+		if (value.trim() == "1") value = "blank";
+	}
 	Key k = key_from_name(key)!;
 	String v = value.trim().to_lower_tcopy();
 	switch (k)
@@ -257,9 +266,7 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 			self.max_blank_lines = parse_uint(v)!;
 			if (self.max_blank_lines > 100) return BAD_VALUE~;
 		case TRIM_BLOCK_BLANKS: self.trim_block_blanks = parse_bool(v)!;
-		case BLANK_LINES_BETWEEN_DECLS:
-			if (v != "1" && v != "keep") return BAD_VALUE~;
-			self.blank_lines_between_decls = v == "1" ? ONE : KEEP;
+		case TOP_LEVEL_DECLS: self.top_level_decls = parse_enum(TopLevelDecls, v)!;
 		case ALIGN: self.align = parse_enum(AlignMode, v)!;
 		case ALIGN_COMMENTS: self.align_comments = parse_enum(CommentAlign, v)!;
 		case TRAILING_COMMENT_SPACES:
@@ -321,7 +328,7 @@ fn String allowed_values(Key k)
 		case POINTER_STYLE: return enum_names(PointerStyle);
 		case SPACE_INSIDE_BRACKETS: case SPACE_INSIDE_BRACES: return enum_names(Padding);
 		case MAX_BLANK_LINES: return "0 to 100";
-		case BLANK_LINES_BETWEEN_DECLS: return "keep, 1";
+		case TOP_LEVEL_DECLS: return enum_names(TopLevelDecls);
 		case ALIGN: return enum_names(AlignMode);
 		case ALIGN_COMMENTS: return enum_names(CommentAlign);
 		case TRAILING_COMMENT_SPACES: return "keep, or 1 to 16";
@@ -382,7 +389,7 @@ fn String Config.value_text(&self, Key k)
 		case SPACE_INSIDE_BRACES: return enum_text(self.space_inside_braces);
 		case MAX_BLANK_LINES: return string::tformat("%d", self.max_blank_lines);
 		case TRIM_BLOCK_BLANKS: return bool_text(self.trim_block_blanks);
-		case BLANK_LINES_BETWEEN_DECLS: return self.blank_lines_between_decls == ONE ? "1" : "keep";
+		case TOP_LEVEL_DECLS: return enum_text(self.top_level_decls);
 		case ALIGN: return enum_text(self.align);
 		case ALIGN_COMMENTS: return enum_text(self.align_comments);
 		case TRAILING_COMMENT_SPACES: return self.trailing_comment_spaces ? string::tformat("%d", self.trailing_comment_spaces) : "keep";

@@ -1,5 +1,5 @@
 // c3f_style=strict
-// c3f_blank_lines_between_decls=keep
+// c3f_top_level_decls=line
 // c3f_brace_style=allman
 // c3f_compile_time_indent=keep
 // c3f_continuation=keep

@@ -285,9 +285,13 @@ Spaces inside the braces of an initializer list: \fI{1, 2}\fR (\fBfalse\fR) or \
 Remove blank lines after an opening and before a closing brace.\&
 .PP
 .RE
-\fBc3f_blank_lines_between_decls\fR = keep | 1
+\fBc3f_top_level_decls\fR = line | keep | blank
 .RS 4
-\fB1\fR puts exactly one blank line between declarations.\&
+How top-level declarations (not those inside a block) are separated. \fBline\fR starts each one on
+its own line, after the \fB}\fR of a block or body or the \fB;\fR of a statement (the \fBstrict\fR default).
+\fBkeep\fR leaves the layout as written (the \fBstdlib\fR default). \fBblank\fR puts exactly one blank line
+between declarations. The old name \fBc3f_blank_lines_between_decls\fR is still accepted, with \fB1\fR
+meaning \fBblank\fR.\&
 .PP
 .RE
 \fBc3f_align\fR = keep | decls | off

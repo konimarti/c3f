@@ -48,7 +48,7 @@ const OptionSet[*] OPTION_SETS = {
 	{ "expand", { "c3f_one_line_blocks", "expand", "c3f_brace_style", "linux", "c3f_else_style", "own_line", "c3f_while_style", "same_line" }, true },
 	{ "continuation", { "c3f_continuation", "align", "c3f_compile_time_indent", "indent", "c3f_case_indent", "flush", "indent_style", "space", "indent_size", "2" }, true },
 	{ "continuation indent", { "c3f_continuation", "indent", "c3f_compile_time_indent", "flush", "c3f_space_after_cast", "true", "c3f_space_inside_brackets", "true", "c3f_space_inside_braces", "true", "c3f_pointer_style", "name" }, true },
-	{ "sorted imports, no blank lines", { "c3f_sort_imports", "split", "c3f_blank_lines_between_decls", "1", "c3f_max_blank_lines", "0", "c3f_trim_block_blanks", "false", "end_of_line", "crlf" }, false },
+	{ "sorted imports, no blank lines", { "c3f_sort_imports", "split", "c3f_top_level_decls", "blank", "c3f_max_blank_lines", "0", "c3f_trim_block_blanks", "false", "end_of_line", "crlf" }, false },
 	{ "knr wrap", { "c3f_style", "knr", "max_line_length", "80", "c3f_line_breaks", "wrap" }, true },
 	{ "linux reflow", { "c3f_brace_style", "linux", "max_line_length", "70", "c3f_line_breaks", "reflow", "c3f_continuation", "indent" }, true },
 	{ "knr, tabs as 8, spaces", { "c3f_style", "knr", "indent_style", "space", "tab_width", "8", "c3f_continuation", "indent" }, true },

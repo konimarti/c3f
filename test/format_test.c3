@@ -433,7 +433,7 @@ fn void third_review_regressions() @test
 	check("fn void f()\n{\n\tx=-1;\n\tok=a==-1;\n\tb=!c;\n\tp=*q;\n}\n", "fn void f()\n{\n\tx = -1;\n\tok = a == -1;\n\tb = !c;\n\tp = *q;\n}\n");
 	// a blank line after each top-level body, not inside one
 	c3f::Config d = c3f::defaults();
-	(void)d.set("c3f_blank_lines_between_decls", "1");
+	(void)d.set("c3f_top_level_decls", "blank");
 	check("fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\nint x;\n", "fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\n\nint x;\n", &d);
 	// values that make no sense are rejected
 	c3f::Config c = c3f::defaults();
@@ -980,7 +980,7 @@ fn void removed_option_values_are_errors_that_list_the_valid_ones() @test
 		{ "c3f_line_breaks", "preserve" },
 		{ "c3f_line_breaks", "wrap_fit" },
 		{ "c3f_line_breaks", "wrap-fit" },
-		{ "c3f_blank_lines_between_decls", "one" },
+		{ "c3f_top_level_decls", "one" },
 		{ "c3f_else_style", "cuddle" },
 		{ "c3f_while_style", "cuddle" },
 		{ "c3f_else_style", "own-line" },
@@ -1044,4 +1044,15 @@ fn void a_brace_that_breaks_after_its_opener_closes_on_its_own_line() @test
 	c3f::Config knr = c3f::defaults();
 	(void)knr.set("c3f_brace_style", "knr");
 	check("fn void f() {\n\tif (x) {\n\t\ta();\n\t}\n}\n", "fn void f() {\n\tif (x) {\n\t\ta();\n\t}\n}\n", &knr);
+}
+
+fn void a_top_level_declaration_starts_a_line() @test
+{
+	c3f::Config strict = c3f::defaults();
+	// after the '}' of a function, and after the ';' of an alias or import
+	check("fn int x(){@test1();}macro@test1(){return;}\n", "fn int x() { @test1(); }\nmacro @test1() { return; }\n", &strict);
+	check("alias A = B; fn void f() {}\n", "alias A = B;\nfn void f() {}\n", &strict);
+	check("import a; import b;\n", "import a;\nimport b;\n", &strict);
+	// a declaration inside a block is not at the top level
+	check("fn void f() { a(); b(); }\n", "fn void f() { a(); b(); }\n", &strict);
 }

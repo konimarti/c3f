@@ -99,7 +99,8 @@ fn void Fmt.breaks(&self)
 			if (t.type == CT_FOR) for_colon = s.header_colon(i, false, semicolons: true);
 			self.expand_breaks(i, i < for_colon);
 		}
-		if (c.blank_lines_between_decls == ONE) self.decl_break(i);
+		if (c.top_level_decls == BLANK) self.decl_break(i);
+		if (c.top_level_decls == LINE) self.toplevel_break(i);
 	}
 	self.symmetric_closers();
 	self.semicolon_joins();
@@ -306,6 +307,25 @@ fn void Fmt.decl_break(&self, sz i)
 	TokenType t = s.toks[i].type;
 	if (t == ELSE || t == EOS || t == RBRACE || t == COMMA) return;
 	self.out[i].nl = 2;
+}
+
+<* A declaration at the top level starts a line of its own, after the '}' of a block or body or the ';' of a statement. *>
+fn void Fmt.toplevel_break(&self, sz i)
+{
+	Src* s = self.src;
+	if (i == 0 || self.fixed(i) || self.out[i].nl != 0) return;
+	Tok* t = &s.toks[i];
+	if (!t.code || t.encl != NO) return;
+	if (t.type == ELSE || t.type == EOS || t.type == RBRACE || t.type == COMMA) return;
+	Tok* p = &s.toks[i - 1];
+	if (!p.code || self.fixed(i - 1)) return;
+	bool after_decl = p.type == EOS && p.encl == NO;
+	if (p.type == RBRACE && p.match != NO && s.toks[p.match].encl == NO)
+	{
+		BraceKind k = s.toks[p.match].brace;
+		after_decl = k == BLOCK || k == BODY;
+	}
+	if (after_decl) self.out[i].nl = 1;
 }
 
 // ---- indentation and spacing ---------------------------------------------------------------
