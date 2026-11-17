@@ -105,6 +105,7 @@ fn void Fmt.breaks(&self)
 	}
 	self.symmetric_closers();
 	self.generic_joins();
+	self.decl_joins();
 	self.empty_joins();
 	self.semicolon_joins();
 	self.after_endif_breaks();
@@ -133,6 +134,24 @@ fn void Fmt.after_endif_breaks(&self)
 		if (s.toks[i - 1].type != CT_ENDIF || !t.code || t.type == RBRACE || t.type == ELSE || t.type == EOS || t.type == COMMA) continue;
 		if (self.fixed(i) || self.out[i].nl != 0) continue;
 		self.out[i].nl = 1;
+	}
+}
+
+<* A declaration's name stays on the line of its type: `Aa{int} x;`, `int y = 1;`. *>
+fn void Fmt.decl_joins(&self)
+{
+	Src* s = self.src;
+	for (sz i = 1; i + 1 < s.len(); i++)
+	{
+		Tok* t = &s.toks[i];
+		if (t.type != IDENT || !t.code || self.out[i].nl == 0 || self.fixed(i) || self.fixed(i - 1)) continue;
+		Tok* p = &s.toks[i - 1];
+		bool type_end = is_base_type(p.type) || p.type == TYPE_IDENT || p.type == RBRACKET || p.type == QUESTION
+			|| (p.type == RBRACE && p.match != NO && s.toks[p.match].brace == GENERIC) || (p.type == STAR && s.is_type_star(i - 1));
+		if (!p.code || !type_end) continue;
+		TokenType n = s.toks[i + 1].type;
+		if (n != EOS && n != EQ && n != COMMA) continue;
+		self.out[i].nl = 0;
 	}
 }
 

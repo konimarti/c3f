@@ -28,8 +28,7 @@ int x;
 // Output
 module x;
 import a;
-Aa{int}
-x;
+Aa{int} x;
 module a <Ba>;
 import b;
 alias Cc = Aa{Aa{Bb{Ba}}};

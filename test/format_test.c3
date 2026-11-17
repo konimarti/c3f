@@ -1086,3 +1086,13 @@ fn void empty_braces_and_compile_time_joins_follow_the_stdlib() @test
 	// a statement after `$endif` starts its own line
 	check("macro m()\n{\n\t$if A:\n\t\tfoo();\n\t$endif*p = 1;\n}\n", "macro m()\n{\n\t$if A:\n\t\tfoo();\n\t$endif\n\t*p = 1;\n}\n", &strict);
 }
+
+fn void a_declaration_name_stays_on_the_line_of_its_type() @test
+{
+	c3f::Config strict = c3f::defaults();
+	check("fn void f()\n{\n\tAa{int}\n\tx;\n\tint\n\ty = 1;\n}\n", "fn void f()\n{\n\tAa{int} x;\n\tint y = 1;\n}\n", &strict);
+	check("module x;\nAa{\nint}\nx;\n", "module x;\nAa{int} x;\n", &strict);
+	check("fn void f()\n{\n\tFoo*\n\tz;\n}\n", "fn void f()\n{\n\tFoo* z;\n}\n", &strict);
+	// a name that is not a declaration is not joined: an operator or a call comes before it
+	check("fn void f()\n{\n\tx = a *\n\tb;\n}\n", "fn void f()\n{\n\tx = a *\n\tb;\n}\n", &strict);
+}
