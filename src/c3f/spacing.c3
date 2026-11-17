@@ -375,7 +375,7 @@ fn bool Src.is_case_colon(&self, sz c)
  Is the gap before token i inside a binary operator followed by a prefix operator (`a + *q`, `a - -b`),
  either before the binary operator or before the prefix one? `**` is left out: `a**b` stays tight.
 *>
-fn bool Src.binary_then_prefix(&self, sz i) @local
+fn bool Src.binary_then_prefix(&self, sz i)
 {
 	if (i == 0 || i + 1 >= self.len()) return false;
 	// (a pair of stars is `**`, or `a * *b`, which the rules above and the table settle)
