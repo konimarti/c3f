@@ -22,9 +22,7 @@ module x;
 import a;
 fn void main()
 {
-	var x = fn a::Aa{
-		float
-	}
+	var x = fn a::Aa{float}
 	() => {
 	};
 }

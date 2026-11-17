@@ -103,9 +103,27 @@ fn void Fmt.breaks(&self)
 		if (c.top_level_decls == LINE) self.toplevel_break(i);
 	}
 	self.symmetric_closers();
+	self.generic_joins();
 	self.semicolon_joins();
 	// the spacing rules look at line breaks: let them see these, as the next run will
 	for (sz i = 1; i < s.len(); i++) s.toks[i].nl = self.out[i].nl;
+}
+
+<* Strict: the arguments of a generic type are tight, on one line: a line break inside `Aa{ ... }` is joined. *>
+fn void Fmt.generic_joins(&self)
+{
+	Src* s = self.src;
+	if (self.cfg.spacing != STRICT) return;
+	for (sz o = 0; o < s.len(); o++)
+	{
+		Tok* t = &s.toks[o];
+		if (t.type != LBRACE || t.brace != GENERIC || t.match == NO || self.fixed(o) || self.fixed(t.match)) continue;
+		for (sz k = o + 1; k <= t.match; k++)
+		{
+			if (self.out[k].nl == 0 || !s.toks[k].code || !s.toks[k - 1].code || is_comment_type(s.toks[k - 1].type)) continue;
+			self.out[k].nl = 0;
+		}
+	}
 }
 
 <* A ';' that ends a statement is written after the code before it, not on a line of its own. *>
@@ -130,7 +148,7 @@ fn void Fmt.symmetric_closers(&self)
 	{
 		Tok* t = &s.toks[o];
 		if (t.type != LBRACE || t.match == NO || t.match <= o + 1 || self.fixed(o) || self.fixed(t.match)) continue;
-		if (t.brace == BLOCK || t.brace == BODY) continue;
+		if (t.brace == BLOCK || t.brace == BODY || t.brace == GENERIC) continue;
 		if (self.out[o + 1].nl == 0 || !s.toks[o + 1].code) continue;
 		if (self.out[t.match].nl == 0 && s.toks[t.match - 1].code && !is_comment_type(s.toks[t.match - 1].type)) self.out[t.match].nl = 1;
 	}
@@ -649,7 +667,7 @@ fn void Fmt.space(&self, sz i)
 	Config* c = self.cfg;
 	Out* o = &self.out[i];
 	String gap = s.gap(i);
-	if (gap.contains("\n"))
+	if (gap.contains("\n") && !(c.spacing == STRICT && s.in_generic(i)))
 	{
 		// a statement's ';' that was joined to the code before it has no space
 		bool semi = s.is_statement_semi(i);

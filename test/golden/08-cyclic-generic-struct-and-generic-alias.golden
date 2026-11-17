@@ -35,6 +35,4 @@ fn int Aa.b(x, int, int, int)
 }
 module x;
 import a;
-alias Ca = Aa{
-	int
-};
+alias Ca = Aa{int};

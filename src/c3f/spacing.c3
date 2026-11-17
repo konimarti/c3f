@@ -236,6 +236,9 @@ fn bool Src.is_fn_type_params(&self, sz i)
 	return self.toks[k - 1].type == FUNC;
 }
 
+<* Is token i inside the braces of a generic type's arguments, or the closing brace itself? *>
+fn bool Src.in_generic(&self, sz i) @inline => (self.toks[i].type == RBRACE && self.toks[i].match != NO && self.toks[self.toks[i].match].brace == GENERIC) || (self.toks[i].encl != NO && self.toks[self.toks[i].encl].type == LBRACE && self.toks[self.toks[i].encl].brace == GENERIC);
+
 <* A ';' that ends a statement: not one inside parentheses (a `for` header). Top level counts. *>
 fn bool Src.is_statement_semi(&self, sz i) @inline => self.toks[i].type == EOS && (self.toks[i].encl == NO || self.toks[self.toks[i].encl].type != LPAREN);
 

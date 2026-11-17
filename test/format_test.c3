@@ -1056,3 +1056,15 @@ fn void a_top_level_declaration_starts_a_line() @test
 	// a declaration inside a block is not at the top level
 	check("fn void f() { a(); b(); }\n", "fn void f() { a(); b(); }\n", &strict);
 }
+
+fn void strict_generic_arguments_are_tight_and_initializers_padded() @test
+{
+	c3f::Config strict = c3f::defaults();
+	// generic arguments are type syntax: tight in strict, whatever was written
+	check("module m;\nalias Ca = Aa{ int };\nalias Cb = Aa { int, 2 };\nalias Cc = Aa{ Aa{ Bb{ Ba} } };\n",
+	      "module m;\nalias Ca = Aa{int};\nalias Cb = Aa{int, 2};\nalias Cc = Aa{Aa{Bb{Ba}}};\n", &strict);
+	// a module's parameters are preceded by a space
+	check("module a<Da>;\n", "module a <Da>;\n", &strict);
+	// value initializers are padded
+	check("fn void f()\n{\n\tint[] v = {1, 2};\n}\n", "fn void f()\n{\n\tint[] v = { 1, 2 };\n}\n", &strict);
+}
