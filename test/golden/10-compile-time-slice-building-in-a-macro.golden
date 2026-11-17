@@ -1,7 +1,7 @@
 // c3f_style=strict
 // c3f_top_level_decls=line
 // c3f_brace_style=allman
-// c3f_compile_time_indent=keep
+// c3f_compile_time_indent=indent
 // c3f_continuation=keep
 // c3f_line_breaks=reflow
 // c3f_one_line_blocks=keep
@@ -56,20 +56,18 @@ struct Aa
 }
 macro Aa[] c($nodes, int $idx, int $c, int $target)
 {
-	Aa[] $out = {
-	};
+	Aa[] $out = {};
 	var $next = $nodes[0].a;
 	$next[0] = $target;
-	$out+++=(Aa){
+	$out +++= (Aa){
 		.a = $next
 	};
 	return $out;
 }
 macro Aa[] d($nodes, int $idx)
 {
-	Aa[] $out = {
-	};
-	$out+++=(Aa){
+	Aa[] $out = {};
+	$out +++= (Aa){
 		$nodes[0].a
 	};
 	return $out;
@@ -77,14 +75,16 @@ macro Aa[] d($nodes, int $idx)
 macro int b(String[] $words)
 {
 	Aa[] $nodes = {
-		(Aa){
-		}
+		(Aa){}
 	};
-$foreach $word : $words:var $next = $nodes[0].a[0];
-$if $next == 0: $next = (int)$nodes.len;
-	$nodes = c($nodes, 0, 0, $next);
-$endif$nodes = d($nodes, 0);
-$endforeach
+	$foreach $word : $words:
+		var $next = $nodes[0].a[0];
+		$if $next == 0:
+			$next = (int)$nodes.len;
+			$nodes = c($nodes, 0, 0, $next);
+		$endif
+		$nodes = d($nodes, 0);
+	$endforeach
 }
 const int A = b({
 	"", "", ""

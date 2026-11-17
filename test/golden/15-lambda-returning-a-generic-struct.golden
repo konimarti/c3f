@@ -23,8 +23,7 @@ import a;
 fn void main()
 {
 	var x = fn a::Aa{float}
-	() => {
-	};
+	() => {};
 }
 module a <Ba>;
 struct Aa

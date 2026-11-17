@@ -56,10 +56,10 @@ fn void braces_under_compile_time_branches_with_knr_braces() @test
 	// with Allman braces a `$else {` stays as written, on the line or below it
 	// (the indentation of the bodies is kept here, so that only the braces are compared)
 	String joined = "fn void f()\n{\n\t$if X: a(); $else {\n\t\tb();\n\t}\n\t$endif\n}\n";
-	got = settle(joined, { "c3f_compile_time_indent", "keep" });
+	got = settle(joined, { "c3f_compile_time_indent", "keep", "c3f_compile_time_body", "keep" });
 	assert(got == joined, "got:\n%s", got);
 	String below = "fn void f()\n{\n\t$if X: a();\n\t$else\n\t{\n\t\tb();\n\t}\n\t$endif\n}\n";
-	got = settle(below, { "c3f_compile_time_indent", "keep" });
+	got = settle(below, { "c3f_compile_time_indent", "keep", "c3f_compile_time_body", "keep" });
 	assert(got == below, "got:\n%s", got);
 	// with Allman braces they stay on their own lines
 	(void)settle(src, {});

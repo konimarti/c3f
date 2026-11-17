@@ -13,6 +13,7 @@ enum Continuation : char { KEEP, INDENT, ALIGN }
 enum SpacingMode : char { STDLIB, STRICT }
 enum PointerStyle : char { KEEP, TYPE, NAME }
 enum Padding : char { KEEP, FALSE, TRUE }   // keep, or never / always a space
+enum CtBody : char { KEEP, LINE }   // LINE: the body of a $if, $else, $for or $foreach starts a line of its own
 enum TopLevelDecls : char { KEEP, LINE, BLANK }   // LINE: each top-level declaration on its own line; BLANK: one blank line between them
 enum AlignMode : char { KEEP, DECLS, OFF }
 enum CommentAlign : char { KEEP, ALWAYS, OFF }
@@ -44,6 +45,7 @@ struct Config
 	sz             max_blank_lines;
 	bool           trim_block_blanks;
 	TopLevelDecls     top_level_decls;
+	CtBody            compile_time_body;
 	AlignMode      align;
 	CommentAlign   align_comments;
 	sz             trailing_comment_spaces;  // before a trailing // comment; 0 = keep
@@ -85,6 +87,7 @@ enum Key : char (String name)
 	MAX_BLANK_LINES      { "c3f_max_blank_lines" },
 	TRIM_BLOCK_BLANKS    { "c3f_trim_block_blanks" },
 	TOP_LEVEL_DECLS      { "c3f_top_level_decls" },
+	COMPILE_TIME_BODY    { "c3f_compile_time_body" },
 	ALIGN                { "c3f_align" },
 	ALIGN_COMMENTS       { "c3f_align_comments" },
 	TRAILING_COMMENT_SPACES { "c3f_trailing_comment_spaces" },
@@ -108,7 +111,7 @@ fn Config stdlib_base() @local
 		.brace_style = ALLMAN, .else_style = FOLLOW, .one_line_blocks = KEEP,
 		.case_indent = true, .compile_time_indent = INDENT, .continuation = KEEP,
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .space_inside_brackets = KEEP, .space_inside_braces = KEEP,
-		.max_blank_lines = 2, .trim_block_blanks = true, .top_level_decls = KEEP,
+		.max_blank_lines = 2, .trim_block_blanks = true, .top_level_decls = KEEP, .compile_time_body = KEEP,
 		.align = KEEP, .align_comments = KEEP,
 		.line_breaks = KEEP, .magic_comma = true, .wrap_lists = FILL,
 		.wrap_cost_soft = 0.05, .wrap_cost_hard = 100, .wrap_cost_break = 2, .wrap_max_tokens = 2000,
@@ -125,6 +128,7 @@ fn Config defaults()
 	c.spacing = STRICT;
 	c.pointer_style = TYPE;
 	c.top_level_decls = LINE;
+	c.compile_time_body = LINE;
 	c.style = "strict";
 	return c;
 }
@@ -152,7 +156,9 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	if (name == "strict")
 	{
 		self.top_level_decls = LINE;
+		self.compile_time_body = LINE;
 		self.origin[Key.TOP_LEVEL_DECLS.ordinal] = from;
+		self.origin[Key.COMPILE_TIME_BODY.ordinal] = from;
 		self.spacing = STRICT;
 		self.pointer_style = TYPE;
 		self.origin[Key.SPACING.ordinal] = from;
@@ -267,6 +273,7 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 			if (self.max_blank_lines > 100) return BAD_VALUE~;
 		case TRIM_BLOCK_BLANKS: self.trim_block_blanks = parse_bool(v)!;
 		case TOP_LEVEL_DECLS: self.top_level_decls = parse_enum(TopLevelDecls, v)!;
+		case COMPILE_TIME_BODY: self.compile_time_body = parse_enum(CtBody, v)!;
 		case ALIGN: self.align = parse_enum(AlignMode, v)!;
 		case ALIGN_COMMENTS: self.align_comments = parse_enum(CommentAlign, v)!;
 		case TRAILING_COMMENT_SPACES:
@@ -329,6 +336,7 @@ fn String allowed_values(Key k)
 		case SPACE_INSIDE_BRACKETS: case SPACE_INSIDE_BRACES: return enum_names(Padding);
 		case MAX_BLANK_LINES: return "0 to 100";
 		case TOP_LEVEL_DECLS: return enum_names(TopLevelDecls);
+		case COMPILE_TIME_BODY: return enum_names(CtBody);
 		case ALIGN: return enum_names(AlignMode);
 		case ALIGN_COMMENTS: return enum_names(CommentAlign);
 		case TRAILING_COMMENT_SPACES: return "keep, or 1 to 16";
@@ -390,6 +398,7 @@ fn String Config.value_text(&self, Key k)
 		case MAX_BLANK_LINES: return string::tformat("%d", self.max_blank_lines);
 		case TRIM_BLOCK_BLANKS: return bool_text(self.trim_block_blanks);
 		case TOP_LEVEL_DECLS: return enum_text(self.top_level_decls);
+		case COMPILE_TIME_BODY: return enum_text(self.compile_time_body);
 		case ALIGN: return enum_text(self.align);
 		case ALIGN_COMMENTS: return enum_text(self.align_comments);
 		case TRAILING_COMMENT_SPACES: return self.trailing_comment_spaces ? string::tformat("%d", self.trailing_comment_spaces) : "keep";

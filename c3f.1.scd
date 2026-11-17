@@ -196,6 +196,11 @@ Values are given with their default first.
 *c3f_trim_block_blanks* = true | false
 	Remove blank lines after an opening and before a closing brace.
 
+*c3f_compile_time_body* = line | keep
+	The body of a *$if*, *$else*, *$for*, *$foreach*, *$case* or *$default* that is written on the header's line.
+	*line* starts it on a line of its own, and starts the *$endif*, *$endfor*, *$endforeach* and *$endswitch*
+	on theirs (the *strict* default); *keep* leaves them as written (the *stdlib* default).
+
 *c3f_top_level_decls* = line | keep | blank
 	How top-level declarations (not those inside a block) are separated. *line* starts each one on
 	its own line, after the *}* of a block or body or the *;* of a statement (the *strict* default).

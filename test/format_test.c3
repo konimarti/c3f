@@ -434,7 +434,7 @@ fn void third_review_regressions() @test
 	// a blank line after each top-level body, not inside one
 	c3f::Config d = c3f::defaults();
 	(void)d.set("c3f_top_level_decls", "blank");
-	check("fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\nint x;\n", "fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\n\nint x;\n", &d);
+	check("fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\nint x;\n", "fn void f()\n{\n\tif (x)\n\t{}\n\treturn;\n}\n\nint x;\n", &d);
 	// values that make no sense are rejected
 	c3f::Config c = c3f::defaults();
 	assert(@catch(c.set("c3f_wrap_cost_hard", "nan")));
@@ -568,7 +568,7 @@ fn void seventh_review_regressions() @test
 	c3f::Config crlf = c3f::defaults();
 	(void)crlf.set("end_of_line", "crlf");
 	check("module m;\r\n<*\r\n @param x : \"a *\x3e b\"\r\n*\x3e\r\nfn void f(int x) {\r\n}\r\n",
-	      "module m;\r\n<*\r\n @param x : \"a *\x3e b\"\r\n*\x3e\r\nfn void f(int x)\r\n{\r\n}\r\n", &crlf);
+	      "module m;\r\n<*\r\n @param x : \"a *\x3e b\"\r\n*\x3e\r\nfn void f(int x)\r\n{}\r\n", &crlf);
 	// a cast after a control header is a cast: what follows is a prefix operator, not a product
 	c3f::Config wrap = c3f::defaults();
 	(void)wrap.set("max_line_length", "50");
@@ -1074,4 +1074,15 @@ fn void nullable_vector_types_are_tight_before_the_question_mark() @test
 	c3f::Config strict = c3f::defaults();
 	// `[<*>]?` is a nullable vector type, as `[]?` is: no space before the '?', one after it
 	check("fn void f()\n{\n\tint[<*>]?x;\n\tint[<4>]?y;\n\tint[]?z;\n}\n", "fn void f()\n{\n\tint[<*>]? x;\n\tint[<4>]? y;\n\tint[]? z;\n}\n", &strict);
+}
+
+fn void empty_braces_and_compile_time_joins_follow_the_stdlib() @test
+{
+	c3f::Config strict = c3f::defaults();
+	// an empty initializer is `{}`, whatever the line breaks in the source
+	check("fn void f()\n{\n\tAa[] $out = {\n\t};\n\tx = (Aa){\n\t};\n}\n", "fn void f()\n{\n\tAa[] $out = {};\n\tx = (Aa){};\n}\n", &strict);
+	// `+++=` is a compile-time operator: spaced on both sides
+	check("macro m()\n{\n\t$out+++=(Aa){};\n}\n", "macro m()\n{\n\t$out +++= (Aa){};\n}\n", &strict);
+	// a statement after `$endif` starts its own line
+	check("macro m()\n{\n\t$if A:\n\t\tfoo();\n\t$endif*p = 1;\n}\n", "macro m()\n{\n\t$if A:\n\t\tfoo();\n\t$endif\n\t*p = 1;\n}\n", &strict);
 }

@@ -285,6 +285,13 @@ Spaces inside the braces of an initializer list: \fI{1, 2}\fR (\fBfalse\fR) or \
 Remove blank lines after an opening and before a closing brace.\&
 .PP
 .RE
+\fBc3f_compile_time_body\fR = line | keep
+.RS 4
+The body of a \fB$if\fR, \fB$else\fR, \fB$for\fR, \fB$foreach\fR, \fB$case\fR or \fB$default\fR that is written on the header's line.
+\fBline\fR starts it on a line of its own, and starts the \fB$endif\fR, \fB$endfor\fR, \fB$endforeach\fR and \fB$endswitch\fR on theirs (the \fBstrict\fR
+default); \fBkeep\fR leaves them as written (the \fBstdlib\fR default).\&
+.PP
+.RE
 \fBc3f_top_level_decls\fR = line | keep | blank
 .RS 4
 How top-level declarations (not those inside a block) are separated. \fBline\fR starts each one on

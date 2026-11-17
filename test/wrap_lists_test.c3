@@ -60,10 +60,10 @@ fn void parameters_go_one_per_line() @test
 {
 	c3f::Config c = lists_config("one_per_line");
 	lists_check("fn void long_name(int aaaaaaaaaaa, int bbbbbbbbbbbb, int ccccccccccccc, int ddddddddddd)\n{\n}\n",
-		"fn void long_name(\n\tint aaaaaaaaaaa,\n\tint bbbbbbbbbbbb,\n\tint ccccccccccccc,\n\tint ddddddddddd\n)\n{\n}\n", &c);
+		"fn void long_name(\n\tint aaaaaaaaaaa,\n\tint bbbbbbbbbbbb,\n\tint ccccccccccccc,\n\tint ddddddddddd\n)\n{}\n", &c);
 	c3f::Config f = lists_config("fill");
 	lists_check("fn void long_name(int aaaaaaaaaaa, int bbbbbbbbbbbb, int ccccccccccccc, int ddddddddddd)\n{\n}\n",
-		"fn void long_name(int aaaaaaaaaaa, int bbbbbbbbbbbb,\n\tint ccccccccccccc, int ddddddddddd)\n{\n}\n", &f);
+		"fn void long_name(int aaaaaaaaaaa, int bbbbbbbbbbbb,\n\tint ccccccccccccc, int ddddddddddd)\n{}\n", &f);
 }
 
 fn void initializers_go_one_per_line() @test

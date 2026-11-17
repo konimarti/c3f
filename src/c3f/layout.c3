@@ -101,12 +101,39 @@ fn void Fmt.breaks(&self)
 		}
 		if (c.top_level_decls == BLANK) self.decl_break(i);
 		if (c.top_level_decls == LINE) self.toplevel_break(i);
+		if (c.compile_time_body == LINE) self.ct_body_break(i);
 	}
 	self.symmetric_closers();
 	self.generic_joins();
+	self.empty_joins();
 	self.semicolon_joins();
+	self.after_endif_breaks();
 	// the spacing rules look at line breaks: let them see these, as the next run will
 	for (sz i = 1; i < s.len(); i++) s.toks[i].nl = self.out[i].nl;
+}
+
+<* An empty pair of braces is written `{}`: a line break between them is joined. The '{' keeps its place (the brace style). *>
+fn void Fmt.empty_joins(&self)
+{
+	Src* s = self.src;
+	for (sz i = 1; i < s.len(); i++)
+	{
+		if (!s.is_empty_closer(i) || self.fixed(i) || self.fixed(i - 1)) continue;
+		self.out[i].nl = 0;
+	}
+}
+
+<* A statement after a `$endif` starts a line of its own. *>
+fn void Fmt.after_endif_breaks(&self)
+{
+	Src* s = self.src;
+	for (sz i = 1; i < s.len(); i++)
+	{
+		Tok* t = &s.toks[i];
+		if (s.toks[i - 1].type != CT_ENDIF || !t.code || t.type == RBRACE || t.type == ELSE || t.type == EOS || t.type == COMMA) continue;
+		if (self.fixed(i) || self.out[i].nl != 0) continue;
+		self.out[i].nl = 1;
+	}
 }
 
 <* Strict: the arguments of a generic type are tight, on one line: a line break inside `Aa{ ... }` is joined. *>
@@ -166,7 +193,13 @@ fn void Fmt.brace_breaks(&self, sz o)
 	bool content = m > o + 1;
 	// (expand: a block or a type body on one line is written on several; an empty one only gets its brace placed)
 	bool expand = self.cfg.one_line_blocks == EXPAND;
-	bool multi = s.toks[m].line > t.line || expand;
+	// (a block with a compile-time body that the line mode will split is multi-line too, as it is on the next run)
+	bool ct_split = false;
+	if (self.cfg.compile_time_body == LINE)
+	{
+		for (sz k = o + 1; k < m && !ct_split; k++) ct_split = s.toks[k].type == CT_IF || s.toks[k].type == CT_ELSE || s.toks[k].type == CT_FOR || s.toks[k].type == CT_FOREACH || s.toks[k].type == CT_CASE || s.toks[k].type == CT_DEFAULT;
+	}
+	bool multi = s.toks[m].line > t.line || expand || ct_split;
 	if (!multi) return;
 	// a lambda body or a block inside an expression keeps its brace where it is
 	bool in_expression = t.encl != NO && s.toks[t.encl].type != LBRACE;
@@ -229,6 +262,14 @@ fn void Fmt.expand_breaks(&self, sz i, bool in_for_header)
 			self.break_faultdef(i);
 		default:
 	}
+}
+
+<* A line break before token i, if code precedes it on its line. *>
+fn void Fmt.break_before(&self, sz i)
+{
+	Src* s = self.src;
+	if (i == 0 || self.fixed(i) || self.out[i].nl > 0 || !s.toks[i].code || !s.toks[i - 1].code) return;
+	self.out[i].nl = 1;
 }
 
 <* A line break after token i, if code follows it on its line (a comment after it stays). *>
@@ -325,6 +366,28 @@ fn void Fmt.decl_break(&self, sz i)
 	TokenType t = s.toks[i].type;
 	if (t == ELSE || t == EOS || t == RBRACE || t == COMMA) return;
 	self.out[i].nl = 2;
+}
+
+<* The body of a `$if`, `$else`, `$for`, `$foreach`, `$case` or `$default` starts a line of its own. *>
+fn void Fmt.ct_body_break(&self, sz i)
+{
+	Src* s = self.src;
+	Tok* t = &s.toks[i];
+	switch (t.type)
+	{
+		case CT_ELSE:
+			self.break_before(i);
+			self.break_after(i);
+		case CT_ENDIF: case CT_ENDFOR: case CT_ENDFOREACH: case CT_ENDSWITCH:
+			self.break_before(i);
+		case CT_CASE: case CT_DEFAULT:
+			sz label = s.header_colon(i, false);
+			if (label != NO && !self.fixed(label)) self.break_after(label);
+		case CT_IF: case CT_FOR: case CT_FOREACH:
+			sz colon = s.header_colon(i, t.type == CT_FOREACH, semicolons: t.type == CT_FOR);
+			if (colon != NO && !self.fixed(colon)) self.break_after(colon);
+		default:
+	}
 }
 
 <* A declaration at the top level starts a line of its own, after the '}' of a block or body or the ';' of a statement. *>
@@ -667,11 +730,18 @@ fn void Fmt.space(&self, sz i)
 	Config* c = self.cfg;
 	Out* o = &self.out[i];
 	String gap = s.gap(i);
+	if (s.is_empty_closer(i) && self.out[i].nl == 0)
+	{
+		o.spacing = "";     // `{}`
+		return;
+	}
 	if (gap.contains("\n") && !(c.spacing == STRICT && s.in_generic(i)))
 	{
 		// a statement's ';' that was joined to the code before it has no space
 		bool semi = s.is_statement_semi(i);
-		o.spacing = semi ? "" : " ";     // a line that was joined (brace or else style)
+		// (a joined line gets one space, unless the spacing rule says none: `{}(void)` stays tight on the next run)
+		bool tight = semi || s.space_rule(i, c) == NONE;
+		o.spacing = tight ? "" : " ";     // a line that was joined (brace or else style)
 		return;
 	}
 	Space rule = s.space_rule(i, c);

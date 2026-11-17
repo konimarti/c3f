@@ -236,6 +236,9 @@ fn bool Src.is_fn_type_params(&self, sz i)
 	return self.toks[k - 1].type == FUNC;
 }
 
+<* Is token i the '}' right after its '{' (`{}`)? *>
+fn bool Src.is_empty_closer(&self, sz i) @inline => self.toks[i].type == RBRACE && self.toks[i].match == i - 1;
+
 <* Is token i inside the braces of a generic type's arguments, or the closing brace itself? *>
 fn bool Src.in_generic(&self, sz i) @inline => (self.toks[i].type == RBRACE && self.toks[i].match != NO && self.toks[self.toks[i].match].brace == GENERIC) || (self.toks[i].encl != NO && self.toks[self.toks[i].encl].type == LBRACE && self.toks[self.toks[i].encl].brace == GENERIC);
 
@@ -472,7 +475,7 @@ fn bool is_operand_end(TokenType t)
 	}
 }
 
-fn bool is_ct_binary_op(TokenType t) => t == CT_AND_OP || t == CT_OR_OP || t == CT_CONCAT_OP;
+fn bool is_ct_binary_op(TokenType t) => t == CT_AND_OP || t == CT_OR_OP || t == CT_CONCAT_OP || t == CT_CONCAT_ASSIGN;
 
 fn bool is_binary_op(TokenType t)
 {
