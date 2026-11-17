@@ -63,7 +63,8 @@ fn sz slot_of(ulong key) @local => (sz)((key * 0x9E3779B97F4A7C15) >> 51);
 
 <*
  The cell that decides a context: the most specific one. In strict mode, the most specific one
- that is consistent (an inconsistent context falls back to a broader one), or the broadest.
+ that is consistent (an inconsistent context falls back to a broader one); if none is consistent,
+ the broadest inconsistent one.
 *>
 fn Rule*? find_rule(GapKey* key, bool strict) @local
 {
@@ -232,15 +233,12 @@ fn bool Src.is_fn_type_params(&self, sz i)
 	{
 		k = self.toks[k].type == RBRACKET && self.toks[k].match != NO ? self.toks[k].match - 1 : k - 1;
 	}
-	if (k == 0 || !(is_base_type(self.toks[k].type) || self.toks[k].type == TYPE_IDENT)) return false;
+	if (k == 0 || !is_type_token(self.toks[k].type)) return false;
 	return self.toks[k - 1].type == FUNC;
 }
 
 <* Is token i the '}' right after its '{' (`{}`)? *>
 fn bool Src.is_empty_closer(&self, sz i) @inline => self.toks[i].type == RBRACE && self.toks[i].match == i - 1;
-
-<* Is token i inside the braces of a generic type's arguments, or the closing brace itself? *>
-fn bool Src.in_generic(&self, sz i) @inline => (self.toks[i].type == RBRACE && self.toks[i].match != NO && self.toks[self.toks[i].match].brace == GENERIC) || (self.toks[i].encl != NO && self.toks[self.toks[i].encl].type == LBRACE && self.toks[self.toks[i].encl].brace == GENERIC);
 
 <* A ';' that ends a statement: not one inside parentheses (a `for` header). Top level counts. *>
 fn bool Src.is_statement_semi(&self, sz i) @inline => self.toks[i].type == EOS && (self.toks[i].encl == NO || self.toks[self.toks[i].encl].type != LPAREN);
@@ -529,29 +527,9 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	if (next.type == LPAREN && next.encl == NO && (prev.type == TYPE_IDENT || is_base_type(prev.type)) && self.is_type_header_paren(i)) return ONE;
 	// strict: the parameter list of a function type is tight, `fn int?(int x)` as `fn void(int x)`
 	if (cfg.spacing == STRICT && next.type == LPAREN && self.is_fn_type_params(i)) return NONE;
-	// strict: generic arguments are tight, `List{Table[3]}` (the stdlib also writes `HashMap { K, V }`)
-	if (cfg.spacing == STRICT)
-	{
-		if (prev.type == LBRACE && prev.brace == GENERIC && next.type != RBRACE) return NONE;
-		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == GENERIC && prev.type != LBRACE) return NONE;
-	}
-	// strict: a one-line block or body is spaced inside, as the stdlib writes `{ return x; }`
-	if (cfg.spacing == STRICT)
-	{
-		if (prev.type == LBRACE && (prev.brace == BLOCK || prev.brace == BODY) && next.type != RBRACE) return ONE;
-		if (next.type == RBRACE && next.match != NO && prev.type != LBRACE)
-		{
-			BraceKind k = self.toks[next.match].brace;
-			if (k == BLOCK || k == BODY) return ONE;
-		}
-	}
-	// strict: an initializer list is padded inside, `{ 1, 2 }` (the stdlib: 92 to 98%; the table splits it by
-	// what follows the brace, which leaves `{{ 1 }, { 2 }}` and `{&x}` lopsided); c3f_space_inside_braces wins
-	if (cfg.spacing == STRICT && cfg.space_inside_braces == KEEP)
-	{
-		if (prev.type == LBRACE && prev.brace == INIT && next.type != RBRACE) return ONE;
-		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == INIT && prev.type != LBRACE) return ONE;
-	}
+	// the gap inside a pair of braces: generic arguments, blocks and initializers (see inside_brace_space)
+	Space inside;
+	if (self.inside_brace_space(i, cfg, &inside)) return inside;
 	// strict: a compound literal hugs its type, `(Foo){ … }` (the stdlib: 40 to 7)
 	if (cfg.spacing == STRICT && next.type == LBRACE && next.brace == INIT && prev.type == RPAREN) return NONE;
 	// a block or body is spaced off what it belongs to: `fn void f() {`, `enum E {`, `else {`
@@ -565,8 +543,6 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	if (next.type == COLON && next.label) return NONE;
 	// the statement after the ':' of a case or default label is spaced off it: `case 0: defer 0;` (the stdlib writes the space almost always)
 	if (prev.type == COLON && self.is_case_colon(i - 1) && self.same_line(i)) return ONE;
-	// strict: the parameter list of a function type is tight, `fn Type(...)` like `fn void(...)`
-	if (cfg.spacing == STRICT && next.type == LPAREN && i >= 2 && self.toks[i - 2].type == FUNC && is_type_token(prev.type)) return NONE;
 	// `$assert cond : "message"`
 	if (next.message || prev.message) return ONE;
 	// `if (x) y;`: the statement after a control header is spaced off
@@ -574,8 +550,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	// `s[a:b]`: in strict mode a slice's ':' sits tight (the stdlib writes both `[a:b]` and `[a : b]`)
 	if (cfg.spacing == STRICT && ((next.type == COLON && self.is_slice_colon(i)) || (prev.type == COLON && self.is_slice_colon(i - 1)))) return NONE;
 	if (prev.type == RPAREN && self.is_cast_close(i - 1)) return cfg.space_after_cast ? Space.ONE : Space.NONE;
-	// `int[<*>]?x`: the '?' of a nullable vector type is tight after its `>]`, as after `]`
-	if (next.type == QUESTION && prev.type == RVEC && self.closes_type(i - 1) && !next.ternary) return NONE;
+	// `int[<*>]?x`, `int[]?x`: the '?' of a nullable array or vector type is tight after its closer
+	if (next.type == QUESTION && (prev.type == RBRACKET || prev.type == RVEC) && self.closes_type(i - 1) && !next.ternary) return NONE;
 	// `int[2]*? p`: a nullable pointer type is tight after a suffix too, as `Foo*? p`
 	if (next.type == STAR && i + 1 < self.len() && self.toks[i + 1].type == QUESTION
 		&& (prev.type == RBRACKET || prev.type == RVEC || prev.type == RBRACE) && self.closes_type(i - 1)) return NONE;
@@ -602,14 +578,49 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 		if (prev.type == LBRACKET && next.type != RBRACKET) return pad;
 		if (next.type == RBRACKET && prev.type != LBRACKET) return pad;
 	}
-	if (cfg.space_inside_braces != KEEP)
-	{
-		Space pad = cfg.space_inside_braces == TRUE ? Space.ONE : Space.NONE;
-		// the gap itself is on a line (the caller only asks for those), whatever the rest of the braces does
-		if (prev.type == LBRACE && prev.brace == INIT && prev.match != i) return pad;
-		if (next.type == RBRACE && next.match != NO && self.toks[next.match].brace == INIT && prev.type != LBRACE) return pad;
-	}
 	return self.table_space(i, cfg.spacing == STRICT);
+}
+
+<*
+ The gap inside a pair of braces, when a rule decides it (returns true and the space in `out`):
+ - generic arguments are tight in strict, `List{Table[3]}` (the stdlib also writes `HashMap { K, V }`);
+ - a one-line block or body is spaced inside in strict, as the stdlib writes `{ return x; }`;
+ - an initializer list is padded inside in strict, `{ 1, 2 }` (the stdlib: 92 to 98%; the table splits it by what
+   follows the brace, which leaves `{{ 1 }, { 2 }}` and `{&x}` lopsided), and c3f_space_inside_braces decides it in every style.
+ An empty pair `{}` has no inside.
+*>
+fn bool Src.inside_brace_space(&self, sz i, Config* cfg, Space* out)
+{
+	if (i == 0 || i >= self.len()) return false;
+	Tok* prev = &self.toks[i - 1];
+	Tok* next = &self.toks[i];
+	bool after_open = prev.type == LBRACE && prev.match != i;
+	bool before_close = next.type == RBRACE && next.match != NO && prev.type != LBRACE;
+	if (!after_open && !before_close) return false;
+	BraceKind k = after_open ? prev.brace : self.toks[next.match].brace;
+	bool strict = cfg.spacing == STRICT;
+	switch (k)
+	{
+		case GENERIC:
+			if (!strict) return false;
+			*out = NONE;
+			return true;
+		case BLOCK: case BODY:
+			if (!strict) return false;
+			*out = ONE;
+			return true;
+		case INIT:
+			if (cfg.space_inside_braces != KEEP)
+			{
+				*out = cfg.space_inside_braces == TRUE ? ONE : NONE;
+				return true;
+			}
+			if (!strict) return false;
+			*out = ONE;
+			return true;
+		default:
+			return false;
+	}
 }
 
 <* Removing the space between a and b keeps them two tokens of the same kind. *>

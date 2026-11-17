@@ -38,7 +38,7 @@ fn void check_header(String first, String cont, String body, String open_line, S
 {
 	String src = string::tformat("fn void g()\n{\n\t%s\n\t\t\t%s\n\t\t%s\n\t}\n}\n", first, cont, body);
 	c3f::Config cfg = c3f::defaults();
-	for (sz i = 0; i + 1 < settings.len; i += 2) (void)cfg.set(settings[i], settings[i + 1]);
+	for (sz i = 0; i + 1 < settings.len; i += 2) assert(@ok(cfg.set(settings[i], settings[i + 1])));
 	String once = fmt_with(src, &cfg);
 	assert(fmt_with(once, &cfg) == once, "not idempotent:\n%s", once);
 	String[] lines = once.tsplit("\n");
@@ -98,11 +98,11 @@ fn void expect(String src, String want, c3f::Config* cfg) @local
 fn void top_level_function_headers_and_lambdas() @test
 {
 	c3f::Config knr = c3f::defaults();
-	(void)knr.set("c3f_style", "knr");
+	assert(@ok(knr.set("c3f_style", "knr")));
 	expect("fn void f(int a,\n\t\tint b) {\n\tx();\n}\n", "fn void f(int a,\n\t\tint b) {\n\tx();\n}\n", &knr);
 	expect("fn void f(int a,\n    int b) {\n    x();\n}\n", "fn void f(int a,\n    int b) {\n\tx();\n}\n", &knr);
 	c3f::Config linux = c3f::defaults();
-	(void)linux.set("c3f_brace_style", "linux");
+	assert(@ok(linux.set("c3f_brace_style", "linux")));
 	expect("fn void f(int a,\n\t\tint b) {\n\tx();\n}\n", "fn void f(int a,\n\t\tint b)\n{\n\tx();\n}\n", &linux);
 	// a lambda body in an argument list keeps its layout
 	expect("fn void f()\n{\n\tfoo(a,\n\t\tfn void() {\n\t\t\tx();\n\t\t}, b);\n\tfoo(fn void(int q) {\n\t\ty();\n\t});\n}\n",

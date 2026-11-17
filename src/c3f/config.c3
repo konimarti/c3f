@@ -13,6 +13,7 @@ enum Continuation : char { KEEP, INDENT, ALIGN }
 enum SpacingMode : char { STDLIB, STRICT }
 enum PointerStyle : char { KEEP, TYPE, NAME }
 enum Padding : char { KEEP, FALSE, TRUE }   // keep, or never / always a space
+enum CaseIndent : char { INDENT, FLUSH }   // INDENT: `case` one level in under `switch`; FLUSH: the same column
 enum CtBody : char { KEEP, LINE }   // LINE: the body of a $if, $else, $for or $foreach starts a line of its own
 enum TopLevelDecls : char { KEEP, LINE, BLANK }   // LINE: each top-level declaration on its own line; BLANK: one blank line between them
 enum AlignMode : char { KEEP, DECLS, OFF }
@@ -34,7 +35,7 @@ struct Config
 	ElseStyle      else_style;
 	WhileStyle     while_style;
 	OneLineBlocks  one_line_blocks;
-	bool           case_indent;
+	CaseIndent     case_indent;
 	CtIndent       compile_time_indent;
 	Continuation   continuation;
 	SpacingMode    spacing;
@@ -109,7 +110,7 @@ fn Config stdlib_base() @local
 		.indent_style = TAB, .indent_size = 4, .tab_width = 4,
 		.end_of_line = KEEP, .insert_final_newline = true,
 		.brace_style = ALLMAN, .else_style = FOLLOW, .one_line_blocks = KEEP,
-		.case_indent = true, .compile_time_indent = INDENT, .continuation = KEEP,
+		.case_indent = INDENT, .compile_time_indent = INDENT, .continuation = KEEP,
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .space_inside_brackets = KEEP, .space_inside_braces = KEEP,
 		.max_blank_lines = 2, .trim_block_blanks = true, .top_level_decls = KEEP, .compile_time_body = KEEP,
 		.align = KEEP, .align_comments = KEEP,
@@ -121,14 +122,20 @@ fn Config stdlib_base() @local
 	return c;
 }
 
-<* The defaults: the strict preset (spacing and pointers as in `strict`). Import sorting is off. *>
+<* The fields that the strict preset sets (the caller sets the style and the origins). *>
+fn void Config.set_strict(&self)
+{
+	self.spacing = STRICT;
+	self.pointer_style = TYPE;
+	self.top_level_decls = LINE;
+	self.compile_time_body = LINE;
+}
+
+<* The defaults: the strict preset. *>
 fn Config defaults()
 {
 	Config c = stdlib_base();
-	c.spacing = STRICT;
-	c.pointer_style = TYPE;
-	c.top_level_decls = LINE;
-	c.compile_time_body = LINE;
+	c.set_strict();
 	c.style = "strict";
 	return c;
 }
@@ -155,12 +162,9 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	}
 	if (name == "strict")
 	{
-		self.top_level_decls = LINE;
-		self.compile_time_body = LINE;
+		self.set_strict();
 		self.origin[Key.TOP_LEVEL_DECLS.ordinal] = from;
 		self.origin[Key.COMPILE_TIME_BODY.ordinal] = from;
-		self.spacing = STRICT;
-		self.pointer_style = TYPE;
 		self.origin[Key.SPACING.ordinal] = from;
 		self.origin[Key.POINTER_STYLE.ordinal] = from;
 	}
@@ -260,7 +264,7 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 		case ELSE_STYLE: self.else_style = parse_enum(ElseStyle, v)!;
 		case WHILE_STYLE: self.while_style = parse_enum(WhileStyle, v)!;
 		case ONE_LINE_BLOCKS: self.one_line_blocks = parse_enum(OneLineBlocks, v)!;
-		case CASE_INDENT: self.case_indent = parse_indent(v)!;
+		case CASE_INDENT: self.case_indent = parse_enum(CaseIndent, v)!;
 		case COMPILE_TIME_INDENT: self.compile_time_indent = parse_enum(CtIndent, v)!;
 		case CONTINUATION: self.continuation = parse_enum(Continuation, v)!;
 		case SPACING: self.spacing = parse_enum(SpacingMode, v)!;
@@ -328,7 +332,7 @@ fn String allowed_values(Key k)
 		case ELSE_STYLE: return enum_names(ElseStyle);
 		case WHILE_STYLE: return enum_names(WhileStyle);
 		case ONE_LINE_BLOCKS: return enum_names(OneLineBlocks);
-		case CASE_INDENT: return "indent, flush";
+		case CASE_INDENT: return enum_names(CaseIndent);
 		case COMPILE_TIME_INDENT: return enum_names(CtIndent);
 		case CONTINUATION: return enum_names(Continuation);
 		case SPACING: return enum_names(SpacingMode);
@@ -361,16 +365,6 @@ macro String enum_names($Type)
 	return d.str_view();
 }
 
-macro bool? parse_indent(String v)
-{
-	switch (v)
-	{
-		case "indent": return true;
-		case "flush": return false;
-		default: return BAD_VALUE~;
-	}
-}
-
 <* The current value of an option, as text (--print-config). *>
 fn String Config.value_text(&self, Key k)
 {
@@ -387,7 +381,7 @@ fn String Config.value_text(&self, Key k)
 		case ELSE_STYLE: return enum_text(self.else_style);
 		case WHILE_STYLE: return enum_text(self.while_style);
 		case ONE_LINE_BLOCKS: return enum_text(self.one_line_blocks);
-		case CASE_INDENT: return self.case_indent ? "indent" : "flush";
+		case CASE_INDENT: return enum_text(self.case_indent);
 		case COMPILE_TIME_INDENT: return enum_text(self.compile_time_indent);
 		case CONTINUATION: return enum_text(self.continuation);
 		case SPACING: return enum_text(self.spacing);

@@ -1,15 +1,12 @@
 module c3f_test;
 import c3f;
 
-<* Formats under `settings` (key, value, ...), requires a second run to change nothing, and returns the text. *>
+<* Formats under `settings` (key, value, ...) with the option that expands one-line blocks. *>
 fn String expanded(String src, String[] settings) @local
 {
-	c3f::Config cfg = c3f::defaults();
-	(void)cfg.set("c3f_one_line_blocks", "expand");
-	for (sz i = 0; i + 1 < settings.len; i += 2) (void)cfg.set(settings[i], settings[i + 1]);
-	String once = fmt_with(src, &cfg);
-	assert(fmt_with(once, &cfg) == once, "not idempotent:\n%s", once);
-	return once;
+	c3f::Config cfg = config_with(settings);
+	assert(@ok(cfg.set("c3f_one_line_blocks", "expand")));
+	return settled_cfg(src, &cfg);
 }
 
 fn void expanded_compile_time_branch_stays_inside_its_function() @test

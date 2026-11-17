@@ -8,19 +8,6 @@ fn String fmt_with(String src, c3f::Config* cfg)
 	return r.text;
 }
 
-<* Formats `src`, compares with `want`, and checks that formatting again changes nothing. *>
-fn void check(String src, String want, c3f::Config* cfg = null) @local
-{
-	c3f::Config d = c3f::defaults();
-	if (!cfg) cfg = &d;
-	String got = fmt_with(src, cfg);
-	if (got != want) io::eprintfn("--- want ---\n%s--- got ---\n%s---", want, got);
-	assert(got == want);
-	String again = fmt_with(got, cfg);
-	if (again != got) io::eprintfn("--- not idempotent ---\n%s---", again);
-	assert(again == got);
-}
-
 fn void spacing() @test
 {
 	check("fn void f()\n{\n\tint a=b+c*2;\n\tfoo( a ,b );\n}\n",
@@ -61,7 +48,7 @@ fn void compile_time_blocks() @test
 	      "fn void f()\n{\n\t$for var $i = 0; $i < 3; $i++:\n\t\tbar($i);\n\t$endfor\n}\n");
 	// under keep, a directive at column 0 inside a block stays there and adds no level
 	c3f::Config keep = c3f::defaults();
-	(void)keep.set("c3f_compile_time_indent", "keep");
+	assert(@ok(keep.set("c3f_compile_time_indent", "keep")));
 	check("fn void f()\n{\n$if FOO:\n\tbar();\n$endif\n}\n", "fn void f()\n{\n$if FOO:\n\tbar();\n$endif\n}\n", &keep);
 }
 
@@ -70,7 +57,7 @@ fn void braces() @test
 	check("fn void f() {\n\tif (x) {\n\t\ty();\n\t} else {\n\t\tz();\n\t}\n}\n",
 	      "fn void f()\n{\n\tif (x)\n\t{\n\t\ty();\n\t}\n\telse\n\t{\n\t\tz();\n\t}\n}\n");
 	c3f::Config knr = c3f::defaults();
-	(void)knr.set("c3f_style", "knr");
+	assert(@ok(knr.set("c3f_style", "knr")));
 	check("fn void f()\n{\n\tif (x)\n\t{\n\t\ty();\n\t}\n\telse\n\t{\n\t\tz();\n\t}\n}\n",
 	      "fn void f() {\n\tif (x) {\n\t\ty();\n\t} else {\n\t\tz();\n\t}\n}\n", &knr);
 	// one-line blocks, initializers and lambdas stay as they are
@@ -128,27 +115,27 @@ fn void line_endings() @test
 {
 	check("fn void f()\r\n{\r\n  x();\r\n}\r\n", "fn void f()\r\n{\r\n\tx();\r\n}\r\n");
 	c3f::Config lf = c3f::defaults();
-	(void)lf.set("end_of_line", "lf");
+	assert(@ok(lf.set("end_of_line", "lf")));
 	check("fn void f()\r\n{\r\n  x();\r\n}\r\n", "fn void f()\n{\n\tx();\n}\n", &lf);
 }
 
 fn void options() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("indent_style", "space");
-	(void)c.set("indent_size", "2");
+	assert(@ok(c.set("indent_style", "space")));
+	assert(@ok(c.set("indent_size", "2")));
 	check("fn void f()\n{\n\tif (x)\n\t{\n\t\ty();\n\t}\n}\n", "fn void f()\n{\n  if (x)\n  {\n    y();\n  }\n}\n", &c);
 	c = c3f::defaults();
-	(void)c.set("c3f_space_after_cast", "true");
+	assert(@ok(c.set("c3f_space_after_cast", "true")));
 	check("fn void f()\n{\n\tw = (int)v;\n}\n", "fn void f()\n{\n\tw = (int) v;\n}\n", &c);
 	c = c3f::defaults();
-	(void)c.set("c3f_pointer_style", "type");
+	assert(@ok(c.set("c3f_pointer_style", "type")));
 	check("fn void f(Foo *p)\n{\n\tBar *q = null;\n}\n", "fn void f(Foo* p)\n{\n\tBar* q = null;\n}\n", &c);
 	c = c3f::defaults();
-	(void)c.set("c3f_max_blank_lines", "1");
+	assert(@ok(c.set("c3f_max_blank_lines", "1")));
 	check("module x;\n\n\n\nint y;\n", "module x;\n\nint y;\n", &c);
 	c = c3f::defaults();
-	(void)c.set("c3f_align", "off");
+	assert(@ok(c.set("c3f_align", "off")));
 	check("int    a = 1;\n", "int a = 1;\n", &c);
 }
 
@@ -196,12 +183,12 @@ fn void diff() @test
 fn void decl_alignment() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_align", "decls");
+	assert(@ok(c.set("c3f_align", "decls")));
 	check("struct S\n{\n\tint a;\n\tdouble bb;\n}\n", "struct S\n{\n\tint    a;\n\tdouble bb;\n}\n", &c);
 	check("fn void f()\n{\n\tx = 1;\n\tlonger = 2;\n}\n", "fn void f()\n{\n\tx      = 1;\n\tlonger = 2;\n}\n", &c);
 }
 
-fn void regressions() @test
+fn void blocks_generics_and_comments() @test
 {
 	// function bodies after @inline, a generic signature or a user attribute are blocks
 	check("fn void f() @inline {\n\tx();\n}\n", "fn void f() @inline\n{\n\tx();\n}\n");
@@ -214,72 +201,70 @@ fn void regressions() @test
 	check("fn int  foo() {\n return x;\n}\n", "fn int  foo()\n{\n\treturn x;\n}\n");
 	// expanding one-line blocks also moves the else
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_one_line_blocks", "expand");
+	assert(@ok(c.set("c3f_one_line_blocks", "expand")));
 	check("fn void f()\n{\n\tif (c) { a(); } else { b(); }\n}\n",
 	      "fn void f()\n{\n\tif (c)\n\t{\n\t\ta();\n\t}\n\telse\n\t{\n\t\tb();\n\t}\n}\n", &c);
 	// indent_size = tab follows tab_width, whatever the order
 	c = c3f::defaults();
-	(void)c.set("indent_size", "tab");
-	(void)c.set("tab_width", "8");
+	assert(@ok(c.set("indent_size", "tab")));
+	assert(@ok(c.set("tab_width", "8")));
 	c.finish();
 	assert(c.indent_size == 8);
 	// a missing final newline shows in the diff
 	assert(c3f::unified_diff(tmem, "x", "a", "a\n") == "--- a/x\n+++ b/x\n@@ -1,1 +1,1 @@\n-a\n\\ No newline at end of file\n+a\n");
 }
 
-fn void more_regressions() @test
+fn void trailing_comments_and_compile_time_headers() @test
 {
 	// continuation lines of a compile-time header stay put
 	check("fn void f()\n{\n\t$if $defined(a) ||| $defined(\n\t\tb):\n\t\tx();\n\t$endif\n}\n",
 	      "fn void f()\n{\n\t$if $defined(a) ||| $defined(\n\t\tb):\n\t\tx();\n\t$endif\n}\n");
 	// trailing comments on consecutive lines share a column
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_align_comments", "always");
+	assert(@ok(c.set("c3f_align_comments", "always")));
 	check("fn void f()\n{\n\tint a; // first\n\tint bbbbb; // second\n}\n", "fn void f()\n{\n\tint a;     // first\n\tint bbbbb; // second\n}\n", &c);
 }
 
 fn void linux_braces_trailing_comments_and_arrows() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_brace_style", "linux");
+	assert(@ok(c.set("c3f_brace_style", "linux")));
 	// function bodies on their own line, every other block K&R
 	check("struct S\n{\n\tint a;\n}\nfn void f() {\n\tif (x)\n\t{\n\t\ty();\n\t}\n\telse\n\t{\n\t\tz();\n\t}\n}\n",
 	      "struct S {\n\tint a;\n}\nfn void f()\n{\n\tif (x) {\n\t\ty();\n\t} else {\n\t\tz();\n\t}\n}\n", &c);
 	c = c3f::defaults();
-	(void)c.set("c3f_trailing_comment_spaces", "2");
+	assert(@ok(c.set("c3f_trailing_comment_spaces", "2")));
 	check("fn void f()\n{\n\ty(); // one\n\tz();    // two\n}\n", "fn void f()\n{\n\ty();  // one\n\tz();  // two\n}\n", &c);
 	c = c3f::defaults();
-	(void)c.set("c3f_align", "decls");
+	assert(@ok(c.set("c3f_align", "decls")));
 	check("fn int g() => 1;\nfn int longer_name() => 2;\n", "fn int g()           => 1;\nfn int longer_name() => 2;\n", &c);
 }
 
 fn void ternary_and_slice_colons() @test
 {
 	c3f::Config stdlib_cfg = c3f::defaults();
-	(void)stdlib_cfg.set("c3f_style", "stdlib");
+	assert(@ok(stdlib_cfg.set("c3f_style", "stdlib")));
 	// a ternary's ':' is spaced in every mode; labels, named arguments and slices are not ternaries
 	String src = "fn void f()\n{\n\tx = a ? x.y: e;\n\ty = foo(n: 1);\n\tswitch (q)\n\t{\n\t\tcase 1: w = t ? (b ? c : d) : z;\n\t}\n\tv = s[1 : 2];\n}\n";
 	check(src, "fn void f()\n{\n\tx = a ? x.y : e;\n\ty = foo(n: 1);\n\tswitch (q)\n\t{\n\t\tcase 1: w = t ? (b ? c : d) : z;\n\t}\n\tv = s[1 : 2];\n}\n", &stdlib_cfg);
 	// strict also makes slices tight
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_style", "strict");
 	check(src, "fn void f()\n{\n\tx = a ? x.y : e;\n\ty = foo(n: 1);\n\tswitch (q)\n\t{\n\t\tcase 1: w = t ? (b ? c : d) : z;\n\t}\n\tv = s[1:2];\n}\n", &c);
 }
 
 fn void strict_mode() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_style", "strict");
 	// a statement after a control header, `$assert`'s message, pointers before a type name,
 	// generic arguments (also as a return type), one-line bodies
 	check("fn List{ int } f()\n{\n\tforeach (&o : x) *o = 1;\n\tif (a)(void)b;\n\t$assert X: \"m\";\n}\nfn Tok *Fmt.tok(&self) => null;\nstruct G {int a; }\n",
 	      "fn List{int} f()\n{\n\tforeach (&o : x) *o = 1;\n\tif (a) (void)b;\n\t$assert X : \"m\";\n}\nfn Tok* Fmt.tok(&self) => null;\nstruct G { int a; }\n", &c);
 }
 
-fn void style_sweep_regressions() @test
+fn void padding_colons_and_import_runs() @test
 {
 	c3f::Config stdlib_cfg = c3f::defaults();
-	(void)stdlib_cfg.set("c3f_style", "stdlib");
+	assert(@ok(stdlib_cfg.set("c3f_style", "stdlib")));
 	// the inside of a one-line block or initializer is padded alike on both ends
 	check("fn void f() {int a=1; }\nfn void g() { int a;}\nfn void h() {int a;}\nint[2] x = { 1, 2};\n",
 	      "fn void f() { int a = 1; }\nfn void g() { int a; }\nfn void h() {int a;}\nint[2] x = { 1, 2 };\n", &stdlib_cfg);
@@ -289,7 +274,6 @@ fn void style_sweep_regressions() @test
 	String want = "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase a.b:\n\t\t\tbreak;\n\t}\n\t$if X:\n\t\ty();\n\t$endif\n\t*p = 1;\n\tif (q)\n\t{\n\t\tz();\n\t}\n\t/* c */\n\t*s = 2;\n}\n";
 	check(src, want, &stdlib_cfg);
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_style", "strict");
 	check(src, want, &c);
 	// strict: a tie in a narrow context falls back to the broader one; function types are tight
 	check("fn void f()\n{\n\tvar $r = $$h(@sprintf(\"%s\", $x, $i));\n}\nalias P = fn Eb (int a);\n",
@@ -299,7 +283,7 @@ fn void style_sweep_regressions() @test
 fn void import_sorting() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_sort_imports", "all");
+	assert(@ok(c.set("c3f_sort_imports", "all")));
 	// runs are sorted on their own; comments and attributes move with their statement
 	check("module x;\n// io\nimport std::io;\nimport std::collections::list, std::collections::map @public; // c\n\nimport zeta, alpha;\nimport beta;\n",
 	      "module x;\nimport std::collections::list, std::collections::map @public; // c\n// io\nimport std::io;\n\nimport alpha, zeta;\nimport beta;\n", &c);
@@ -313,7 +297,7 @@ fn void import_sorting() @test
 fn void import_sorting_edge_cases() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_sort_imports", "lines");
+	assert(@ok(c.set("c3f_sort_imports", "lines")));
 	// only statements on lines of their own are sorted
 	check("module x;\nimport ppp; /* c */ import ooo;\nimport bbb;\nimport aaa; // a\n",
 	      "module x;\nimport ppp; /* c */ import ooo;\nimport aaa; // a\nimport bbb;\n", &c);
@@ -322,22 +306,22 @@ fn void import_sorting_edge_cases() @test
 fn void wrapping() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap");
+	assert(@ok(c.set("max_line_length", "40")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap")));
 	check("fn void f()\n{\n\tint r = compute(first_argument, second_argument);\n\tshort(a);\n}\n",
 	      "fn void f()\n{\n\tint r = compute(first_argument,\n\t\tsecond_argument);\n\tshort(a);\n}\n", &c);
 	check("fn void f()\n{\n\tif (alpha_condition && beta_condition || gamma) return;\n}\n",
 	      "fn void f()\n{\n\tif (alpha_condition\n\t\t&& beta_condition\n\t\t|| gamma) return;\n}\n", &c);
 	// a wrapped initializer item stays where the next run puts it
 	c = c3f::defaults();
-	(void)c.set("max_line_length", "50");
-	(void)c.set("c3f_line_breaks", "reflow");
+	assert(@ok(c.set("max_line_length", "50")));
+	assert(@ok(c.set("c3f_line_breaks", "reflow")));
 	check("fn void f()\n{\n\tFoo x = { .alpha = compute_value(1, 2), .beta = other_value(3) };\n}\n",
 	      "fn void f()\n{\n\tFoo x = { .alpha = compute_value(1, 2),\n\t\t.beta = other_value(3) };\n}\n", &c);
 	// the arguments see the text glued after them; a macro call breaks like a call, an attribute stays whole
 	c = c3f::defaults();
-	(void)c.set("max_line_length", "60");
-	(void)c.set("c3f_line_breaks", "wrap");
+	assert(@ok(c.set("max_line_length", "60")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap")));
 	check("fn void f()\n{\n\tif (spawn_actions(&actions, stdoutfd[1], libc::STDOUT_FD)) return FAILED_TO_OPEN~;\n"
 	      "\treturn @atomic_exchange(ptr, value, AtomicOrdering.RELAXED, $alignment);\n}\n"
 	      "extern fn int get_path(WString name, ulong len, Char16* buffer) @cname(\"GetPath\");\n",
@@ -346,12 +330,11 @@ fn void wrapping() @test
 	      "extern fn int get_path(WString name, ulong len,\n\tChar16* buffer) @cname(\"GetPath\");\n", &c);
 }
 
-fn void release_review_regressions() @test
+fn void question_marks_control_headers_and_crlf() @test
 {
 	c3f::Config d = c3f::defaults();
-	(void)d.set("c3f_style", "stdlib");
+	assert(@ok(d.set("c3f_style", "stdlib")));
 	c3f::Config strict = c3f::defaults();
-	(void)strict.set("c3f_style", "strict");
 	// a ternary '?' after ']' is spaced like any other (not the '?' of `int[]?`)
 	check("fn void f()\n{\n\tx = a[i]?b:c;\n\tint[]? z = g();\n}\n", "fn void f()\n{\n\tx = a[i] ? b : c;\n\tint[]? z = g();\n}\n", &strict);
 	// ... and the '?' of an optional return type stays tight, whatever follows in the file
@@ -359,8 +342,8 @@ fn void release_review_regressions() @test
 	      "fn sz? Foo.peek(&self)\n{\n\treturn 0;\n}\nfn void g()\n{\n\tx = c ? a : b;\n}\n", &strict);
 	// the statement after a control header starts on the header's line, also when wrapping
 	c3f::Config w = c3f::defaults();
-	(void)w.set("max_line_length", "60");
-	(void)w.set("c3f_line_breaks", "wrap");
+	assert(@ok(w.set("max_line_length", "60")));
+	assert(@ok(w.set("c3f_line_breaks", "wrap")));
 	String src = "fn void f()\n{\n\tif (s - buf == 1 && (y || p > 0 || flags_hash_value)) *s++ = 1;\n}\n";
 	check(src, "fn void f()\n{\n\tif (s - buf == 1\n\t\t&& (y || p > 0 || flags_hash_value)) *s++ = 1;\n}\n", &w);
 	// a '\r' that c3c would drop keeps the whole file
@@ -383,29 +366,18 @@ fn void release_review_regressions() @test
 	assert(c.tab_width == d.tab_width && c.indent_size == d.indent_size);
 	// a comment above an import list does not stop the list from being sorted
 	c3f::Config l = c3f::defaults();
-	(void)l.set("c3f_sort_imports", "lists");
+	assert(@ok(l.set("c3f_sort_imports", "lists")));
 	check("module t;\n// c\nimport std::z, std::y;\n", "module t;\n// c\nimport std::y, std::z;\n", &l);
 }
 
-<* Formatting the result again changes nothing (for broken input, where the result itself is not the point). *>
-fn void stable(String src, String key = "", String value = "") @local
-{
-	c3f::Config cfg = c3f::defaults();
-	if (key.len) (void)cfg.set(key, value);
-	String once = fmt_with(src, &cfg);
-	String twice = fmt_with(once, &cfg);
-	if (twice != once) io::eprintfn("--- not idempotent ---\n%s\n--- then ---\n%s\n---", once, twice);
-	assert(twice == once);
-}
-
-fn void quality_review_regressions() @test
+fn void ternaries_compile_time_and_operators() @test
 {
 	c3f::Config d = c3f::defaults();
 	c3f::Config knr = c3f::defaults();
-	(void)knr.set("c3f_style", "knr");
+	assert(@ok(knr.set("c3f_style", "knr")));
 	c3f::Config expand = c3f::defaults();
-	(void)expand.set("c3f_style", "stdlib");
-	(void)expand.set("c3f_one_line_blocks", "expand");
+	assert(@ok(expand.set("c3f_style", "stdlib")));
+	assert(@ok(expand.set("c3f_one_line_blocks", "expand")));
 	// ternaries are paired like brackets: a '?' inside generic arguments or before an initializer
 	check("fn void f()\n{\n\tList{int?} z = c?List{int?}{}:w;\n}\n", "fn void f()\n{\n\tList{int?} z = c ? List{int?}{} : w;\n}\n");
 	// the ':' of `$assert`, also after a ternary, and an optional type before it stays tight
@@ -427,13 +399,13 @@ fn void quality_review_regressions() @test
 	stable("$if{\ni}\nr$endif", "c3f_brace_style", "linux");
 }
 
-fn void third_review_regressions() @test
+fn void operators_top_level_blank_lines_and_wrapping() @test
 {
 	// an operator before a prefix operator is spaced on both sides
 	check("fn void f()\n{\n\tx=-1;\n\tok=a==-1;\n\tb=!c;\n\tp=*q;\n}\n", "fn void f()\n{\n\tx = -1;\n\tok = a == -1;\n\tb = !c;\n\tp = *q;\n}\n");
 	// a blank line after each top-level body, not inside one
 	c3f::Config d = c3f::defaults();
-	(void)d.set("c3f_top_level_decls", "blank");
+	assert(@ok(d.set("c3f_top_level_decls", "blank")));
 	check("fn void f()\n{\n\tif (x)\n\t{\n\t}\n\treturn;\n}\nint x;\n", "fn void f()\n{\n\tif (x)\n\t{}\n\treturn;\n}\n\nint x;\n", &d);
 	// values that make no sense are rejected
 	c3f::Config c = c3f::defaults();
@@ -448,21 +420,12 @@ fn void wrapping_counts_the_indentation_it_writes() @test
 	for (int limit = 44; limit <= 47; limit++)
 	{
 		c3f::Config c = c3f::defaults();
-		(void)c.set("max_line_length", string::tformat("%d", limit));
-		(void)c.set("c3f_line_breaks", "reflow");
+		assert(@ok(c.set("max_line_length", string::tformat("%d", limit))));
+		assert(@ok(c.set("c3f_line_breaks", "reflow")));
 		String got = fmt_with(src, &c);
 		foreach (line : got.tsplit("\n")) assert(c3f::text_width(line, 0, 4) <= limit, "%d: %s", limit, line);
 		assert(fmt_with(got, &c) == got);
 	}
-}
-
-<* Formatting the result again changes nothing, under these settings. *>
-fn void stable_with(String src, String[] settings) @local
-{
-	c3f::Config cfg = c3f::defaults();
-	for (sz i = 0; i + 1 < settings.len; i += 2) (void)cfg.set(settings[i], settings[i + 1]);
-	String once = fmt_with(src, &cfg);
-	assert(fmt_with(once, &cfg) == once, "not idempotent:\n%s", once);
 }
 
 fn void later_wrap_passes_settle() @test
@@ -483,47 +446,45 @@ fn void later_wrap_passes_settle() @test
 		{ "max_line_length", "40", "c3f_line_breaks", "wrap" });
 }
 
-fn void fourth_review_regressions() @test
+fn void calls_imports_comments_and_contracts() @test
 {
 	// a binary operator after a call is spaced, and a prefix operator after a binary one is tight
 	check("fn void f()\n{\n\tw = f(x)*-1;\n\ty = a * -b;\n}\n", "fn void f()\n{\n\tw = f(x) * -1;\n\ty = a * -b;\n}\n");
 	// an import still being written does not take the code after it along when sorting
 	c3f::Config l = c3f::defaults();
-	(void)l.set("c3f_sort_imports", "all");
+	assert(@ok(l.set("c3f_sort_imports", "all")));
 	check("module m;\nimport zzz;\nimport aaa\nfn void f()\n{\n\tint a, b;\n}\n", "module m;\nimport zzz;\nimport aaa\nfn void f()\n{\n\tint a, b;\n}\n", &l);
 	// code after a comment that follows '{' still opens the block
 	check("fn void f() { /* a */ int x;\n    z();\n}\n", "fn void f()\n{\n\t/* a */ int x;\n\tz();\n}\n");
 	// the line breaks inside comments follow end_of_line
 	c3f::Config lf = c3f::defaults();
-	(void)lf.set("end_of_line", "lf");
+	assert(@ok(lf.set("end_of_line", "lf")));
 	check("/* a\r\n b */\r\nint x;\r\n", "/* a\n b */\nint x;\n", &lf);
 }
 
-fn void fifth_review_regressions() @test
+fn void contracts_blocks_and_alignment_continuations() @test
 {
 	// a string in a contract's code may hold the contract's end: c3c reads on, so it is kept
 	String contract = "<*\n @require x > 0 : \"need x *\x3e 0 (got a=b)\"\n*>\nfn int f(int x) => x;\n";
 	check(contract, contract);
 	// labelled loops and switches, `defer (catch e)` and `excuse` are blocks and bodies
 	c3f::Config knr = c3f::defaults();
-	(void)knr.set("c3f_style", "knr");
+	assert(@ok(knr.set("c3f_style", "knr")));
 	check("fn void g(int n)\n{\n\twhile OUTER: (n > 0)\n\t{\n\t\tn--;\n\t}\n\tswitch SW: (n)\n\t{\n\t\tcase 1:\n\t\t\tbreak SW;\n\t}\n}\n",
 	      "fn void g(int n) {\n\twhile OUTER: (n > 0) {\n\t\tn--;\n\t}\n\tswitch SW: (n) {\n\t\tcase 1:\n\t\t\tbreak SW;\n\t}\n}\n", &knr);
 	check("fn void g()\n{\n\tdefer (catch e)\n\t{\n\t\tx();\n\t}\n}\n", "fn void g() {\n\tdefer (catch e) {\n\t\tx();\n\t}\n}\n", &knr);
 	// a bare block is not joined onto the statement before it
 	check("fn void g()\n{\n\tint a = 1;\n\t{\n\t\tx();\n\t}\n}\n", "fn void g() {\n\tint a = 1;\n\t{\n\t\tx();\n\t}\n}\n", &knr);
 	c3f::Config strict = c3f::defaults();
-	(void)strict.set("c3f_style", "strict");
 	check("excuse{A, B}\nexcuse {C, D}\n", "excuse { A, B }\nexcuse { C, D }\n", &strict);
 	// align continuations do not follow a trailing comment after the opener (aligning moves it)
 	stable_with("fn void f()\n{\n\tmain(            //\n\t     a: \"x\", //\n\t     b: 30\n\t     );\n}\n",
 		{ "c3f_continuation", "align", "c3f_align_comments", "always" });
 }
 
-fn void sixth_review_regressions() @test
+fn void comparisons_casts_and_declaration_alignment() @test
 {
 	c3f::Config strict = c3f::defaults();
-	(void)strict.set("c3f_style", "strict");
 	// '<' and '>' are binary operators (but not the generic parameters of a declaration)
 	check("fn void f()\n{\n\tx = a <b;\n\ty = c> d;\n}\nstruct Foo <T> { int a; }\n", "fn void f()\n{\n\tx = a < b;\n\ty = c > d;\n}\nstruct Foo <T> { int a; }\n");
 	// a prefix operator before a type name is tight; braces after a name hug it on both sides
@@ -532,18 +493,18 @@ fn void sixth_review_regressions() @test
 	check("fn void f()\n{\n\tx = (Foo) { 1 };\n}\n", "fn void f()\n{\n\tx = (Foo){ 1 };\n}\n", &strict);
 	// a cast is not broken inside its parentheses
 	c3f::Config w = c3f::defaults();
-	(void)w.set("max_line_length", "40");
-	(void)w.set("c3f_line_breaks", "reflow");
+	assert(@ok(w.set("max_line_length", "40")));
+	assert(@ok(w.set("c3f_line_breaks", "reflow")));
 	String cast = fmt_with("fn void f()\n{\n\tx = compute_something_long((int)another_long_function_name(a, b));\n}\n", &w);
 	assert(cast.contains("(int)another_long_function_name"), "%s", cast);
 	// aligned declarations keep a '*' with its name
 	c3f::Config decls = c3f::defaults();
-	(void)decls.set("c3f_style", "stdlib");
-	(void)decls.set("c3f_align", "decls");
+	assert(@ok(decls.set("c3f_style", "stdlib")));
+	assert(@ok(decls.set("c3f_align", "decls")));
 	check("struct S\n{\n\tNode *first;\n\tint count;\n\tchar **argv;\n}\n", "struct S\n{\n\tNode  *first;\n\tint    count;\n\tchar **argv;\n}\n", &decls);
 	// import sorting leaves the comments that open the file on top
 	c3f::Config sorted = c3f::defaults();
-	(void)sorted.set("c3f_sort_imports", "lines");
+	assert(@ok(sorted.set("c3f_sort_imports", "lines")));
 	check("// header\nimport std::io;\nimport std::a;\n", "// header\nimport std::a;\nimport std::io;\n", &sorted);
 }
 
@@ -551,45 +512,45 @@ fn void wrapping_prefers_the_operator_to_the_opener() @test
 {
 	// the outer operator is the place to break, not the '(' of its second operand
 	c3f::Config w = c3f::defaults();
-	(void)w.set("max_line_length", "80");
-	(void)w.set("c3f_line_breaks", "wrap");
+	assert(@ok(w.set("max_line_length", "80")));
+	assert(@ok(w.set("c3f_line_breaks", "wrap")));
 	check("fn ulong f(ulong w)\n{\n\treturn ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL) | ((w >> 12) & (ulong)0x000F000F000F000FULL);\n}\n",
 	      "fn ulong f(ulong w)\n{\n\treturn ((w << 4) & (ulong)0xFFF0FFF0FFF0FFF0ULL)\n\t\t| ((w >> 12) & (ulong)0x000F000F000F000FULL);\n}\n", &w);
 }
 
-fn void seventh_review_regressions() @test
+fn void lambdas_casts_and_comparisons() @test
 {
 	c3f::Config knr = c3f::defaults();
-	(void)knr.set("c3f_style", "knr");
-	(void)knr.set("c3f_one_line_blocks", "expand");
+	assert(@ok(knr.set("c3f_style", "knr")));
+	assert(@ok(knr.set("c3f_one_line_blocks", "expand")));
 	// a ternary arm may hold a lambda: its '?' is still open at the lambda's block
 	check("fn void f()\n{\n\ty = a ? fn void() { z(); } :null;\n}\n", "fn void f()\n{\n\ty = a ? fn void() { z(); } : null;\n}\n");
 	// a contract that c3c reads past a string holding its closer is kept, also with CRLF line endings
 	c3f::Config crlf = c3f::defaults();
-	(void)crlf.set("end_of_line", "crlf");
+	assert(@ok(crlf.set("end_of_line", "crlf")));
 	check("module m;\r\n<*\r\n @param x : \"a *\x3e b\"\r\n*\x3e\r\nfn void f(int x) {\r\n}\r\n",
 	      "module m;\r\n<*\r\n @param x : \"a *\x3e b\"\r\n*\x3e\r\nfn void f(int x)\r\n{}\r\n", &crlf);
 	// a cast after a control header is a cast: what follows is a prefix operator, not a product
 	c3f::Config wrap = c3f::defaults();
-	(void)wrap.set("max_line_length", "50");
-	(void)wrap.set("c3f_line_breaks", "wrap");
+	assert(@ok(wrap.set("max_line_length", "50")));
+	assert(@ok(wrap.set("c3f_line_breaks", "wrap")));
 	check("fn void f()\n{\n\tif (x) (int)*p = 1;\n}\n", "fn void f()\n{\n\tif (x) (int)*p = 1;\n}\n", &wrap);
 	// a lambda returning an optional keeps its brace on the line when its block is expanded
 	c3f::Config expand = c3f::defaults();
-	(void)expand.set("c3f_style", "stdlib");
-	(void)expand.set("c3f_one_line_blocks", "expand");
+	assert(@ok(expand.set("c3f_style", "stdlib")));
+	assert(@ok(expand.set("c3f_one_line_blocks", "expand")));
 	check("fn void f()\n{\n\tvar cb = fn int?(int x) { return x; };\n}\n", "fn void f()\n{\n\tvar cb = fn int?(int x) {\n\t\treturn x;\n\t};\n}\n", &expand);
 	check("fn void f()\n{\n\ty = a * (Foo){1,2}.x;\n}\n", "fn void f() {\n\ty = a * (Foo){1, 2}.x;\n}\n", &knr);
 	// '<' and '>' between operands are spaced like the other comparisons
 	check("fn void f()\n{\n\tx = a.b() <c> d;\n}\n", "fn void f()\n{\n\tx = a.b() < c > d;\n}\n");
 	// equal imports keep their order (and their comments)
 	c3f::Config sorted = c3f::defaults();
-	(void)sorted.set("c3f_sort_imports", "lines");
+	assert(@ok(sorted.set("c3f_sort_imports", "lines")));
 	check("import b; // b\nimport a; // one\nimport a; // two\n", "import a; // one\nimport a; // two\nimport b; // b\n", &sorted);
 	// several statements on one line are left alone (each wrap pass would only settle one more)
 	c3f::Config w = c3f::defaults();
-	(void)w.set("max_line_length", "40");
-	(void)w.set("c3f_line_breaks", "wrap");
+	assert(@ok(w.set("max_line_length", "40")));
+	assert(@ok(w.set("c3f_line_breaks", "wrap")));
 	String one_line = "const Foo A = { 0x4c5c32ff, 0xbb9d };  const Foo B = { 0xb7bede81, 0xdf94 };  const Foo C = { 0xA63293E8, 0x664E };  const Foo D = { 0x18989B1D, 0x99B5 };\n";
 	assert(!fmt_with(one_line, &w).contains("\n\t"), "%s", fmt_with(one_line, &w));
 }
@@ -613,9 +574,9 @@ fn void the_readme_example_is_what_c3f_prints() @test
 	String input = readme_block(&at);
 	String want = readme_block(&at);
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_style", "stdlib");
-	(void)c.set("max_line_length", "72");
-	(void)c.set("c3f_line_breaks", "wrap");
+	assert(@ok(c.set("c3f_style", "stdlib")));
+	assert(@ok(c.set("max_line_length", "72")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap")));
 	check(input, want, &c);
 }
 
@@ -629,20 +590,20 @@ fn void a_lone_underscore_is_spaced_like_a_name() @test
 fn void wrap_rewrite_splits_a_long_literal_at_spaces() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap_rewrite");
+	assert(@ok(c.set("max_line_length", "40")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap_rewrite")));
 	String src = "fn void f()\n{\n\tString s = \"one two three four five six seven eight nine ten\";\n}\n";
 	check(src, "fn void f()\n{\n\tString s =\n\t\t\"one two three four five \"\n\t\t\"six seven eight nine ten\";\n}\n", &c);
 	// plain wrap never splits a literal
-	(void)c.set("c3f_line_breaks", "wrap");
+	assert(@ok(c.set("c3f_line_breaks", "wrap")));
 	check(src, "fn void f()\n{\n\tString s =\n\t\t\"one two three four five six seven eight nine ten\";\n}\n", &c);
 }
 
 fn void wrap_rewrite_keeps_escapes_conversions_and_utf8_whole() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("max_line_length", "30");
-	(void)c.set("c3f_line_breaks", "wrap_rewrite");
+	assert(@ok(c.set("max_line_length", "30")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap_rewrite")));
 	// the only places to cut are inside a `%08x`, a `\x41`, a `\n` and a two-byte character
 	String src = "fn void f()\n{\n\tx = \"aaaaaaaa%08xbbbbbbbb\\x41cccccccc\\ndddddd\xC3\xA9\xC3\xA9eeeeeeee\";\n}\n";
 	String got = fmt_with(src, &c);
@@ -658,8 +619,8 @@ fn void wrap_rewrite_keeps_escapes_conversions_and_utf8_whole() @test
 fn void wrap_rewrite_leaves_assert_attributes_and_messages_alone() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("max_line_length", "30");
-	(void)c.set("c3f_line_breaks", "wrap_rewrite");
+	assert(@ok(c.set("max_line_length", "30")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap_rewrite")));
 	String assertion = "fn void f()\n{\n\tassert(x == \"aaaa bbbb cccc dddd eeee ffff gggg\");\n}\n";
 	String attr = "fn void f() @export(\"aaaa_bbbb cccc dddd eeee ffff gggg\") {}\n";
 	assert(!fmt_with(assertion, &c).contains("\"\n"));
@@ -669,8 +630,8 @@ fn void wrap_rewrite_leaves_assert_attributes_and_messages_alone() @test
 fn void a_comment_at_the_end_of_a_line_is_not_part_of_its_length() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("max_line_length", "30");
-	(void)c.set("c3f_line_breaks", "wrap");
+	assert(@ok(c.set("max_line_length", "30")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap")));
 	// the code fits: a long comment does not make the line too long
 	String fits = "fn void f()\n{\n\tfoo(a, b); // a comment that runs far past the limit of the line\n}\n";
 	check(fits, fits, &c);
@@ -682,22 +643,22 @@ fn void a_comment_at_the_end_of_a_line_is_not_part_of_its_length() @test
 fn void wrap_rewrite_braces_a_body_that_is_too_long_for_its_line() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap_rewrite");
+	assert(@ok(c.set("max_line_length", "40")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap_rewrite")));
 	check("fn int f()\n{\n\tif (!is_lf(self.peek())) return INVALID_NEWLINE~;\n}\n",
 	      "fn int f()\n{\n\tif (!is_lf(self.peek()))\n\t{\n\t\treturn INVALID_NEWLINE~;\n\t}\n}\n", &c);
 	// the other values only wrap
 	c3f::Config w = c3f::defaults();
-	(void)w.set("max_line_length", "40");
-	(void)w.set("c3f_line_breaks", "wrap");
+	assert(@ok(w.set("max_line_length", "40")));
+	assert(@ok(w.set("c3f_line_breaks", "wrap")));
 	assert(!fmt_with("fn int f()\n{\n\tif (!is_lf(self.peek())) return INVALID_NEWLINE~;\n}\n", &w).contains("{\n\t\treturn"));
 }
 
 fn void wrap_rewrite_leaves_short_nested_and_deferred_bodies_alone() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap_rewrite");
+	assert(@ok(c.set("max_line_length", "40")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap_rewrite")));
 	// fits; an `else if` chain and a nested `if` (a dangling else); a defer belongs to the block around it
 	check("fn void f()\n{\n\tif (x) return;\n}\n", "fn void f()\n{\n\tif (x) return;\n}\n", &c);
 	String nested = "fn void f()\n{\n\tif (aaaaaaaaaaaa) if (bbbbbbbbbbbbbbbb) cccccccccccccccc();\n}\n";
@@ -709,8 +670,8 @@ fn void wrap_rewrite_leaves_short_nested_and_deferred_bodies_alone() @test
 fn void wrap_rewrite_keeps_a_comment_after_the_body_on_its_line() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("max_line_length", "40");
-	(void)c.set("c3f_line_breaks", "wrap_rewrite");
+	assert(@ok(c.set("max_line_length", "40")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap_rewrite")));
 	check("fn int f()\n{\n\tif (!is_lf(self.peek())) return INVALID_NEWLINE~; // why\n}\n",
 	      "fn int f()\n{\n\tif (!is_lf(self.peek()))\n\t{\n\t\treturn INVALID_NEWLINE~; // why\n\t}\n}\n", &c);
 }
@@ -718,20 +679,18 @@ fn void wrap_rewrite_keeps_a_comment_after_the_body_on_its_line() @test
 fn void strict_pads_initializer_braces() @test
 {
 	c3f::Config strict = c3f::defaults();
-	(void)strict.set("c3f_style", "strict");
 	// strict pads initializer braces, in every shape the learned table alone left lopsided
 	check("Foo a = {};\nFoo b = {1};\nFoo c = {{1, 2}, {3}};\nFoo d = {.x = {1}, .y = 2};\nFoo e = {&x, &y};\nx = a[ i ];\n",
 	      "Foo a = {};\nFoo b = { 1 };\nFoo c = { { 1, 2 }, { 3 } };\nFoo d = { .x = { 1 }, .y = 2 };\nFoo e = { &x, &y };\nx = a[i];\n", &strict);
 	// ... unless the padding is set explicitly
 	c3f::Config tight = strict;
-	(void)tight.set("c3f_space_inside_braces", "false");
+	assert(@ok(tight.set("c3f_space_inside_braces", "false")));
 	check("Foo c = { { 1, 2 }, { 3 } };\n", "Foo c = {{1, 2}, {3}};\n", &tight);
 }
 
 fn void variadics_and_type_declaration_lists() @test
 {
 	c3f::Config strict = c3f::defaults();
-	(void)strict.set("c3f_style", "strict");
 	// `Type... name` hugs the ellipsis in both styles; a splat and `args...` stay as they are
 	c3f::Config d = c3f::defaults();
 	String variadics_in = "fn void a(int ...x, int * ... p, Foo ... r, String fmt, args...);\nfn void b() { c(a, ...arr, ...); }\n";
@@ -755,7 +714,7 @@ fn void multi_line_faultdef_members_are_indented() @test
 		foreach (mode : (String[]){ "keep", "indent", "align" })
 		{
 			c3f::Config c = c3f::defaults();
-			(void)c.set("c3f_continuation", mode);
+			assert(@ok(c.set("c3f_continuation", mode)));
 			check(src, want, &c);
 		}
 	}
@@ -766,18 +725,17 @@ fn void multi_line_faultdef_members_are_indented() @test
 fn void strict_sorts_imports() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_style", "strict");
 	check("import std::math, std::io;\nimport std::core;\nimport a::b;\n", "import std::math, std::io;\nimport std::core;\nimport a::b;\n", &c);
-	(void)c.set("c3f_sort_imports", "all");
+	assert(@ok(c.set("c3f_sort_imports", "all")));
 	check("import std::math, std::io;\nimport std::core;\nimport a::b;\n", "import a::b;\nimport std::core;\nimport std::io, std::math;\n", &c);
-	(void)c.set("c3f_sort_imports", "off");
+	assert(@ok(c.set("c3f_sort_imports", "off")));
 	check("import std::math;\nimport std::io;\n", "import std::math;\nimport std::io;\n", &c);
 }
 
 fn void split_writes_one_module_per_import() @test
 {
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_sort_imports", "split");
+	assert(@ok(c.set("c3f_sort_imports", "split")));
 	check("import std::math, std::io @public;\nimport a::b;\n", "import a::b;\nimport std::io @public;\nimport std::math;\n", &c);
 	check("import b, a; // x\nimport c;\n", "import a, b; // x\nimport c;\n", &c);
 	check("import b, a;\r\nimport c;\r\n", "import a;\r\nimport b;\r\nimport c;\r\n", &c);
@@ -790,7 +748,7 @@ fn void a_pointer_after_a_type_suffix_stays_tight() @test
 		"\tx = v[3] * k;\n\ty = w[<2>] * 3;\n\tz = arr[i] * b ?: 0;\n}\n";
 	check(src, src);
 	c3f::Config name = c3f::defaults();
-	(void)name.set("c3f_pointer_style", "name");
+	assert(@ok(name.set("c3f_pointer_style", "name")));
 	check("fn void f()\n{\n\tchar[8]*? buf;\n\tx = v[3] * k;\n}\n", "fn void f()\n{\n\tchar[8]*? buf;\n\tx = v[3] * k;\n}\n", &name);
 	check("fn void f()\n{\n\tList{int}[2]* d;\n}\n", "fn void f()\n{\n\tList{int}[2] *d;\n}\n", &name);
 	// a comment before the bracket does not hide the type
@@ -801,7 +759,6 @@ fn void a_pointer_after_a_type_suffix_stays_tight() @test
 	check(loose, tight);
 	check(loose, tight, &name);
 	c3f::Config strict = c3f::defaults();
-	(void)strict.set("c3f_style", "strict");
 	check(loose, tight, &strict);
 }
 
@@ -816,11 +773,10 @@ fn void lines_inside_an_initializer_opened_on_the_first_line_are_indented() @tes
 	check(src, want);
 	check(want, want);
 	c3f::Config knr = c3f::defaults();
-	(void)knr.set("c3f_style", "knr");
+	assert(@ok(knr.set("c3f_style", "knr")));
 	check("fn void f()\n{\n\tint[3][*] grid = { { 7, 8 },\n\t{ 9, 10 },\n\t};\n}\n",
 	      "fn void f() {\n\tint[3][*] grid = { { 7, 8 },\n\t\t{ 9, 10 },\n\t};\n}\n", &knr);
 	c3f::Config strict = c3f::defaults();
-	(void)strict.set("c3f_style", "strict");
 	check("fn void f()\n{\n\tint[3][*] grid = {{ 7, 8 },\n\t{ 9, 10 },\n\t};\n}\n",
 	      "fn void f()\n{\n\tint[3][*] grid = { { 7, 8 },\n\t\t{ 9, 10 },\n\t};\n}\n", &strict);
 }
@@ -828,8 +784,8 @@ fn void lines_inside_an_initializer_opened_on_the_first_line_are_indented() @tes
 fn void expand_puts_every_statement_on_its_own_line() @test
 {
 	c3f::Config expand = c3f::defaults();
-	(void)expand.set("c3f_style", "stdlib");
-	(void)expand.set("c3f_one_line_blocks", "expand");
+	assert(@ok(expand.set("c3f_style", "stdlib")));
+	assert(@ok(expand.set("c3f_one_line_blocks", "expand")));
 	check("module m;\nconst int A = 1; const int B = 2;\nfn void f(int n)\n{\n\tint a = 1; int b = 2; // both\n"
 		"\tfor (int i = 0; i < n; i++) { a++; b++; }\n\tfor (;;) break;\n\tif (a) return;\n\tif (a) b = 1; else b = 2;\n"
 		"\tif (a) { b = 1; } c = 2;\n}\n",
@@ -846,14 +802,14 @@ fn void expand_puts_every_statement_on_its_own_line() @test
 fn void expand_puts_compile_time_blocks_on_lines_of_their_own() @test
 {
 	c3f::Config expand = c3f::defaults();
-	(void)expand.set("c3f_style", "stdlib");
-	(void)expand.set("c3f_one_line_blocks", "expand");
-	(void)expand.set("c3f_compile_time_indent", "keep");
+	assert(@ok(expand.set("c3f_style", "stdlib")));
+	assert(@ok(expand.set("c3f_one_line_blocks", "expand")));
+	assert(@ok(expand.set("c3f_compile_time_indent", "keep")));
 	check("fn void f()\n{\n\t$for var $i = 0; $i < 3; $i++: bar($i); baz(); $endfor x = 1;\n\t$if A: foo(); $else bar(); $endif\n"
 		"\t$switch (a): $case 1: foo(); $default: bar(); $endswitch\n}\n",
 	      "fn void f()\n{\n\t$for var $i = 0; $i < 3; $i++:\n\tbar($i);\n\tbaz();\n\t$endfor\n\tx = 1;\n\t$if A:\n\tfoo();\n\t$else\n\tbar();\n\t$endif\n"
 		"\t$switch (a):\n\t$case 1: foo();\n\t$default: bar();\n\t$endswitch\n}\n", &expand);
-	(void)expand.set("c3f_compile_time_indent", "indent");
+	assert(@ok(expand.set("c3f_compile_time_indent", "indent")));
 	check("fn void f()\n{\n\t$if A: foo(); $else bar(); $endif\n}\n",
 	      "fn void f()\n{\n\t$if A:\n\t\tfoo();\n\t$else\n\t\tbar();\n\t$endif\n}\n", &expand);
 }
@@ -861,8 +817,8 @@ fn void expand_puts_compile_time_blocks_on_lines_of_their_own() @test
 fn void expand_starts_a_multi_line_initializer_on_its_own_line() @test
 {
 	c3f::Config expand = c3f::defaults();
-	(void)expand.set("c3f_style", "stdlib");
-	(void)expand.set("c3f_one_line_blocks", "expand");
+	assert(@ok(expand.set("c3f_style", "stdlib")));
+	assert(@ok(expand.set("c3f_one_line_blocks", "expand")));
 	check("fn void f()\n{\n\tint[3][*] grid = { { 7, 8 },\n\t{ 9, 10 },\n\t{ 11, 12 },\n\t};\n\tint[2][*] pair = { { 1, 2 },\n\t\t{ 3, 4 } };\n"
 		"\tint[] z = { 1, 2, };\n}\n",
 	      "fn void f()\n{\n\tint[3][*] grid = {\n\t\t{ 7, 8 },\n\t\t{ 9, 10 },\n\t\t{ 11, 12 },\n\t};\n\tint[2][*] pair = {\n\t\t{ 1, 2 },\n\t\t{ 3, 4 }\n\t};\n"
@@ -872,8 +828,8 @@ fn void expand_starts_a_multi_line_initializer_on_its_own_line() @test
 fn void expand_writes_type_bodies_on_several_lines() @test
 {
 	c3f::Config expand = c3f::defaults();
-	(void)expand.set("c3f_style", "stdlib");
-	(void)expand.set("c3f_one_line_blocks", "expand");
+	assert(@ok(expand.set("c3f_style", "stdlib")));
+	assert(@ok(expand.set("c3f_one_line_blocks", "expand")));
 	String src = "struct Vec { int a; int b; }\nunion U { int a; float b; }\nenum Shade : char { DARK, DIM, BRIGHT, }\nconstdef Mode : int { OFF, ON = 7 }\n"
 		"bitstruct Flags : char { bool on : 0; int level : 1..3; }\nstruct Outer { struct inner { int x; } int y; }\n";
 	String want = "struct Vec\n{\n\tint a;\n\tint b;\n}\nunion U\n{\n\tint a;\n\tfloat b;\n}\nenum Shade : char\n{\n\tDARK,\n\tDIM,\n\tBRIGHT,\n}\n"
@@ -894,20 +850,20 @@ fn void expand_writes_type_bodies_on_several_lines() @test
 fn void expand_puts_the_brace_of_an_empty_body_where_the_brace_style_says() @test
 {
 	c3f::Config expand = c3f::defaults();
-	(void)expand.set("c3f_style", "stdlib");
-	(void)expand.set("c3f_one_line_blocks", "expand");
+	assert(@ok(expand.set("c3f_style", "stdlib")));
+	assert(@ok(expand.set("c3f_one_line_blocks", "expand")));
 	String src = "fn void noop() {}\nstruct Sink (Stream) {}\nfn void f(int x)\n{\n\tif (x) {} else {}\n\tcb = fn void() {};\n\tapply(fn void() {}, 1);\n}\n";
 	check(src, "fn void noop()\n{}\nstruct Sink (Stream)\n{}\nfn void f(int x)\n{\n\tif (x)\n\t{}\n\telse\n\t{}\n\tcb = fn void() {};\n"
 		"\tapply(fn void() {}, 1);\n}\n", &expand);
 	check("fn void noop()\n{}\n", "fn void noop()\n{}\n", &expand);
 	// K&R keeps (and joins) it on the line, and linux moves only the brace of a function
 	c3f::Config knr = c3f::defaults();
-	(void)knr.set("c3f_style", "knr");
-	(void)knr.set("c3f_one_line_blocks", "expand");
+	assert(@ok(knr.set("c3f_style", "knr")));
+	assert(@ok(knr.set("c3f_one_line_blocks", "expand")));
 	check("fn void noop()\n{}\nstruct Sink (Stream)\n{}\n", "fn void noop() {}\nstruct Sink (Stream) {}\n", &knr);
 	c3f::Config linux = c3f::defaults();
-	(void)linux.set("c3f_brace_style", "linux");
-	(void)linux.set("c3f_one_line_blocks", "expand");
+	assert(@ok(linux.set("c3f_brace_style", "linux")));
+	assert(@ok(linux.set("c3f_one_line_blocks", "expand")));
 	check("fn void noop() {}\nstruct Sink {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", "fn void noop()\n{}\nstruct Sink {}\nfn void f(int x)\n{\n\tif (x) {}\n}\n", &linux);
 	// the default leaves an empty body where it is
 	check(src, src);
@@ -922,9 +878,9 @@ fn void while_style_places_the_while_of_a_do_loop() @test
 	check(own, own);
 	check(cud, cud);
 	c3f::Config c = c3f::defaults();
-	(void)c.set("c3f_while_style", "own_line");
+	assert(@ok(c.set("c3f_while_style", "own_line")));
 	check(cud, own, &c);
-	(void)c.set("c3f_while_style", "same_line");
+	assert(@ok(c.set("c3f_while_style", "same_line")));
 	check(own, cud, &c);
 	// the while loop after a block is not a do loop
 	check("fn void f()\n{\n\t{\n\t\tstep();\n\t}\n\twhile (more()) step();\n}\n", "fn void f()\n{\n\t{\n\t\tstep();\n\t}\n\twhile (more()) step();\n}\n", &c);
@@ -943,6 +899,14 @@ fn void man_page_documents_every_option() @test
 		{
 			if (v.len == 0 || v[0] < 'a' || v[0] > 'z' || @ok(v.index_of_char(' '))) continue;
 			assert(@ok(line.index_of(v)), "value %s of %s is not in c3f.1.scd", v, name);
+		}
+		// the values are written default first (for the options that list their values by name)
+		c3f::Config defaults = c3f::defaults();
+		String def = defaults.value_text(k);
+		String first = line.tsplit(" = ")[1].tsplit(" | ")[0];
+		if (allowed_values_by_name(k) && first.len > 0 && first[0] >= 'a' && first[0] <= 'z')
+		{
+			assert(first == def, "option %s: the man page lists %s first, the default is %s", name, first, def);
 		}
 	}
 }
@@ -1042,7 +1006,7 @@ fn void a_brace_that_breaks_after_its_opener_closes_on_its_own_line() @test
 	check("fn void f()\n{\n\tint[] w = { 1, 2\n\t};\n}\n", "fn void f()\n{\n\tint[] w = { 1, 2\n\t};\n}\n", &strict);
 	// a block keeps its brace style: nothing changes in the three styles
 	c3f::Config knr = c3f::defaults();
-	(void)knr.set("c3f_brace_style", "knr");
+	assert(@ok(knr.set("c3f_brace_style", "knr")));
 	check("fn void f() {\n\tif (x) {\n\t\ta();\n\t}\n}\n", "fn void f() {\n\tif (x) {\n\t\ta();\n\t}\n}\n", &knr);
 }
 
@@ -1095,4 +1059,47 @@ fn void a_declaration_name_stays_on_the_line_of_its_type() @test
 	check("fn void f()\n{\n\tFoo*\n\tz;\n}\n", "fn void f()\n{\n\tFoo* z;\n}\n", &strict);
 	// a name that is not a declaration is not joined: an operator or a call comes before it
 	check("fn void f()\n{\n\tx = a *\n\tb;\n}\n", "fn void f()\n{\n\tx = a *\n\tb;\n}\n", &strict);
+}
+
+fn void a_generic_stays_on_one_line_whatever_the_indentation_after_its_break() @test
+{
+	c3f::Config strict = c3f::defaults();
+	// the break is joined whether the next line is indented or not, in a body or at the top level
+	check("module m;\nfn void f()\n{\n\tAa{int,\n\t\tint} y;\n\tAa{\n\t\tint} x;\n}\n",
+	      "module m;\nfn void f()\n{\n\tAa{int, int} y;\n\tAa{int} x;\n}\n", &strict);
+	check("module x;\nAa{\n\tint} y;\n", "module x;\nAa{int} y;\n", &strict);
+}
+
+<* Are the values of the option words (not numbers, ranges or free text)? *>
+fn bool allowed_values_by_name(c3f::Key k) @local
+{
+	String v = c3f::allowed_values(k);
+	return v.len > 0 && v[0] >= 'a' && v[0] <= 'z' && !v.contains(" to ") && !v.contains("or ");
+}
+
+fn void the_old_blank_lines_option_is_the_blank_top_level_decls() @test
+{
+	// `c3f_blank_lines_between_decls=1` is the old name of `c3f_top_level_decls=blank`
+	c3f::Config old = c3f::defaults();
+	(void)old.set("c3f_blank_lines_between_decls", "1");
+	check("fn void a() {}\nfn void b() {}\n", "fn void a() {}\n\nfn void b() {}\n", &old);
+	c3f::Config blank = c3f::defaults();
+	(void)blank.set("c3f_top_level_decls", "blank");
+	check("fn void a() {}\nfn void b() {}\n", "fn void a() {}\n\nfn void b() {}\n", &blank);
+}
+
+fn void the_wrap_tuning_options_are_read_back() @test
+{
+	// these options are documented: each is set, and read back as set
+	c3f::Config c = c3f::defaults();
+	(void)c.set("c3f_soft_max_line_length", "60");
+	(void)c.set("c3f_wrap_cost_soft", "0.5");
+	(void)c.set("c3f_wrap_cost_hard", "200");
+	(void)c.set("c3f_wrap_cost_break", "3");
+	(void)c.set("c3f_wrap_max_tokens", "500");
+	assert(c.value_text(c3f::Key.SOFT_MAX_LINE_LENGTH) == "60");
+	assert(c.value_text(c3f::Key.WRAP_COST_SOFT) == "0.5");
+	assert(c.value_text(c3f::Key.WRAP_COST_HARD) == "200");
+	assert(c.value_text(c3f::Key.WRAP_COST_BREAK) == "3");
+	assert(c.value_text(c3f::Key.WRAP_MAX_TOKENS) == "500");
 }

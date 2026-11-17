@@ -10,9 +10,6 @@ import c3f, std::collections::list, std::core::mem, std::io, std::io::file, std:
 const String GOLDEN_DIR = "test/golden";
 const String GOLDEN_EXT = ".golden";
 const String SEPARATOR = "// Output";
-const String OPTION_PREFIX = "// c3f_";
-<* Options without the c3f_ prefix, as in .editorconfig. *>
-const String[] PLAIN_OPTIONS = { "indent_style", "indent_size", "tab_width", "end_of_line", "insert_final_newline", "max_line_length" };
 
 fn void golden_cases() @test
 {
@@ -155,10 +152,9 @@ fn String report(String file, String text, usz want_start, String want, String g
 <* Is this a header line: `// c3f_<key>=...`, or `// <key>=...` for a key without the prefix? *>
 fn bool is_option_line(String line) @local
 {
-	if (line.starts_with(OPTION_PREFIX)) return true;
-	foreach (k : PLAIN_OPTIONS)
-	{
-		if (line.starts_with(string::tformat("// %s=", k))) return true;
-	}
-	return false;
+	if (!line.starts_with("// ")) return false;
+	usz eq = find_char(line[3:line.len - 3], '=');
+	if (eq == line.len - 3) return false;
+	if (catch c3f::key_from_name(line[3:eq])) return false;
+	return true;
 }

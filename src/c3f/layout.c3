@@ -83,7 +83,7 @@ fn void Fmt.breaks(&self)
 		if (o.nl > 1 && c.trim_block_blanks && (s.toks[i - 1].type == LBRACE || t.type == RBRACE)) o.nl = 1;
 		if (s.toks[i - 1].type == LINE_COMMENT && o.nl == 0) o.nl = 1;
 	}
-	sz for_colon = NO;   // the ':' that ends the header of the `$for` being passed
+	sz for_colon = NO;   // the ':' that ends the header of the `$for` being passed (NO: none)
 	for (sz i = 0; i < s.len(); i++)
 	{
 		Tok* t = &s.toks[i];
@@ -92,23 +92,27 @@ fn void Fmt.breaks(&self)
 			case LBRACE: self.brace_breaks(i);
 			case ELSE: self.else_break(i);
 			case WHILE: self.while_break(i);
+			case CT_FOR: for_colon = s.header_colon(i, false, semicolons: true);
 			default:
 		}
 		if (c.one_line_blocks == EXPAND && !self.fixed(i))
 		{
-			if (t.type == CT_FOR) for_colon = s.header_colon(i, false, semicolons: true);
-			self.expand_breaks(i, i < for_colon);
+			self.expand_breaks(i, for_colon != NO && i < for_colon);
 		}
 		if (c.top_level_decls == BLANK) self.decl_break(i);
 		if (c.top_level_decls == LINE) self.toplevel_break(i);
 		if (c.compile_time_body == LINE) self.ct_body_break(i);
+		self.after_endif_break(i);
+	}
+	if (c.one_line_blocks == EXPAND)
+	{
+		for (sz o = 0; o < s.len(); o++) if (s.toks[o].type == LBRACE) self.break_initializer(o);
 	}
 	self.symmetric_closers();
 	self.generic_joins();
 	self.decl_joins();
 	self.empty_joins();
 	self.semicolon_joins();
-	self.after_endif_breaks();
 	// the spacing rules look at line breaks: let them see these, as the next run will
 	for (sz i = 1; i < s.len(); i++) s.toks[i].nl = self.out[i].nl;
 }
@@ -125,16 +129,14 @@ fn void Fmt.empty_joins(&self)
 }
 
 <* A statement after a `$endif` starts a line of its own. *>
-fn void Fmt.after_endif_breaks(&self)
+fn void Fmt.after_endif_break(&self, sz i)
 {
 	Src* s = self.src;
-	for (sz i = 1; i < s.len(); i++)
-	{
-		Tok* t = &s.toks[i];
-		if (s.toks[i - 1].type != CT_ENDIF || !t.code || t.type == RBRACE || t.type == ELSE || t.type == EOS || t.type == COMMA) continue;
-		if (self.fixed(i) || self.out[i].nl != 0) continue;
-		self.out[i].nl = 1;
-	}
+	if (i == 0 || s.toks[i - 1].type != CT_ENDIF) return;
+	Tok* t = &s.toks[i];
+	if (!t.code || t.type == RBRACE || t.type == ELSE || t.type == EOS || t.type == COMMA) return;
+	if (self.fixed(i) || self.out[i].nl != 0) return;
+	self.out[i].nl = 1;
 }
 
 <* A declaration's name stays on the line of its type: `Aa{int} x;`, `int y = 1;`. *>
@@ -154,6 +156,9 @@ fn void Fmt.decl_joins(&self)
 		self.out[i].nl = 0;
 	}
 }
+
+<* A compile-time construct whose body starts a line of its own in the `line` mode. *>
+fn bool is_ct_body_start(TokenType t) => t == CT_IF || t == CT_ELSE || t == CT_FOR || t == CT_FOREACH || t == CT_CASE || t == CT_DEFAULT;
 
 <* Strict: the arguments of a generic type are tight, on one line: a line break inside `Aa{ ... }` is joined. *>
 fn void Fmt.generic_joins(&self)
@@ -216,7 +221,7 @@ fn void Fmt.brace_breaks(&self, sz o)
 	bool ct_split = false;
 	if (self.cfg.compile_time_body == LINE)
 	{
-		for (sz k = o + 1; k < m && !ct_split; k++) ct_split = s.toks[k].type == CT_IF || s.toks[k].type == CT_ELSE || s.toks[k].type == CT_FOR || s.toks[k].type == CT_FOREACH || s.toks[k].type == CT_CASE || s.toks[k].type == CT_DEFAULT;
+		for (sz k = o + 1; k < m && !ct_split; k++) ct_split = is_ct_body_start(s.toks[k].type);
 	}
 	bool multi = s.toks[m].line > t.line || expand || ct_split;
 	if (!multi) return;
@@ -262,8 +267,6 @@ fn void Fmt.expand_breaks(&self, sz i, bool in_for_header)
 		case RBRACE:
 			if (t.match == NO) return;
 			Tok* o = &s.toks[t.match];
-			// an initializer list: here, where the breaks inside it are known (a lambda in it may have been expanded)
-			if (o.brace == INIT) self.break_initializer(t.match);
 			// a block or a type body, not a lambda or a block in an expression
 			if ((o.brace != BLOCK && o.brace != BODY) || s.is_lambda_body(t.match)) return;
 			if (o.encl != NO && s.toks[o.encl].type != LBRACE) return;
@@ -275,8 +278,7 @@ fn void Fmt.expand_breaks(&self, sz i, bool in_for_header)
 			self.break_after(i);
 		case CT_IF: case CT_FOR: case CT_FOREACH: case CT_SWITCH:
 			// the header's ':' ends the line (the bodies of a `$case` may stay on its line)
-			sz colon = s.header_colon(i, t.type == CT_FOREACH, semicolons: t.type == CT_FOR);
-			if (colon != NO && !self.fixed(colon)) self.break_after(colon);
+			self.header_break(i);
 		case FAULTDEF:
 			self.break_faultdef(i);
 		default:
@@ -354,8 +356,14 @@ fn void Fmt.while_break(&self, sz w)
 	if (w == 0 || self.cfg.while_style == KEEP || self.fixed(w) || s.toks[w - 1].type != RBRACE) return;
 	sz open = s.toks[w - 1].match;
 	if (open == NO || s.type_at(s.prev_code(open)) != DO) return;
-	if (self.cfg.while_style == OWN_LINE && self.out[w].nl == 0) self.out[w].nl = 1;
-	if (self.cfg.while_style == SAME_LINE) self.out[w].nl = 0;
+	self.keyword_line(w, self.cfg.while_style == OWN_LINE, self.cfg.while_style == SAME_LINE);
+}
+
+<* A keyword that starts its own line (`own_line`), or follows the '}' on the same line (`same_line`). *>
+fn void Fmt.keyword_line(&self, sz i, bool own_line, bool same_line)
+{
+	if (own_line && self.out[i].nl == 0) self.out[i].nl = 1;
+	if (same_line) self.out[i].nl = 0;
 }
 
 fn void Fmt.else_break(&self, sz e)
@@ -368,23 +376,36 @@ fn void Fmt.else_break(&self, sz e)
 		&& (self.cfg.one_line_blocks != EXPAND || self.out[open].nl == 0))) return;
 	ElseStyle style = self.cfg.else_style;
 	if (style == FOLLOW) style = self.cfg.brace_style == ALLMAN ? ElseStyle.OWN_LINE : ElseStyle.SAME_LINE;
-	if (style == OWN_LINE && self.out[e].nl == 0) self.out[e].nl = 1;
-	if (style == SAME_LINE) self.out[e].nl = 0;
+	self.keyword_line(e, style == OWN_LINE, style == SAME_LINE);
 }
+
+<* Does token c close a block or body at the top level (`fn f() { … }`, `struct S { … }`)? *>
+fn bool Src.closes_top_level_body(&self, sz c) @inline
+{
+	Tok* p = &self.toks[c];
+	// (a closer's encl is its own opener: the opener tells whether it is at top level)
+	return p.type == RBRACE && p.match != NO && self.toks[p.match].encl == NO && (self.toks[p.match].brace == BLOCK || self.toks[p.match].brace == BODY);
+}
+
+<* A token that cannot start a declaration after a body: `else`, a statement end, a closer, a comma. *>
+fn bool is_not_a_declaration_start(TokenType t) => t == ELSE || t == EOS || t == RBRACE || t == COMMA;
 
 <* At least one blank line after a top-level function or type body. *>
 fn void Fmt.decl_break(&self, sz i)
 {
 	Src* s = self.src;
 	if (i == 0 || self.fixed(i) || self.out[i].nl != 1) return;
-	Tok* p = &s.toks[i - 1];
-	// (a closer's encl is its own opener: the opener tells whether it is at top level)
-	if (p.type != RBRACE || p.match == NO || s.toks[p.match].encl != NO) return;
-	BraceKind k = s.toks[p.match].brace;
-	if (k != BLOCK && k != BODY) return;
-	TokenType t = s.toks[i].type;
-	if (t == ELSE || t == EOS || t == RBRACE || t == COMMA) return;
+	if (!s.closes_top_level_body(i - 1) || is_not_a_declaration_start(s.toks[i].type)) return;
 	self.out[i].nl = 2;
+}
+
+<* Break after the ':' that ends the header of compile-time construct i (`$if x:`, `$for …:`, `$case 1:`). *>
+fn void Fmt.header_break(&self, sz i)
+{
+	Src* s = self.src;
+	Tok* t = &s.toks[i];
+	sz colon = s.header_colon(i, t.type == CT_FOREACH, semicolons: t.type == CT_FOR);
+	if (colon != NO && !self.fixed(colon)) self.break_after(colon);
 }
 
 <* The body of a `$if`, `$else`, `$for`, `$foreach`, `$case` or `$default` starts a line of its own. *>
@@ -399,12 +420,8 @@ fn void Fmt.ct_body_break(&self, sz i)
 			self.break_after(i);
 		case CT_ENDIF: case CT_ENDFOR: case CT_ENDFOREACH: case CT_ENDSWITCH:
 			self.break_before(i);
-		case CT_CASE: case CT_DEFAULT:
-			sz label = s.header_colon(i, false);
-			if (label != NO && !self.fixed(label)) self.break_after(label);
-		case CT_IF: case CT_FOR: case CT_FOREACH:
-			sz colon = s.header_colon(i, t.type == CT_FOREACH, semicolons: t.type == CT_FOR);
-			if (colon != NO && !self.fixed(colon)) self.break_after(colon);
+		case CT_CASE: case CT_DEFAULT: case CT_IF: case CT_FOR: case CT_FOREACH:
+			self.header_break(i);
 		default:
 	}
 }
@@ -416,15 +433,10 @@ fn void Fmt.toplevel_break(&self, sz i)
 	if (i == 0 || self.fixed(i) || self.out[i].nl != 0) return;
 	Tok* t = &s.toks[i];
 	if (!t.code || t.encl != NO) return;
-	if (t.type == ELSE || t.type == EOS || t.type == RBRACE || t.type == COMMA) return;
+	if (is_not_a_declaration_start(t.type)) return;
 	Tok* p = &s.toks[i - 1];
 	if (!p.code || self.fixed(i - 1)) return;
-	bool after_decl = p.type == EOS && p.encl == NO;
-	if (p.type == RBRACE && p.match != NO && s.toks[p.match].encl == NO)
-	{
-		BraceKind k = s.toks[p.match].brace;
-		after_decl = k == BLOCK || k == BODY;
-	}
+	bool after_decl = (p.type == EOS && p.encl == NO) || s.closes_top_level_body(i - 1);
 	if (after_decl) self.out[i].nl = 1;
 }
 
@@ -520,7 +532,7 @@ fn void Fmt.layout(&self)
 		}
 		else if (t.type == LBRACE && (t.match != NO || t.dangling) && self.opens_lines(i))
 		{
-			Indent content = t.is_switch && !c.case_indent ? line : line.deeper();
+			Indent content = t.is_switch && c.case_indent == FLUSH ? line : line.deeper();
 			self.frames.push({ .kind = BRACE, .opener = i, .owner = NO, .anchor = i, .base = line, .content = content });
 		}
 		else if (is_ct_open(t.type) && t.match != NO)
@@ -754,7 +766,7 @@ fn void Fmt.space(&self, sz i)
 		o.spacing = "";     // `{}`
 		return;
 	}
-	if (gap.contains("\n") && !(c.spacing == STRICT && s.in_generic(i)))
+	if (gap.contains("\n"))
 	{
 		// a statement's ';' that was joined to the code before it has no space
 		bool semi = s.is_statement_semi(i);

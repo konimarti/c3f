@@ -7,8 +7,8 @@ fn void ternaries_wrap_at_their_question_mark_and_colon() @test
 	foreach (mode : modes)
 	{
 		c3f::Config cfg = c3f::defaults();
-		(void)cfg.set("max_line_length", "80");
-		(void)cfg.set("c3f_line_breaks", mode);
+		assert(@ok(cfg.set("max_line_length", "80")));
+		assert(@ok(cfg.set("c3f_line_breaks", mode)));
 		String src = "fn int f()\n{\n\treturn condition_one_is_true_here ? some_value_when_true_expression : some_other_value_when_false;\n}\n";
 		String got = fmt_with(src, &cfg);
 		assert(got == "fn int f()\n{\n\treturn condition_one_is_true_here ? some_value_when_true_expression\n\t\t: some_other_value_when_false;\n}\n", "got:\n%s", got);
@@ -41,8 +41,8 @@ fn void nested_ternaries_and_other_colons_stay_stable() @test
 		foreach (w : widths)
 		{
 			c3f::Config cfg = c3f::defaults();
-			(void)cfg.set("max_line_length", w);
-			(void)cfg.set("c3f_line_breaks", mode);
+			assert(@ok(cfg.set("max_line_length", w)));
+			assert(@ok(cfg.set("c3f_line_breaks", mode)));
 			String once = fmt_with(src, &cfg);
 			assert(fmt_with(once, &cfg) == once, "not idempotent at %s:\n%s", w, once);
 			String a = src.treplace("\n", "").treplace("\t", "").treplace(" ", "");
