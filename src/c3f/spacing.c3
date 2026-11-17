@@ -219,6 +219,26 @@ fn bool Src.closes_call(&self, sz r)
 <* Can a variadic `...` follow this token as `Type... name` (the types the learned table has no cells for)? *>
 fn bool ends_type(TokenType t) => is_base_type(t) || t == STAR || t == QUESTION;
 
+<*
+ Is the '(' at i the parameter list of a function type, `fn int?(int x)` or `fn int*(int x)`? A type
+ suffix (`?`, `*`, `[]`) may follow the base type or name; the name is not needed, so the list is
+ tight with or without one (`fn int? f(int x)` also has its '(' after a name, which is not a type).
+*>
+fn bool Src.is_fn_type_params(&self, sz i)
+{
+	if (i < 2 || self.toks[i].type != LPAREN) return false;
+	sz k = i - 1;
+	while (k > 0 && (self.toks[k].type == QUESTION || self.toks[k].type == STAR || self.toks[k].type == RBRACKET))
+	{
+		k = self.toks[k].type == RBRACKET && self.toks[k].match != NO ? self.toks[k].match - 1 : k - 1;
+	}
+	if (k == 0 || !(is_base_type(self.toks[k].type) || self.toks[k].type == TYPE_IDENT)) return false;
+	return self.toks[k - 1].type == FUNC;
+}
+
+<* A ';' that ends a statement: not one inside parentheses (a `for` header). Top level counts. *>
+fn bool Src.is_statement_semi(&self, sz i) @inline => self.toks[i].type == EOS && (self.toks[i].encl == NO || self.toks[self.toks[i].encl].type != LPAREN);
+
 <* Is the '(' at i the list of a declaration like `struct Foo (Bar)`: after its name, before any '=' or body? *>
 fn bool Src.is_type_header_paren(&self, sz i)
 {
@@ -308,12 +328,28 @@ fn bool is_operator_text(String t)
 fn bool Src.same_line(&self, sz i) @inline => i > 0 && i < self.len() && self.toks[i].nl == 0;
 
 <*
+ Is the gap before token i inside a binary operator followed by a prefix operator (`a + *q`, `a - -b`),
+ either before the binary operator or before the prefix one? `**` is left out: `a**b` stays tight.
+*>
+fn bool Src.binary_then_prefix(&self, sz i) @local
+{
+	if (i == 0 || i + 1 >= self.len()) return false;
+	// (a pair of stars is `**`, or `a * *b`, which the rules above and the table settle)
+	if (self.toks[i - 1].type == STAR && self.toks[i].type == STAR) return false;
+	if (self.toks[i].type == STAR && self.toks[i + 1].type == STAR) return false;
+	if (self.same_line(i) && self.is_binary(i - 1) && self.is_unary(i)) return true;
+	return self.same_line(i) && self.same_line(i + 1) && self.is_binary(i) && self.is_unary(i + 1);
+}
+
+<*
  Space for the same-line gap before token i, before the guards. Both sides of an operator
  follow the source if either side does, so `a*b` and `a *b` never become lopsided.
 *>
 fn Space Src.space_rule(&self, sz i, Config* cfg)
 {
 	if (self.is_unary(i - 1)) return NONE;
+	// a statement's ';' is written after the code before it, in every style (not a `for` header's)
+	if (self.is_statement_semi(i)) return NONE;
 	// `a ** b` is `a * *b`: the binary `*` is spaced on both sides, as written (`a**b` stays tight)
 	if (self.toks[i].type == STAR && self.toks[i - 1].type == STAR && self.same_line(i) && self.is_binary(i - 1) && self.is_unary(i)
 		&& (self.gap(i - 1).len > 0 || self.gap(i).len > 0)) return ONE;
@@ -321,6 +357,8 @@ fn Space Src.space_rule(&self, sz i, Config* cfg)
 	if (is_ct_binary_op(self.toks[i].type) || is_ct_binary_op(self.toks[i - 1].type)) return ONE;
 	// a binary operator that starts a line (a wrapped `a\n* b`): the table would read it as `*p`
 	if (self.toks[i - 1].nl > 0 && self.is_binary(i - 1)) return ONE;
+	// strict: a binary operator and the prefix operator after it are spaced on both sides: `a + *q`
+	if (cfg.spacing == STRICT && self.binary_then_prefix(i)) return ONE;
 	Space rule = self.gap_rule(i, cfg);
 	// the inside of a one-line `{ … }` is padded alike on both ends
 	sz open = self.toks[i - 1].type == LBRACE ? i - 1 : self.toks[i].type == RBRACE ? self.toks[i].match : NO;
@@ -468,6 +506,8 @@ fn Space Src.gap_rule(&self, sz i, Config* cfg)
 	if (prev.type == ELLIPSIS && i >= 2 && ends_type(self.toks[i - 2].type) && (next.type == IDENT || next.type == CT_IDENT || next.type == HASH_IDENT)) return ONE;
 	// the list after the name of a type declaration is spaced off it: `struct Foo (Bar)`, `enum E : int (String name)` (the stdlib: 98%)
 	if (next.type == LPAREN && next.encl == NO && (prev.type == TYPE_IDENT || is_base_type(prev.type)) && self.is_type_header_paren(i)) return ONE;
+	// strict: the parameter list of a function type is tight, `fn int?(int x)` as `fn void(int x)`
+	if (cfg.spacing == STRICT && next.type == LPAREN && self.is_fn_type_params(i)) return NONE;
 	// strict: generic arguments are tight, `List{Table[3]}` (the stdlib also writes `HashMap { K, V }`)
 	if (cfg.spacing == STRICT)
 	{

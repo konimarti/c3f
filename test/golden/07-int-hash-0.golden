@@ -1,0 +1,8 @@
+// c3f_style=strict
+// c3f_one_line_blocks=expand
+fn int x(){(int){}.hash-=0;}
+// Output
+fn int x()
+{
+	(int){}.hash -= 0;
+}

@@ -16,6 +16,7 @@ fn void write_keeps_place_and_exits_ok() @test
 	String path = temp_file("write_kept.c3", BROKEN);
 	defer (void)file::delete(path);
 	c3f::Config cfg = c3f::defaults();
+	(void)cfg.set("c3f_style", "stdlib");
 	cli::Options opt;
 	opt.mode = WRITE;
 	assert(cli::run(&opt, path, BROKEN, &cfg) == cli::Status.OK);

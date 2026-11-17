@@ -1,0 +1,14 @@
+// c3f_style=strict
+// c3f_brace_style=allman
+// c3f_one_line_blocks=expand
+// c3f_space_inside_braces=false
+// end_of_line=keep
+// indent_style=tab
+// insert_final_newline=true
+fn int a()=>0;fn int main(){int[<*>]?x={unreachable(),a()};}
+// Output
+fn int a() => 0;
+fn int main()
+{
+	int[<*>]?x = {unreachable(), a()};
+}

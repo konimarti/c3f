@@ -122,7 +122,8 @@ fn void Src.init(&self, String text)
 		self.toks.push({
 			.type = t.type, .text = t.text, .start = t.offset, .line = t.ln, .nl = t.nl_before, .src_nl = t.nl_before,
 			.match = NO, .encl = NO, .parent = NO, .code = code, .unterminated = t.unterminated, .fault_member = in_faultdef,
-			.prev = (int)last_code, .next = (int)NO, .row = (int)(i == 0 || t.nl_before > 0 ? i : self.toks[i - 1].row) });
+			.prev = (int)last_code, .next = (int)NO, .row = (int)(i == 0 || t.nl_before > 0 ? i : self.toks[i - 1].row)
+		});
 		if (after_cut)
 		{
 			// the damaged place ends where this line starts: its gap is kept as written

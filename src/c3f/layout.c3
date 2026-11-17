@@ -101,8 +101,38 @@ fn void Fmt.breaks(&self)
 		}
 		if (c.blank_lines_between_decls == ONE) self.decl_break(i);
 	}
+	self.symmetric_closers();
+	self.semicolon_joins();
 	// the spacing rules look at line breaks: let them see these, as the next run will
 	for (sz i = 1; i < s.len(); i++) s.toks[i].nl = self.out[i].nl;
+}
+
+<* A ';' that ends a statement is written after the code before it, not on a line of its own. *>
+fn void Fmt.semicolon_joins(&self)
+{
+	Src* s = self.src;
+	for (sz i = 1; i < s.len(); i++)
+	{
+		Tok* t = &s.toks[i];
+		if (!s.is_statement_semi(i) || self.fixed(i) || !t.code || self.out[i].nl == 0) continue;
+		Tok* p = &s.toks[i - 1];
+		if (!p.code || is_comment_type(p.type) || self.fixed(i - 1)) continue;
+		self.out[i].nl = 0;
+	}
+}
+
+<* A '}' that closes a brace whose contents start on a line of their own starts a line too (the brace pair is symmetric). *>
+fn void Fmt.symmetric_closers(&self)
+{
+	Src* s = self.src;
+	for (sz o = 0; o + 1 < s.len(); o++)
+	{
+		Tok* t = &s.toks[o];
+		if (t.type != LBRACE || t.match == NO || t.match <= o + 1 || self.fixed(o) || self.fixed(t.match)) continue;
+		if (t.brace == BLOCK || t.brace == BODY) continue;
+		if (self.out[o + 1].nl == 0 || !s.toks[o + 1].code) continue;
+		if (self.out[t.match].nl == 0 && s.toks[t.match - 1].code && !is_comment_type(s.toks[t.match - 1].type)) self.out[t.match].nl = 1;
+	}
 }
 
 fn bool Fmt.fixed(&self, sz i) @inline => i >= self.src.len() || self.src.toks[i].keep;
@@ -601,7 +631,9 @@ fn void Fmt.space(&self, sz i)
 	String gap = s.gap(i);
 	if (gap.contains("\n"))
 	{
-		o.spacing = " ";     // a line that was joined (brace or else style)
+		// a statement's ';' that was joined to the code before it has no space
+		bool semi = s.is_statement_semi(i);
+		o.spacing = semi ? "" : " ";     // a line that was joined (brace or else style)
 		return;
 	}
 	Space rule = s.space_rule(i, c);

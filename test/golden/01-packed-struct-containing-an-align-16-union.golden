@@ -1,0 +1,42 @@
+// c3f_style=strict
+// c3f_align=keep
+// c3f_blank_lines_between_decls=keep
+// c3f_brace_style=allman
+// c3f_space_inside_braces=keep
+// end_of_line=keep
+// indent_style=tab
+// insert_final_newline=true
+union Aa{
+bool b;
+int x;
+}
+union Ba@packed{
+Aa x;
+}
+bool a=true;
+fn void main(){
+(Ba){
+{
+.b=a}
+}
+;
+}
+// Output
+union Aa
+{
+	bool b;
+	int x;
+}
+union Ba @packed
+{
+	Aa x;
+}
+bool a = true;
+fn void main()
+{
+	(Ba){
+		{
+			.b = a
+		}
+	};
+}

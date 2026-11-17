@@ -1,0 +1,28 @@
+// c3f_style=stdlib
+module demo;
+fn void f()
+{
+if (x)
+{
+return;
+}
+else
+{
+y();
+}
+int a=b+c;
+}
+// Output
+module demo;
+fn void f()
+{
+	if (x)
+	{
+		return;
+	}
+	else
+	{
+		y();
+	}
+	int a = b + c;
+}

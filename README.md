@@ -6,7 +6,7 @@ A fast, token-based formatter for [C3](https://c3-lang.org).
 
 - **Stable.** Formatting twice gives the same bytes: no flapping in CI, no fights with format-on-save.
 
-- **Stdlib style.** Spacing rules learned from the C3 standard library itself.
+- **Stdlib style.** Spacing rules learned from the C3 standard library itself; `strict` (the default) writes the more common form where the stdlib varies.
 
 - **Optimal wrapping.** Line breaks are determined by a dynamic programming algorithm ([Yelland](https://github.com/google/rfmt/blob/master/inst/doc/A%20New%20Approach%20to%20Optimal%20Code%20Formatting.pdf), as in Google's rfmt). Opt-in.
 
@@ -222,7 +222,7 @@ Options come from `.editorconfig` (the nearest file wins) and `--set key=value`:
 
 ```ini
 [*.{c3,c3i,c3t}]
-c3f_style = strict            # stdlib (default), knr or strict
+c3f_style = strict            # strict (default), stdlib or knr
 indent_style = tab
 max_line_length = 100
 c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay multi-line statements out again)
@@ -230,7 +230,7 @@ c3f_line_breaks = wrap        # break the lines over the limit (reflow: lay mult
 
 | Option | What it does |
 |---|---|
-| `c3f_style` | `stdlib` (default): tabs, Allman braces, the standard library's spacing. `knr`: K&R braces. `strict`: one form where the stdlib itself varies (`Foo* p`, `{ 1, 2 }`, `s[a:b]`), and sorted imports. |
+| `c3f_style` | `strict` (default): tabs, Allman braces, one form where the stdlib itself varies (`Foo* p`, `{ 1, 2 }`, `s[a:b]`). `stdlib`: the standard library's spacing as written. `knr`: K&R braces. Import sorting is opt-in (`c3f_sort_imports`), in every style. |
 | `max_line_length`, `c3f_line_breaks` | `keep` (default) never moves your line breaks; `wrap` breaks only the statements with a line over the limit; `reflow` also lays out multi-line statements again; `wrap_rewrite` is `wrap` plus two changes that add tokens: a string that is still too long is split into `"a " "b"`, which the compiler joins, and a braceless `if`/`else`/`while`/`for`/`foreach` body that is too long for its line gets `{ }` and its own line (c3c does not allow the body of an `if` on the line after it). The joined value and the added braces are checked. |
 | `indent_style`, `indent_size`, `tab_width` | `tab`, 4, 4. |
 | `c3f_sort_imports` | `off`, `lines`, `lists`, `all`, `split` (one module per `import`). |

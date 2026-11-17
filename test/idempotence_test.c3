@@ -28,7 +28,7 @@ fn void sorted_imports_with_no_blank_lines_allowed() @test
 	got = settle(src, { "c3f_sort_imports", "all", "c3f_max_blank_lines", "2" });
 	assert(got == src, "got:\n%s", got);
 	// a comment that a blank line kept away from its import moves with it once the blank line is gone
-	got = settle("module t;\n// c\n\nimport z;\nimport a;\n\n// d\nimport y;\n", { "c3f_style", "strict", "c3f_max_blank_lines", "0" });
+	got = settle("module t;\n// c\n\nimport z;\nimport a;\n\n// d\nimport y;\n", { "c3f_style", "strict", "c3f_sort_imports", "all", "c3f_max_blank_lines", "0" });
 	assert(got == "module t;\nimport a;\n// d\nimport y;\n// c\nimport z;\n", "got:\n%s", got);
 }
 
@@ -37,7 +37,7 @@ fn void expanded_lambda_in_an_initializer() @test
 	// the lambda's body goes on lines of its own, so the initializer spans lines: its elements start on a line after the '{'
 	String src = "module t;\nfn void f()\n{\n\tCb c = { fn () { io::printn(\"x\"); } };\n}\n";
 	String got = settle(src, { "c3f_one_line_blocks", "expand" });
-	assert(got == "module t;\nfn void f()\n{\n\tCb c = {\n\t\tfn () {\n\t\t\tio::printn(\"x\");\n\t\t} };\n}\n", "got:\n%s", got);
+	assert(got == "module t;\nfn void f()\n{\n\tCb c = {\n\t\tfn () {\n\t\t\tio::printn(\"x\");\n\t\t}\n\t};\n}\n", "got:\n%s", got);
 	// an initializer inside another one
 	(void)settle("fn void f()\n{\n\tCb c = { { fn () { a(); b(); } }, { 1, 2 } };\n}\n", { "c3f_one_line_blocks", "expand" });
 	// one on a line stays as it is
@@ -54,11 +54,12 @@ fn void braces_under_compile_time_branches_with_knr_braces() @test
 	got = settle(src, { "c3f_brace_style", "linux" });
 	assert(got == "macro f()\n{\n\t$if X: {\n\t\ta();\n\t}\n\t$else {\n\t\tb();\n\t}\n\t$endif\n}\n", "got:\n%s", got);
 	// with Allman braces a `$else {` stays as written, on the line or below it
+	// (the indentation of the bodies is kept here, so that only the braces are compared)
 	String joined = "fn void f()\n{\n\t$if X: a(); $else {\n\t\tb();\n\t}\n\t$endif\n}\n";
-	got = settle(joined, {});
+	got = settle(joined, { "c3f_compile_time_indent", "keep" });
 	assert(got == joined, "got:\n%s", got);
 	String below = "fn void f()\n{\n\t$if X: a();\n\t$else\n\t{\n\t\tb();\n\t}\n\t$endif\n}\n";
-	got = settle(below, {});
+	got = settle(below, { "c3f_compile_time_indent", "keep" });
 	assert(got == below, "got:\n%s", got);
 	// with Allman braces they stay on their own lines
 	(void)settle(src, {});
@@ -93,7 +94,7 @@ fn void header_with_an_initializer_under_expand() @test
 		{
 			foreach (mode : (String[]){ "reflow", "wrap" })
 			{
-				String got = settle(src, { style, kind, "c3f_line_breaks", mode, "max_line_length", width, "c3f_one_line_blocks", "expand" });
+				String got = settle(src, { "c3f_style", "stdlib", style, kind, "c3f_line_breaks", mode, "max_line_length", width, "c3f_one_line_blocks", "expand" });
 				// the header with the initializer stays on one line
 				assert(got.contains("@tree((Column) { .gap = 4 }) {\n"), "got:\n%s", got);
 			}
@@ -115,10 +116,10 @@ fn void spaces_with_a_wider_tab_settle_in_one_run() @test
 		{
 			foreach (cont : (String[]){ "keep", "indent", "align" })
 			{
-				(void)settle(src, { "indent_style", "space", "indent_size", size, "tab_width", tw, "c3f_continuation", cont });
+				(void)settle(src, { "c3f_style", "stdlib", "indent_style", "space", "indent_size", size, "tab_width", tw, "c3f_continuation", cont });
 			}
 		}
 	}
-	String got = settle(src, { "indent_style", "space", "indent_size", "4", "tab_width", "8" });
+	String got = settle(src, { "c3f_style", "stdlib", "indent_style", "space", "indent_size", "4", "tab_width", "8" });
 	assert(got == "enum E : uint (uint w, ulong[2] i)\n{\n    S { 512,\n        {\n            0x1,\n            0x2\n        }\n    },\n}\n", "got:\n%s", got);
 }

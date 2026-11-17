@@ -1,0 +1,9 @@
+// c3f_style=strict
+// c3f_one_line_blocks=expand
+fn int x(){$if int::has_tag(x:0):$endif}
+// Output
+fn int x()
+{
+	$if int::has_tag(x: 0):
+	$endif
+}

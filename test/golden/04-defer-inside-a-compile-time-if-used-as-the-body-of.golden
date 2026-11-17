@@ -1,0 +1,12 @@
+// c3f_style=strict
+// c3f_brace_style=linux
+// c3f_one_line_blocks=expand
+// c3f_compile_time_indent=indent
+fn int x(){if(0)$if true:defer{}$endif}
+// Output
+fn int x()
+{
+	if (0) $if true:
+		defer {}
+	$endif
+}

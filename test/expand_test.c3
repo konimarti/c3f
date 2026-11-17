@@ -15,14 +15,14 @@ fn String expanded(String src, String[] settings) @local
 fn void expanded_compile_time_branch_stays_inside_its_function() @test
 {
 	String src = "module t;\nfn void f7() { $if true: a(); $else b(); $endif }\n";
-	String keep = expanded(src, {});
+	String keep = expanded(src, { "c3f_compile_time_indent", "keep" });
 	assert(keep == "module t;\nfn void f7()\n{\n\t$if true:\n\ta();\n\t$else\n\tb();\n\t$endif\n}\n", "got:\n%s", keep);
 	String indent = expanded(src, { "c3f_compile_time_indent", "indent" });
 	assert(indent == "module t;\nfn void f7()\n{\n\t$if true:\n\t\ta();\n\t$else\n\t\tb();\n\t$endif\n}\n", "got:\n%s", indent);
 	String flush = expanded(src, { "c3f_compile_time_indent", "flush" });
 	assert(flush == keep, "got:\n%s", flush);
 	// a directive written at column 0 in the source stays there under keep
-	String col0 = expanded("module t;\nfn void g()\n{\n$if true:\n\ta();\n$endif\n}\n", {});
+	String col0 = expanded("module t;\nfn void g()\n{\n$if true:\n\ta();\n$endif\n}\n", { "c3f_compile_time_indent", "keep" });
 	assert(col0 == "module t;\nfn void g()\n{\n$if true:\n\ta();\n$endif\n}\n", "got:\n%s", col0);
 }
 

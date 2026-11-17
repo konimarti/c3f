@@ -129,12 +129,14 @@ c3f_line_breaks = wrap
 .PP
 Values are given with their default first.\&
 .PP
-\fBc3f_style\fR = stdlib | knr | strict
+\fBc3f_style\fR = strict | stdlib | knr
 .RS 4
-A preset, applied before the other options, which override it.\& \fBstdlib\fR is the style of
+A preset, applied before the other options, which override it.\& \fBstrict\fR is the default:
 the C3 standard library.\& \fBknr\fR uses K&R braces, also for functions, and \fB} else {\fR.\&
-\fBstrict\fR is \fBstdlib\fR with the spacing made uniform where the standard library itself
-varies: \fIFoo* p\fR, padded initializer braces, tight slices, and sorted imports.\&
+\fBstdlib\fR with the spacing made uniform where the standard library itself varies:
+\fIFoo* p\fR, padded initializer braces, tight slices. \fBstdlib\fR is the style of the C3
+standard library as written. \fBknr\fR uses K&R braces, also for functions, and \fI} else {\fR.\&
+Import sorting is not part of a preset (see \fBc3f_sort_imports\fR).\&
 .PP
 .RE
 \fBindent_style\fR = tab | space
@@ -233,10 +235,10 @@ together, and a lambda keeps its braces where they are.\&
 Indent \fBcase\fR under \fBswitch\fR, or put it in the same column.\&
 .PP
 .RE
-\fBc3f_compile_time_indent\fR = keep | indent | flush
+\fBc3f_compile_time_indent\fR = indent | keep | flush
 .RS 4
-The contents of \fB$if\fR, \fB$switch\fR and \fB$foreach\fR blocks: as written, indented, or at the
-level of the directive.\&
+The contents of \fB$if\fR, \fB$switch\fR and \fB$foreach\fR blocks: indented (the default), as written,
+or at the level of the directive.\&
 .PP
 .RE
 \fBc3f_continuation\fR = keep | indent | align
@@ -245,7 +247,7 @@ How the lines of a broken statement are continued: as written, one more level, o
 aligned under the opening bracket.\&
 .PP
 .RE
-\fBc3f_spacing\fR = stdlib | strict
+\fBc3f_spacing\fR = strict | stdlib
 .RS 4
 Where the standard library writes both forms (about 0.\&2% of its spacing), \fBstdlib\fR
 keeps what was written and \fBstrict\fR always writes the more common one.\&
@@ -256,7 +258,7 @@ keeps what was written and \fBstrict\fR always writes the more common one.\&
 A space after a cast: \fI(int)x\fR or \fI(int) x\fR.\&
 .PP
 .RE
-\fBc3f_pointer_style\fR = keep | type | name
+\fBc3f_pointer_style\fR = type | keep | name
 .RS 4
 Write \fIFoo* p\fR (\fBtype\fR) or \fIFoo *p\fR (\fBname\fR).\&
 .PP
@@ -356,8 +358,8 @@ The cost of a line break.\&
 .RS 4
 Reorder imports.\& \fBlines\fR sorts the statements of a run (no blank line between them),
 \fBlists\fR the modules inside one statement, \fBall\fR both, and \fBsplit\fR also writes one module
-per statement (a statement with a comment is only sorted).\& The \fBstrict\fR style uses
-\fBall\fR; an explicit value wins.\&
+per statement (a statement with a comment is only sorted).\& Off by default, in every style:
+sorting is opt-in.\&
 .PP
 .RE
 .SH EXIT STATUS

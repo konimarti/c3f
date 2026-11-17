@@ -1,0 +1,18 @@
+// c3f_style=strict
+// c3f_compile_time_indent=indent
+// c3f_one_line_blocks=expand
+alias Aa=fn void();fn int x(){$for var$i=0;$i<1;$i--:{Aa x=fn()=> 0;
+}
+$endfor
+}
+
+// Output
+alias Aa = fn void();
+fn int x()
+{
+	$for var $i = 0; $i < 1; $i--:
+		{
+			Aa x = fn() => 0;
+		}
+	$endfor
+}

@@ -1,0 +1,8 @@
+// c3f_style=strict
+// c3f_brace_style=allman
+// c3f_one_line_blocks=keep
+// end_of_line=keep
+// insert_final_newline=true
+alias Aa=Aa;fn int Aa.x(){}
+// Output
+alias Aa = Aa;fn int Aa.x() {}

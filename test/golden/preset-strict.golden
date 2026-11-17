@@ -1,0 +1,17 @@
+// c3f_style=strict
+// c3f_sort_imports=all
+module demo;
+import std::math, std::io;
+fn void f(int *p, int* q)
+{
+int a=*p*2;
+int b=a+ *q;
+}
+// Output
+module demo;
+import std::io, std::math;
+fn void f(int* p, int* q)
+{
+	int a = *p * 2;
+	int b = a + *q;
+}

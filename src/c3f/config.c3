@@ -99,14 +99,14 @@ enum Key : char (String name)
 	SORT_IMPORTS         { "c3f_sort_imports" },
 }
 
-<* The style of the C3 standard library. *>
-fn Config defaults()
+<* The stdlib preset: the style of the C3 standard library. *>
+fn Config stdlib_base() @local
 {
 	Config c = {
 		.indent_style = TAB, .indent_size = 4, .tab_width = 4,
 		.end_of_line = KEEP, .insert_final_newline = true,
 		.brace_style = ALLMAN, .else_style = FOLLOW, .one_line_blocks = KEEP,
-		.case_indent = true, .compile_time_indent = KEEP, .continuation = KEEP,
+		.case_indent = true, .compile_time_indent = INDENT, .continuation = KEEP,
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .space_inside_brackets = KEEP, .space_inside_braces = KEEP,
 		.max_blank_lines = 2, .trim_block_blanks = true, .blank_lines_between_decls = KEEP,
 		.align = KEEP, .align_comments = KEEP,
@@ -115,6 +115,16 @@ fn Config defaults()
 		.sort_imports = OFF, .style = "stdlib",
 	};
 	foreach (&o : c.origin) *o = "default";
+	return c;
+}
+
+<* The defaults: the strict preset (spacing and pointers as in `strict`). Import sorting is off. *>
+fn Config defaults()
+{
+	Config c = stdlib_base();
+	c.spacing = STRICT;
+	c.pointer_style = TYPE;
+	c.style = "strict";
 	return c;
 }
 
@@ -129,7 +139,7 @@ fn bool Config.apply_preset(&self, String name, String origin)
 {
 	if (name != "stdlib" && name != "knr" && name != "strict") return false;
 	String from = string::tformat("preset %s", name);
-	*self = defaults();
+	*self = stdlib_base();
 	self.style = name;
 	if (name == "knr")
 	{
@@ -142,10 +152,8 @@ fn bool Config.apply_preset(&self, String name, String origin)
 	{
 		self.spacing = STRICT;
 		self.pointer_style = TYPE;
-		self.sort_imports = ALL;
 		self.origin[Key.SPACING.ordinal] = from;
 		self.origin[Key.POINTER_STYLE.ordinal] = from;
-		self.origin[Key.SORT_IMPORTS.ordinal] = from;
 	}
 	self.origin[Key.STYLE.ordinal] = origin;
 	return true;

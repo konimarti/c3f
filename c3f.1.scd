@@ -95,11 +95,12 @@ c3f_line_breaks = wrap
 
 Values are given with their default first.
 
-*c3f_style* = stdlib | knr | strict
-	A preset, applied before the other options, which override it. *stdlib* is the style of
-	the C3 standard library. *knr* uses K&R braces, also for functions, and *} else {*.
-	*strict* is *stdlib* with the spacing made uniform where the standard library itself
-	varies: _Foo\* p_, padded initializer braces, tight slices, and sorted imports.
+*c3f_style* = strict | stdlib | knr
+	A preset, applied before the other options, which override it. *strict* is the default:
+	*stdlib* with the spacing made uniform where the standard library itself varies: _Foo\* p_,
+	padded initializer braces, tight slices. *stdlib* is the style of the C3 standard library
+	as written. *knr* uses K&R braces, also for functions, and *} else {*. Import sorting is
+	not part of a preset (see *c3f_sort_imports*).
 
 *indent_style* = tab | space
 	Indent with tabs or spaces.
@@ -163,22 +164,22 @@ Values are given with their default first.
 *c3f_case_indent* = indent | flush
 	Indent *case* under *switch*, or put it in the same column.
 
-*c3f_compile_time_indent* = keep | indent | flush
-	The contents of *$if*, *$switch* and *$foreach* blocks: as written, indented, or at the
-	level of the directive.
+*c3f_compile_time_indent* = indent | keep | flush
+	The contents of *$if*, *$switch* and *$foreach* blocks: indented (the default), as written,
+	or at the level of the directive.
 
 *c3f_continuation* = keep | indent | align
 	How the lines of a broken statement are continued: as written, one more level, or
 	aligned under the opening bracket.
 
-*c3f_spacing* = stdlib | strict
+*c3f_spacing* = strict | stdlib
 	Where the standard library writes both forms (about 0.2% of its spacing), *stdlib*
 	keeps what was written and *strict* always writes the more common one.
 
 *c3f_space_after_cast* = false | true
 	A space after a cast: _(int)x_ or _(int) x_.
 
-*c3f_pointer_style* = keep | type | name
+*c3f_pointer_style* = type | keep | name
 	Write _Foo\* p_ (*type*) or _Foo \*p_ (*name*).
 
 *c3f_space_inside_brackets* = keep | false | true
@@ -245,8 +246,8 @@ Values are given with their default first.
 *c3f_sort_imports* = off | lines | lists | all | split
 	Reorder imports. *lines* sorts the statements of a run (no blank line between them),
 	*lists* the modules inside one statement, *all* both, and *split* also writes one module
-	per statement (a statement with a comment is only sorted). The *strict* style uses
-	*all*; an explicit value wins.
+	per statement (a statement with a comment is only sorted). Off by default, in every
+	style: sorting is opt-in.
 
 # EXIT STATUS
 

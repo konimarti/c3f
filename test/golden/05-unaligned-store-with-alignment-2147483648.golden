@@ -1,0 +1,8 @@
+// c3f_style=strict
+// c3f_one_line_blocks=expand
+fn void x(int)@nostrip{$$unaligned_store(null,0,2147483648,false);}
+// Output
+fn void x(int) @nostrip
+{
+	$$unaligned_store(null, 0, 2147483648, false);
+}

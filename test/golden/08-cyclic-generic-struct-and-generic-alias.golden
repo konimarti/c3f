@@ -1,0 +1,40 @@
+// c3f_style=strict
+// c3f_blank_lines_between_decls=keep
+// c3f_brace_style=allman
+// end_of_line=keep
+// indent_style=tab
+// insert_final_newline=true
+module a<Da>;
+struct Aa{
+Ba[]x;
+}
+struct Ba{
+Aa x;
+}
+fn int Aa.b(x,int,int,int){
+Ba c@noinit;
+}
+module x;
+import a;
+alias Ca=Aa{
+int}
+;
+// Output
+module a <Da>;
+struct Aa
+{
+	Ba[] x;
+}
+struct Ba
+{
+	Aa x;
+}
+fn int Aa.b(x, int, int, int)
+{
+	Ba c @noinit;
+}
+module x;
+import a;
+alias Ca = Aa{
+	int
+};
