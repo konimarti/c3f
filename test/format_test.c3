@@ -574,7 +574,6 @@ fn void the_readme_example_is_what_c3f_prints() @test
 	String input = readme_block(&at);
 	String want = readme_block(&at);
 	c3f::Config c = c3f::defaults();
-	assert(@ok(c.set("c3f_style", "stdlib")));
 	assert(@ok(c.set("max_line_length", "72")));
 	assert(@ok(c.set("c3f_line_breaks", "wrap")));
 	check(input, want, &c);
