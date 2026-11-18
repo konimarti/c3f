@@ -29,7 +29,7 @@ becomes
 ```c3
 fn void main()
 {
-	int[] primes = {2, 3, 5, 7, 11};
+	int[] primes = { 2, 3, 5, 7, 11 };
 	foreach (i, p : primes)
 	{
 		if (p > 5 && i % 2 == 0) io::printfn("prime %d at %d", p, i);
