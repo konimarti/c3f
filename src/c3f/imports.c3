@@ -13,8 +13,8 @@ fn int compare_paths(String a, String b)
 {
 	while (true)
 	{
-		sz ia = @ok(a.index_of("::")) ? a.index_of("::")!! : a.len;
-		sz ib = @ok(b.index_of("::")) ? b.index_of("::")!! : b.len;
+		sz ia = a.index_of("::") ?? a.len;
+		sz ib = b.index_of("::") ?? b.len;
 		int c = a[:ia].compare_to(b[:ib]);
 		if (c != 0) return c;
 		bool ea = ia == a.len;

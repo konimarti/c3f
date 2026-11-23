@@ -156,7 +156,7 @@ fn List{String} plan_split(String text, sz first_room, sz mid_room, sz tail, sz 
 	cuts.tinit();
 	for (sz j = n; j > 0; j = from[j]) cuts.push(j);
 	sz i = 0;
-	for (sz k = cuts.len(); k-- > 0;)
+	for (sz k = cuts.len() - 1; k >= 0; k--)
 	{
 		sz j = cuts[k];
 		pieces.push("\"".tconcat(body[at[i]..at[j] - 1]).tconcat("\""));

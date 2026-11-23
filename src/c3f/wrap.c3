@@ -751,7 +751,7 @@ fn void Wrap.solve_statement(&self, List{bool}* breaks)
 			self.read(self.top, INLINE, 0, start, breaks);
 			foreach (k, b : *breaks) if (b) at.push((uint)k);
 		}
-		if (memo) memo.seen.set(key, at.to_array(mem));
+		if (memo != null) memo.seen.set(key, at.to_array(mem));
 		if (!self.overflow) return;
 	}
 	self.first_fit(start, breaks);

@@ -3,7 +3,6 @@
 // build/gen-spacing $(find <c3c>/lib/std -name '*.c3') > src/c3f/spacing_table.c3
 // Each cell: how often the corpus wrote no space / one space in this context (c3f::Rule).
 module c3f;
-import c3::lexer;
 
 const Rule[] SPACING_RULES = {
 	{ 2, INVALID, AMP, BIT_NOT, INVALID, INVALID, false, NONE, 0, 13 },
