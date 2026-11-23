@@ -20,8 +20,8 @@ fn String squash(String s) @local
 *>
 fn void recovered(String src, String want, String[] notes, sz[] lines) @local
 {
-	c3f::Config d = c3f::defaults();
-	c3f::FormatResult r = c3f::format(tmem, src, &d);
+	Config d = c3f::defaults();
+	FormatResult r = c3f::format(tmem, src, &d);
 	if (r.text != want) io::eprintfn("--- want ---\n%s--- got ---\n%s---", want, r.text);
 	assert(r.text == want);
 	assert(squash(r.text) == squash(src));
@@ -33,7 +33,7 @@ fn void recovered(String src, String want, String[] notes, sz[] lines) @local
 		assert(r.notes[i].text == n, "note %d: %s", i, r.notes[i].text);
 		assert(r.notes[i].line == lines[i]);
 	}
-	c3f::FormatResult again = c3f::format(tmem, r.text, &d);
+	FormatResult again = c3f::format(tmem, r.text, &d);
 	assert(again.text == r.text, "not idempotent: %s", again.text);
 }
 
@@ -69,7 +69,7 @@ fn void unterminated_raw_string() @test
 *>
 fn void block_comment_to_the_end_of_the_file_is_valid() @test
 {
-	c3f::Config d = c3f::defaults();
+	Config d = c3f::defaults();
 	String[] files = {
 		"module m;\n/*\nfn void a()\n{\n  foo( );\n}\n",
 		"module m;\n/*\n/* nested */\nfn void a()\n{\n  foo( );\n}\n",
@@ -77,7 +77,7 @@ fn void block_comment_to_the_end_of_the_file_is_valid() @test
 	};
 	foreach (src : files)
 	{
-		c3f::FormatResult r = c3f::format(tmem, src, &d);
+		FormatResult r = c3f::format(tmem, src, &d);
 		assert(!r.fallback && r.notes.len() == 0, "for %s", src);
 		assert(squash(r.text) == squash(src));
 		// the comment is kept as written
@@ -89,7 +89,7 @@ fn void block_comment_to_the_end_of_the_file_is_valid() @test
 		assert(st != cli::Status.KEPT);
 	}
 	// nothing but the part before the comment changes
-	c3f::FormatResult r = c3f::format(tmem, files[2], &d);
+	FormatResult r = c3f::format(tmem, files[2], &d);
 	assert(r.text.starts_with("fn void z()\n{\n\tq = 1;\n}\n/* a /* b */"));
 }
 
@@ -133,8 +133,8 @@ fn void a_word_that_starts_with_a_keyword_is_no_break_point() @test
 
 fn void a_terminated_doc_comment_is_fine() @test
 {
-	c3f::Config d = c3f::defaults();
-	c3f::FormatResult r = c3f::format(tmem, "fn void a() {}\n<* doc *>\nfn void b(){}\n", &d);
+	Config d = c3f::defaults();
+	FormatResult r = c3f::format(tmem, "fn void a() {}\n<* doc *>\nfn void b(){}\n", &d);
 	assert(!r.fallback && r.notes.len() == 0);
 	assert(r.text == "fn void a() {}\n<* doc *>\nfn void b() {}\n");
 }
@@ -155,7 +155,7 @@ fn void crlf_file() @test
 
 fn void check_exits_3_for_every_recovery() @test
 {
-	c3f::Config cfg = c3f::defaults();
+	Config cfg = c3f::defaults();
 	cli::Options opt;
 	opt.mode = CHECK;
 	String[] damaged = {

@@ -35,7 +35,7 @@ fn int main(String[] args)
 	}
 	List{String} files;
 	bool listed = true;   // false: a path could not be listed (reported; the others are still done)
-	foreach (p : opt.paths) listed &= c3f::cli::collect(&files, p, &opt.excludes);
+	foreach (p : opt.paths) listed &= cli::collect(&files, p, &opt.excludes);
 	if (!files.len())
 	{
 		if (!listed) return Status.ERROR.ordinal;
@@ -59,10 +59,10 @@ fn int main(String[] args)
 	return status.ordinal;
 }
 
-fn c3f::Config? config_for(Options* opt, String path)
+fn Config? config_for(Options* opt, String path)
 {
 	String error;
-	c3f::Config? cfg = c3f::load_config(path, opt.config, opt.sets.array_view(), &error);
+	Config? cfg = c3f::load_config(path, opt.config, opt.sets.array_view(), &error);
 	if (catch err = cfg)
 	{
 		io::eprintfn("c3f: %s", error);
@@ -74,7 +74,7 @@ fn c3f::Config? config_for(Options* opt, String path)
 fn Status run_stdin(Options* opt)
 {
 	String name = opt.stdin_filename ?: "<stdin>";
-	c3f::Config? cfg = config_for(opt, opt.stdin_filename ?: "stdin.c3");
+	Config? cfg = config_for(opt, opt.stdin_filename ?: "stdin.c3");
 	if (catch cfg) return ERROR;
 	if (opt.mode == PRINT_CONFIG)
 	{
@@ -93,7 +93,7 @@ fn Status run_stdin(Options* opt)
 
 fn Status run_file(Options* opt, String path)
 {
-	c3f::Config? cfg = config_for(opt, path);
+	Config? cfg = config_for(opt, path);
 	if (catch cfg) return ERROR;
 	if (opt.mode == PRINT_CONFIG)
 	{
@@ -114,9 +114,9 @@ fn Status run_file(Options* opt, String path)
  A place kept as written is exit status 3 for --check only; -w, printing the result and the
  diff succeed (the notes go to stderr), so format-on-save works on code in progress.
 *>
-fn Status run(Options* opt, String name, String src, c3f::Config* cfg)
+fn Status run(Options* opt, String name, String src, Config* cfg)
 {
-	c3f::FormatResult r = c3f::format(tmem, src, cfg);
+	FormatResult r = c3f::format(tmem, src, cfg);
 	Status s = report(name, &r);
 	switch (opt.mode)
 	{
@@ -135,7 +135,7 @@ fn Status run(Options* opt, String name, String src, c3f::Config* cfg)
 	}
 }
 
-fn Status report(String name, c3f::FormatResult* r)
+fn Status report(String name, FormatResult* r)
 {
 	if (r.fallback)
 	{
@@ -144,7 +144,7 @@ fn Status report(String name, c3f::FormatResult* r)
 	return r.fallback ? Status.KEPT : Status.OK;
 }
 
-extern fn CInt chmod(ZString path, libc::Mode_t mode) @feat(POSIX);
+extern fn CInt chmod(ZString path, Mode_t mode) @feat(POSIX);
 extern fn CInt access(ZString path, CInt mode) @feat(POSIX);
 extern fn CInt move_file_ex(WString from, WString to, CUInt flags) @cname("MoveFileExW") @feat(WIN32);
 const CUInt MOVEFILE_REPLACE_EXISTING = 1;
@@ -270,7 +270,7 @@ fn bool print_out(String text)
 	return false;
 }
 
-fn void print_config(String name, c3f::Config* cfg)
+fn void print_config(String name, Config* cfg)
 {
 	io::printfn("# %s", name);
 	io::printn("# To use these options as an .editorconfig, save them in a file named .editorconfig in the");
@@ -278,7 +278,7 @@ fn void print_config(String name, c3f::Config* cfg)
 	io::printn("#   root = true");
 	io::printn("#   [*.c3]");
 	io::printn("# Then keep each option and its value, and drop the text in parentheses (where it comes from).");
-	foreach (k : c3f::Key::values)
+	foreach (k : Key::values)
 	{
 		io::printfn("%-26s = %-10s (%s)", k.name, cfg.value_text(k), cfg.origin[k.ordinal]);
 	}

@@ -40,7 +40,7 @@ fn void golden_cases() @test
 fn void check_golden(String file, List{String}* failures) @local
 {
 	String text = (String)file::load_temp(file)!!;
-	c3f::Config cfg = c3f::defaults();
+	Config cfg = c3f::defaults();
 
 	// header: option lines, up to the first line that is not one
 	usz input_start = 0;

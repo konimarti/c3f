@@ -2,9 +2,9 @@ module c3f_test;
 import c3f, std::io;
 
 <* A config: lines of at most `width` columns, broken as `breaks` says, lists as `lists` says. *>
-fn c3f::Config lists_config(String lists, String breaks = "wrap", String width = "60") @local
+fn Config lists_config(String lists, String breaks = "wrap", String width = "60") @local
 {
-	c3f::Config c = c3f::defaults();
+	Config c = c3f::defaults();
 	assert(@ok(c.set("max_line_length", width)));
 	assert(@ok(c.set("c3f_line_breaks", breaks)));
 	assert(@ok(c.set("c3f_wrap_lists", lists)));
@@ -17,13 +17,13 @@ const String CALL = "\tfoo(aaaaaaaaaaa, bbbbbbbbbbbb, ccccccccccccc, ddddddddddd
 
 fn void wrap_lists_fill_is_the_default() @test
 {
-	c3f::Config d = c3f::defaults();
-	assert(d.wrap_lists == c3f::WrapLists.FILL);
-	c3f::Config c = lists_config("fill");
+	Config d = c3f::defaults();
+	assert(d.wrap_lists == WrapLists.FILL);
+	Config c = lists_config("fill");
 	check(in_fn(CALL),
 		in_fn("\tfoo(aaaaaaaaaaa, bbbbbbbbbbbb, ccccccccccccc,\n\t\tdddddddddddd, eeeeeeeeeee);"), &c);
 	// not set at all: the same
-	c3f::Config e = c3f::defaults();
+	Config e = c3f::defaults();
 	assert(@ok(e.set("max_line_length", "60")));
 	assert(@ok(e.set("c3f_line_breaks", "wrap")));
 	check(in_fn(CALL),
@@ -32,7 +32,7 @@ fn void wrap_lists_fill_is_the_default() @test
 
 fn void call_arguments_go_one_per_line() @test
 {
-	c3f::Config c = lists_config("one_per_line");
+	Config c = lists_config("one_per_line");
 	String want = in_fn("\tfoo(\n\t\taaaaaaaaaaa,\n\t\tbbbbbbbbbbbb,\n\t\tccccccccccccc,\n\t\tdddddddddddd,\n\t\teeeeeeeeeee\n\t);");
 	check(in_fn(CALL), want, &c);
 	// the same in every mode that wraps
@@ -47,17 +47,17 @@ fn void call_arguments_go_one_per_line() @test
 
 fn void parameters_go_one_per_line() @test
 {
-	c3f::Config c = lists_config("one_per_line");
+	Config c = lists_config("one_per_line");
 	check("fn void long_name(int aaaaaaaaaaa, int bbbbbbbbbbbb, int ccccccccccccc, int ddddddddddd)\n{\n}\n",
 		"fn void long_name(\n\tint aaaaaaaaaaa,\n\tint bbbbbbbbbbbb,\n\tint ccccccccccccc,\n\tint ddddddddddd\n)\n{}\n", &c);
-	c3f::Config f = lists_config("fill");
+	Config f = lists_config("fill");
 	check("fn void long_name(int aaaaaaaaaaa, int bbbbbbbbbbbb, int ccccccccccccc, int ddddddddddd)\n{\n}\n",
 		"fn void long_name(int aaaaaaaaaaa, int bbbbbbbbbbbb,\n\tint ccccccccccccc, int ddddddddddd)\n{}\n", &f);
 }
 
 fn void initializers_go_one_per_line() @test
 {
-	c3f::Config c = lists_config("one_per_line");
+	Config c = lists_config("one_per_line");
 	check(in_fn("\tint[] t = { aaaaaaaaaaa, bbbbbbbbbbbb, ccccccccccccc, dddddddddddd, eeeeeeeeeee };"),
 		in_fn("\tint[] t = {\n\t\taaaaaaaaaaa,\n\t\tbbbbbbbbbbbb,\n\t\tccccccccccccc,\n\t\tdddddddddddd,\n\t\teeeeeeeeeee\n\t};"), &c);
 	// designated initializers
@@ -67,7 +67,7 @@ fn void initializers_go_one_per_line() @test
 
 fn void macro_calls_and_calls_in_conditions_go_one_per_line() @test
 {
-	c3f::Config c = lists_config("one_per_line");
+	Config c = lists_config("one_per_line");
 	check(in_fn("\t@foo(aaaaaaaaaaa, bbbbbbbbbbbb, ccccccccccccc, dddddddddddd, eeeeeeeeeee);"),
 		in_fn("\t@foo(\n\t\taaaaaaaaaaa,\n\t\tbbbbbbbbbbbb,\n\t\tccccccccccccc,\n\t\tdddddddddddd,\n\t\teeeeeeeeeee\n\t);"), &c);
 	check(in_fn("\treturn foo(aaaaaaaaaaa, bbbbbbbbbbbb, ccccccccccccc, dddddddddddd, eeeeeeeeeee);"),
@@ -76,7 +76,7 @@ fn void macro_calls_and_calls_in_conditions_go_one_per_line() @test
 
 fn void a_list_that_fits_stays_on_its_line() @test
 {
-	c3f::Config c = lists_config("one_per_line");
+	Config c = lists_config("one_per_line");
 	check(in_fn("\tfoo(a, b, c);"), in_fn("\tfoo(a, b, c);"), &c);
 	check(in_fn("\tfoo(aaaaaaaaaaa, bbbbbbbbbbbb, ccccccccccccc, ddddddd);"), in_fn("\tfoo(aaaaaaaaaaa, bbbbbbbbbbbb, ccccccccccccc, ddddddd);"), &c);
 	// reflow joins a break made by hand when the list fits
@@ -86,7 +86,7 @@ fn void a_list_that_fits_stays_on_its_line() @test
 
 fn void only_the_lists_that_must_wrap_go_one_per_line() @test
 {
-	c3f::Config c = lists_config("one_per_line");
+	Config c = lists_config("one_per_line");
 	// the inner call fits on its line: it stays whole while the outer list is stacked
 	check(in_fn("\tx = outer(inner(aaaaaaaaaaa, bbbbbbbbbbbb), ccccccccccccc, dddddddddddd, eeeeeeeeeee);"),
 		in_fn("\tx = outer(\n\t\tinner(aaaaaaaaaaa, bbbbbbbbbbbb),\n\t\tccccccccccccc,\n\t\tdddddddddddd,\n\t\teeeeeeeeeee\n\t);"), &c);
@@ -97,11 +97,11 @@ fn void only_the_lists_that_must_wrap_go_one_per_line() @test
 
 fn void a_parenthesized_expression_or_a_loop_header_is_no_list() @test
 {
-	c3f::Config c = lists_config("one_per_line");
+	Config c = lists_config("one_per_line");
 	check(in_fn("\tfor (int i = 0, j = 1; i < aaaaaaaaaaaaaaaaaaaaaaaaaaa && j < bbbbbbbbbbbbbbbbbbbb; i++) x();"),
 		in_fn("\tfor (int i = 0, j = 1; i < aaaaaaaaaaaaaaaaaaaaaaaaaaa\n\t\t&& j < bbbbbbbbbbbbbbbbbbbb; i++) x();"), &c);
 	// a single argument is no list: it is laid out as before
-	c3f::Config f = lists_config("fill");
+	Config f = lists_config("fill");
 	String single = in_fn("\tx = foo(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);");
 	assert(fmt_with(single, &c) == fmt_with(single, &f));
 }
@@ -109,9 +109,9 @@ fn void a_parenthesized_expression_or_a_loop_header_is_no_list() @test
 fn void keep_and_no_limit_change_nothing() @test
 {
 	String src = in_fn(CALL);
-	c3f::Config c = lists_config("one_per_line", "keep");
+	Config c = lists_config("one_per_line", "keep");
 	check(src, src, &c);
-	c3f::Config n = c3f::defaults();
+	Config n = c3f::defaults();
 	assert(@ok(n.set("c3f_line_breaks", "wrap")));
 	assert(@ok(n.set("c3f_wrap_lists", "one_per_line")));
 	check(src, src, &n);
@@ -119,7 +119,7 @@ fn void keep_and_no_limit_change_nothing() @test
 
 fn void no_comma_is_added_or_removed() @test
 {
-	c3f::Config c = lists_config("one_per_line");
+	Config c = lists_config("one_per_line");
 	String out = fmt_with(in_fn(CALL), &c);
 	assert(!out.contains("eeeeeeeeeee,"));
 	// a list that has a trailing comma keeps it (and one item per line, as before)
@@ -127,7 +127,7 @@ fn void no_comma_is_added_or_removed() @test
 	String want = in_fn("\tfoo(\n\t\taaaaaaaaaaa,\n\t\tbbbbbbbbbbbb,\n\t\tccccccccccccc,\n\t\tdddddddddddd,\n\t\teeeeeeeeeee,\n\t);");
 	check(trailing, want, &c);
 	// also when it would fit (reflow lays a statement out again)
-	c3f::Config r = lists_config("one_per_line", "reflow");
+	Config r = lists_config("one_per_line", "reflow");
 	check(in_fn("\tfoo(a, b,);"), in_fn("\tfoo(\n\t\ta,\n\t\tb,\n\t);"), &r);
 	// with the magic comma off the trailing comma is only a token
 	assert(@ok(c.set("c3f_magic_comma", "false")));
@@ -141,7 +141,7 @@ fn void one_per_line_output_is_stable_in_every_mode() @test
 	{
 		foreach (String cont : { "keep", "indent", "align" })
 		{
-			c3f::Config c = lists_config("one_per_line", breaks, "50");
+			Config c = lists_config("one_per_line", breaks, "50");
 			assert(@ok(c.set("c3f_continuation", cont)));
 			String once = fmt_with(call, &c);
 			assert(fmt_with(once, &c) == once, "not idempotent (%s, %s):\n%s", breaks, cont, once);
@@ -151,14 +151,14 @@ fn void one_per_line_output_is_stable_in_every_mode() @test
 
 fn void wrap_lists_rejects_a_bad_value() @test
 {
-	c3f::Config c = c3f::defaults();
+	Config c = c3f::defaults();
 	assert(@catch(c.set("c3f_wrap_lists", "sideways")) == c3f::BAD_VALUE);
 	assert(@catch(c.set("c3f_wrap_lists", "one")) == c3f::BAD_VALUE);
-	assert(c.wrap_lists == c3f::WrapLists.FILL);
+	assert(c.wrap_lists == WrapLists.FILL);
 	assert(@ok(c.set("c3f_wrap_lists", "ONE_PER_LINE")));
-	assert(c.wrap_lists == c3f::WrapLists.ONE_PER_LINE);
-	assert(c.value_text(c3f::Key.WRAP_LISTS) == "one_per_line");
-	assert(c3f::allowed_values(c3f::Key.WRAP_LISTS) == "fill, one_per_line");
+	assert(c.wrap_lists == WrapLists.ONE_PER_LINE);
+	assert(c.value_text(Key.WRAP_LISTS) == "one_per_line");
+	assert(c3f::allowed_values(Key.WRAP_LISTS) == "fill, one_per_line");
 }
 
 fn void ternaries_wrap_at_their_question_mark_and_colon() @test
@@ -166,7 +166,7 @@ fn void ternaries_wrap_at_their_question_mark_and_colon() @test
 	String[] modes = { "wrap", "reflow" };
 	foreach (mode : modes)
 	{
-		c3f::Config cfg = c3f::defaults();
+		Config cfg = c3f::defaults();
 		assert(@ok(cfg.set("max_line_length", "80")));
 		assert(@ok(cfg.set("c3f_line_breaks", mode)));
 		String src = "fn int f()\n{\n\treturn condition_one_is_true_here ? some_value_when_true_expression : some_other_value_when_false;\n}\n";
@@ -200,7 +200,7 @@ fn void nested_ternaries_and_other_colons_stay_stable() @test
 	{
 		foreach (w : widths)
 		{
-			c3f::Config cfg = c3f::defaults();
+			Config cfg = c3f::defaults();
 			assert(@ok(cfg.set("max_line_length", w)));
 			assert(@ok(cfg.set("c3f_line_breaks", mode)));
 			String once = fmt_with(src, &cfg);
@@ -269,12 +269,12 @@ fn void damaged_regions_are_kept_with_wrapped_headers() @test
 		foreach (style : (String[]){ "c3f_style", "c3f_brace_style" })
 		{
 			String kind = style == "c3f_style" ? "knr" : "linux";
-			c3f::Config plain = c3f::defaults();
+			Config plain = c3f::defaults();
 			assert(@ok(plain.set(style, kind)));
 			String expected = fmt_with(src, &plain);
 			foreach (mode : (String[]){ "wrap", "reflow" })
 			{
-				c3f::Config cfg = c3f::defaults();
+				Config cfg = c3f::defaults();
 				assert(@ok(cfg.set(style, kind)));
 				assert(@ok(cfg.set("max_line_length", "40")));
 				assert(@ok(cfg.set("c3f_line_breaks", mode)));

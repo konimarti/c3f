@@ -15,7 +15,7 @@ fn void write_keeps_place_and_exits_ok() @test
 {
 	String path = temp_file("write_kept.c3", BROKEN);
 	defer (void)file::delete(path);
-	c3f::Config cfg = c3f::defaults();
+	Config cfg = c3f::defaults();
 	assert(@ok(cfg.set("c3f_style", "stdlib")));
 	cli::Options opt;
 	opt.mode = WRITE;
@@ -28,7 +28,7 @@ fn void write_keeps_place_and_exits_ok() @test
 
 fn void check_keeps_exit_3() @test
 {
-	c3f::Config cfg = c3f::defaults();
+	Config cfg = c3f::defaults();
 	cli::Options opt;
 	opt.mode = CHECK;
 	assert(cli::run(&opt, "kept.c3", BROKEN, &cfg) == cli::Status.KEPT);
@@ -88,7 +88,7 @@ fn void write_keeps_hard_links() @test
 		defer (void)file::delete(other);
 		(void)file::delete(other);
 		assert(hard_link(path.zstr_tcopy(), other.zstr_tcopy()) == 0);
-		c3f::Config cfg = c3f::defaults();
+		Config cfg = c3f::defaults();
 		cli::Options opt;
 		opt.mode = WRITE;
 		assert(cli::run(&opt, path, src, &cfg) == cli::Status.OK);
@@ -110,7 +110,7 @@ fn void write_leaves_a_file_with_the_old_temporary_name_alone() @test
 	defer (void)file::delete(path);
 	defer (void)file::delete(old);
 	assert(@ok(file::save(old, "somebody else's file")));
-	c3f::Config cfg = c3f::defaults();
+	Config cfg = c3f::defaults();
 	cli::Options opt;
 	opt.mode = WRITE;
 	assert(cli::run(&opt, path, src, &cfg) == cli::Status.OK);
@@ -129,7 +129,7 @@ fn void write_a_file_with_a_long_name() @test
 		name.append(".c3");
 		String path = temp_file(name.str_view(), src);
 		defer (void)file::delete(path);
-		c3f::Config cfg = c3f::defaults();
+		Config cfg = c3f::defaults();
 		cli::Options opt;
 		opt.mode = WRITE;
 		assert(cli::run(&opt, path, src, &cfg) == cli::Status.OK);
@@ -148,7 +148,7 @@ fn void write_a_long_name_with_a_backslash() @test
 		name.append("\\.c3");
 		String path = temp_file(name.str_view(), src);
 		defer (void)file::delete(path);
-		c3f::Config cfg = c3f::defaults();
+		Config cfg = c3f::defaults();
 		cli::Options opt;
 		opt.mode = WRITE;
 		assert(cli::run(&opt, path, src, &cfg) == cli::Status.OK);

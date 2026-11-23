@@ -182,7 +182,7 @@ fn void a_second_run_changes_nothing() @test
 	failures.tinit();
 	foreach (set : OPTION_SETS)
 	{
-		c3f::Config cfg = c3f::defaults();
+		Config cfg = c3f::defaults();
 		for (sz i = 0; i + 1 < set.settings.len; i += 2) assert(@ok(cfg.set(set.settings[i], set.settings[i + 1])), "%s: %s", set.name, set.settings[i]);
 		foreach (k, src : SNIPPETS)
 		{
