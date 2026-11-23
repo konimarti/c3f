@@ -157,7 +157,8 @@ const CUInt MOVEFILE_WRITE_THROUGH = 8;
 *>
 fn bool write_atomic(String path, String text)
 {
-	bool link = @ok(path::tnew(path)) && path::is_link(path::tnew(path)!!);
+	bool link;
+	if (try p = path::tnew(path)) link = path::is_link(p);
 	$if env::POSIX:
 		libc::Stat st;
 		bool have_stat = libc::stat(path.zstr_tcopy(), &st) == 0;

@@ -412,6 +412,7 @@ fn Table Wrap.new_table(&self)
 {
 	self.cells += self.w + 1;
 	if (self.cells > MAX_CELLS) self.overflow = true;
+	// c3vet:ignore[temp-escapes-struct]
 	Table t = { mem::talloc_array(float, self.w + 1), mem::talloc_array(uint, self.w + 1), mem::talloc_array(ushort, self.w + 1), mem::talloc_array(char, self.w + 1) };
 	t.pick[..] = 0;
 	return t;
