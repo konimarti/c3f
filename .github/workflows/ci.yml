@@ -155,4 +155,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           sha256sum c3f-*.tar.gz c3f-*.zip > SHA256SUMS
-          gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --generate-notes c3f-*.tar.gz c3f-*.zip SHA256SUMS
+          # a release made by hand before the tag push only gets the assets
+          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber c3f-*.tar.gz c3f-*.zip SHA256SUMS
+          else
+            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --generate-notes c3f-*.tar.gz c3f-*.zip SHA256SUMS
+          fi
