@@ -8,7 +8,7 @@ const uint MIN_COUNT = 5;
 struct Count
 {
 	Rule rule;
-	bool      kept;
+	bool kept;
 }
 
 fn void count(HashMap{ulong, Count}* table, GapKey* k, char level, bool space)
@@ -49,6 +49,7 @@ fn int main(String[] args)
 {
 	HashMap{ulong, Count} table;
 	table.init(mem);
+	defer table.free();
 	foreach (path : args[1..])
 	{
 		@pool()
@@ -81,6 +82,7 @@ fn int main(String[] args)
 	}
 	List{Rule} rules;
 	rules.init(mem);
+	defer rules.free();
 	table.@each(; ulong key, Count c)
 	{
 		if (c.kept) rules.push(c.rule);
