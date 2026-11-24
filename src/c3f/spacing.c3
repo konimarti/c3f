@@ -150,7 +150,7 @@ fn bool is_operand_start(TokenType t)
 		case IDENT: case UNDERSCORE: case CONST_IDENT: case INTEGER: case REAL: case STRING: case CHAR_LITERAL: case BYTES:
 		case TYPE_IDENT: case CT_TYPE_IDENT:
 		case LPAREN: case AT_IDENT: case HASH_IDENT: case CT_IDENT: case NULL: case TRUE: case FALSE:
-		case AMP: case STAR: case BANG: case BIT_NOT: case MINUS: case BUILTIN: case CT_VAARG:
+		case AMP: case AND: case STAR: case BANG: case BIT_NOT: case MINUS: case BUILTIN: case CT_VAARG:
 		case CT_TYPEOF: case CT_REFLECT: case CT_EVAL: case PLUSPLUS: case MINUSMINUS:
 			return true;
 		default:
@@ -465,13 +465,13 @@ fn Space Src.symmetric(&self, sz o)
 	return before == after ? Space.KEEP : Space.ONE;
 }
 
-<* Is token o a prefix operator (`-x`, `*p`, `&v`, `!b`, `~m`) right before its operand? *>
+<* Is token o a prefix operator (`-x`, `*p`, `&v`, `&&temp`, `!b`, `~m`) right before its operand? *>
 fn bool Src.is_unary(&self, sz o)
 {
 	if (o >= self.len() - 1) return false;
 	switch (self.toks[o].type)
 	{
-		case MINUS: case STAR: case AMP: case BANG: case BIT_NOT: case PLUS:
+		case MINUS: case STAR: case AMP: case AND: case BANG: case BIT_NOT: case PLUS:
 			break;
 		default:
 			return false;

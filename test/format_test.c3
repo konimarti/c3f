@@ -16,6 +16,9 @@ fn void spacing() @test
 	      "fn void f()\n{\n\tif (x) return;\n\twhile (y) y--;\n}\n");
 	check("fn void f()\n{\n\tx = -1;\n\ty = a - b;\n\tz = *p;\n\tw = (int)v;\n}\n",
 	      "fn void f()\n{\n\tx = -1;\n\ty = a - b;\n\tz = *p;\n\tw = (int)v;\n}\n");
+	// `&&temp` is the address of a temporary: a prefix operator, not a logical and
+	check("fn void f()\n{\n\tfoo(&& t, a &&& &u);\n\tx = c ? && a : && b;\n\ty = {&& a, && b};\n\tz = a ||&& b;\n\tw = a&&b;\n}\n",
+	      "fn void f()\n{\n\tfoo(&&t, a &&& &u);\n\tx = c ? &&a : &&b;\n\ty = { &&a, &&b };\n\tz = a || &&b;\n\tw = a && b;\n}\n");
 }
 
 fn void indentation() @test
