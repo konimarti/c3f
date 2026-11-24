@@ -93,6 +93,9 @@ fn void off_regions() @test
 {
 	check("fn void f()\n{\n// c3f off\n  int   a=1;\n// c3f on\n  int b=2;\n}\n",
 	      "fn void f()\n{\n\t// c3f off\n  int   a=1;\n// c3f on\n\tint b = 2;\n}\n");
+	// an `off` that ends a line of code keeps only that line
+	check("fn void f()\n{\n  foo( 1,2 );  // c3f off\n  int c=3;\n}\n",
+	      "fn void f()\n{\n  foo( 1,2 );  // c3f off\n\tint c = 3;\n}\n");
 }
 
 fn void guards() @test

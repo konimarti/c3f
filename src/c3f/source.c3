@@ -768,7 +768,10 @@ fn bool is_directive(String comment, String word)
 	return false;
 }
 
-<* `// c3f off` … `// c3f on` (or c3fmt): everything in between is kept as written. *>
+<*
+ `// c3f off` … `// c3f on` (or c3fmt): everything in between is kept as written. An `off` that ends a line of
+ code keeps just that line.
+*>
 fn void Src.mark_off_regions(&self)
 {
 	sz off = NO;
@@ -778,6 +781,13 @@ fn void Src.mark_off_regions(&self)
 		if (t.type != LINE_COMMENT) continue;
 		if (off == NO && is_directive(t.text, "off"))
 		{
+			if (i > 0 && t.nl == 0)
+			{
+				sz first = i;
+				while (first > 0 && self.toks[first].nl == 0) first--;
+				self.keep_range(first, i);
+				continue;
+			}
 			off = i;
 		}
 		else if (off != NO && is_directive(t.text, "on"))

@@ -91,7 +91,7 @@ c3f --print-config file.c3 # the options in effect, and where they come from
 c3f -w --exclude 'gen/*' .  # skip paths matching a glob
 ```
 
-`// c3f off` … `// c3f on` leaves a region untouched. Exit status: 0 ok, 1 `--check` found
+`// c3f off` … `// c3f on` leaves a region untouched; `code; // c3f off` leaves just that line. Exit status: 0 ok, 1 `--check` found
 changes, 2 usage or I/O error, 3 `--check` found a place it kept as written (`man c3f` has the details).
 
 ## Editors

@@ -34,7 +34,7 @@ For directories, every file ending in _.c3_, _.c3i_ and _.c3t_ below them is for
 hidden directories and those named _build_ or _lib_ are skipped, and links are not followed
 (a file named on the command line is). Files are replaced atomically.
 
-The code between the comments *// c3f off* and *// c3f on* is left untouched.
+The code between the comments *// c3f off* and *// c3f on* is left untouched. A *// c3f off* at the end of a line of code leaves only that line untouched.
 
 # OPTIONS
 
