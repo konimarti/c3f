@@ -5,7 +5,7 @@
 .nh
 .ad l
 .\" Begin generated content:
-.TH "C3F" "1" "2026-11-24"
+.TH "C3F" "1" "2026-11-26"
 .P
 .SH NAME
 .P
@@ -244,6 +244,12 @@ together, and a lambda keeps its braces where they are.\&
 \fBc3f_case_indent\fR = indent | flush
 .RS 4
 Indent \fBcase\fR under \fBswitch\fR, or put it in the same column.\&
+.P
+.RE
+\fBc3f_case_continuation\fR = align | indent
+.RS 4
+The lines below a case body that starts on the label'\&s line: aligned under the body (the
+\fBstrict\fR default), or one level below the label (the \fBstdlib\fR and \fBknr\fR default).\&
 .P
 .RE
 \fBc3f_compile_time_indent\fR = indent | keep | flush

@@ -43,6 +43,21 @@ fn void switch_and_case() @test
 	      "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase 1:\n\t\t{\n\t\t\tfoo();\n\t\t}\n\t}\n}\n");
 }
 
+fn void case_continuation_align() @test
+{
+	Config cfg = c3f::defaults();
+	check("fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase 22: foo(a,\n\t\tb);\n\t\tbar();\n\t\tcase 3: // c\n\t\tbar();\n\t}\n}\n",
+	      "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase 22: foo(a,\n\t\t         b);\n\t\t         bar();\n\t\tcase 3: // c\n\t\t\tbar();\n\t}\n}\n", &cfg);
+	// the stdlib preset: one level below the label
+	Config stdlib = c3f::defaults();
+	assert(@ok(stdlib.set("c3f_style", "stdlib")));
+	check("fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase 22: foo();\n\t\tbar();\n\t}\n}\n",
+	      "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase 22: foo();\n\t\t\tbar();\n\t}\n}\n", &stdlib);
+	// what the source indents past the body is kept
+	String deeper = "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase 5: foo(a,\n\t\t        b,\n\t\t\t\t   c);\n\t}\n}\n";
+	check(deeper, "fn void f()\n{\n\tswitch (x)\n\t{\n\t\tcase 5: foo(a,\n\t\t        b,\n\t\t           c);\n\t}\n}\n", &cfg);
+}
+
 fn void compile_time_blocks() @test
 {
 	check("fn void f()\n{\n\t$if FOO:\n\t\tbar();\n\t$else\n\t\tbaz();\n\t$endif\n}\n",

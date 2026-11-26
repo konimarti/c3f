@@ -518,6 +518,16 @@ fn void Fmt.layout(&self)
 			col = text_width(o.verbatim ? s.gap(i) : o.spacing, col, c.tab_width);
 		}
 		o.col = col;
+		// a case body that starts on the label's line: the lines below align under it
+		if (c.case_continuation == ALIGN && !line_start && f.kind == CASE && s.toks[i - 1].label && t.code && t.type != LBRACE)
+		{
+			sz from = s.line_start[t.line - 1];
+			f.content = { f.base.levels, f.base.extra.tconcat(spaces(col - self.indent_width(f.base))) };
+			// (`keep` continuation: only what the source indents past that first token stays)
+			f.head = f.content;
+			f.head_src = spaces(text_width(s.text[from:t.start - from], 0, c.tab_width));
+			f.has_head = true;
+		}
 		// as written: the lines of a comment may move
 		col = text_width(t.type == BLOCK_COMMENT || t.type == CONTRACT ? self.token_text(i) : t.text, col, c.tab_width);
 
@@ -694,6 +704,8 @@ fn Indent Fmt.indent_for(&self, sz i, Frame* f)
 			// inside an initializer that opened on an earlier line and has no lines of its own
 			// (`= { { 1, 2 },` then `{ 3, 4 },`): at least one level in, a closer excepted
 			if (extra.len == 0 && !(is_closer(t.type) && i == j) && self.in_open_initializer(t.encl)) return base.deeper();
+			// (a tab after alignment spaces would stop short: write its width in spaces)
+			if (self.cfg.case_continuation == ALIGN && base.extra.contains(" ") && extra.contains("\t")) extra = spaces(text_width(extra, 0, self.cfg.tab_width));
 			Indent kept = { base.levels, base.extra.tconcat(extra) };
 			// (written as spaces, a tab of the extra is as wide as it is here: a frame opened below this line
 			// adds levels in front of it, which would move its tab stops)

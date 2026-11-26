@@ -198,16 +198,22 @@ fn bool Fmt.continues(&self, sz up, sz down)
 }
 
 <*
- With `c3f_continuation = align`, does the line of token k open a bracket that the next line
- continues in? That line was placed under the bracket before alignment: moving its opener
- would leave it behind until the next run.
+ Is the line below placed under a column of the line of token k: a case body that starts on its
+ label's line (`c3f_case_continuation = align`), or a bracket that the next line continues in
+ (`c3f_continuation = align`)? That line was placed before alignment: moving the column would leave it behind until the next run.
 *>
 fn bool Fmt.opens_aligned(&self, sz k)
 {
-	if (self.cfg.continuation != ALIGN) return false;
+	bool case_align = self.cfg.case_continuation == ALIGN;
+	if (!case_align && self.cfg.continuation != ALIGN) return false;
+	Src* s = self.src;
 	sz m = k + 1;
-	while (m < self.src.len() && self.out[m].nl == 0) m++;
-	return m < self.src.len() && self.continues(k, m);
+	while (m < s.len() && self.out[m].nl == 0) m++;
+	if (m == s.len()) return false;
+	// (more case body below: anything but the next label or the end of the switch)
+	TokenType next = s.toks[m].type;
+	if (case_align && s.toks[k - 1].label && !is_case_label(next) && next != RBRACE && !is_ct_end(next)) return true;
+	return self.cfg.continuation == ALIGN && self.continues(k, m);
 }
 
 enum DeclKind : char @local { NONE, NAME, ASSIGN, ARROW }

@@ -164,6 +164,10 @@ Values are given with their default first.
 *c3f_case_indent* = indent | flush
 	Indent *case* under *switch*, or put it in the same column.
 
+*c3f_case_continuation* = align | indent
+	The lines below a case body that starts on the label's line: aligned under the body (the
+	*strict* default), or one level below the label (the *stdlib* and *knr* default).
+
 *c3f_compile_time_indent* = indent | keep | flush
 	The contents of *$if*, *$switch* and *$foreach* blocks: indented (the default), as written,
 	or at the level of the directive.

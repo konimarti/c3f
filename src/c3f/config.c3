@@ -14,6 +14,7 @@ enum SpacingMode : char { STDLIB, STRICT }
 enum PointerStyle : char { KEEP, TYPE, NAME }
 enum Padding : char { KEEP, FALSE, TRUE }   // keep, or never / always a space
 enum CaseIndent : char { INDENT, FLUSH }   // INDENT: `case` one level in under `switch`; FLUSH: the same column
+enum CaseContinuation : char { INDENT, ALIGN }   // lines below a body on the label's line: a level in, or under the body
 enum CtBody : char { KEEP, LINE }   // LINE: the body of a $if, $else, $for or $foreach starts a line of its own
 enum TopLevelDecls : char { KEEP, LINE, BLANK }   // LINE: each top-level declaration on its own line; BLANK: one blank line between them
 enum AlignMode : char { KEEP, DECLS, OFF }
@@ -36,6 +37,7 @@ struct Config
 	WhileStyle     while_style;
 	OneLineBlocks  one_line_blocks;
 	CaseIndent     case_indent;
+	CaseContinuation  case_continuation;
 	CtIndent       compile_time_indent;
 	Continuation   continuation;
 	SpacingMode    spacing;
@@ -78,6 +80,7 @@ enum Key : char (String name)
 	WHILE_STYLE          { "c3f_while_style" },
 	ONE_LINE_BLOCKS      { "c3f_one_line_blocks" },
 	CASE_INDENT          { "c3f_case_indent" },
+	CASE_CONTINUATION    { "c3f_case_continuation" },
 	COMPILE_TIME_INDENT            { "c3f_compile_time_indent" },
 	CONTINUATION         { "c3f_continuation" },
 	SPACING              { "c3f_spacing" },
@@ -110,7 +113,7 @@ fn Config stdlib_base() @local
 		.indent_style = TAB, .indent_size = 4, .tab_width = 4,
 		.end_of_line = KEEP, .insert_final_newline = true,
 		.brace_style = ALLMAN, .else_style = FOLLOW, .one_line_blocks = KEEP,
-		.case_indent = INDENT, .compile_time_indent = INDENT, .continuation = KEEP,
+		.case_indent = INDENT, .case_continuation = INDENT, .compile_time_indent = INDENT, .continuation = KEEP,
 		.spacing = STDLIB, .space_after_cast = false, .pointer_style = KEEP, .space_inside_brackets = KEEP, .space_inside_braces = KEEP,
 		.max_blank_lines = 2, .trim_block_blanks = true, .top_level_decls = KEEP, .compile_time_body = KEEP,
 		.align = KEEP, .align_comments = KEEP,
@@ -129,6 +132,7 @@ fn void Config.set_strict(&self)
 	self.pointer_style = TYPE;
 	self.top_level_decls = LINE;
 	self.compile_time_body = LINE;
+	self.case_continuation = ALIGN;
 }
 
 <* The defaults: the strict preset. *>
@@ -165,6 +169,7 @@ fn bool Config.apply_preset(&self, String name, String origin)
 		self.set_strict();
 		self.origin[Key.TOP_LEVEL_DECLS.ordinal] = from;
 		self.origin[Key.COMPILE_TIME_BODY.ordinal] = from;
+		self.origin[Key.CASE_CONTINUATION.ordinal] = from;
 		self.origin[Key.SPACING.ordinal] = from;
 		self.origin[Key.POINTER_STYLE.ordinal] = from;
 	}
@@ -265,6 +270,7 @@ fn void? Config.set_value(&self, String key, String value, String origin)
 		case WHILE_STYLE: self.while_style = parse_enum(WhileStyle, v)!;
 		case ONE_LINE_BLOCKS: self.one_line_blocks = parse_enum(OneLineBlocks, v)!;
 		case CASE_INDENT: self.case_indent = parse_enum(CaseIndent, v)!;
+		case CASE_CONTINUATION: self.case_continuation = parse_enum(CaseContinuation, v)!;
 		case COMPILE_TIME_INDENT: self.compile_time_indent = parse_enum(CtIndent, v)!;
 		case CONTINUATION: self.continuation = parse_enum(Continuation, v)!;
 		case SPACING: self.spacing = parse_enum(SpacingMode, v)!;
@@ -333,6 +339,7 @@ fn String allowed_values(Key k)
 		case WHILE_STYLE: return enum_names(WhileStyle);
 		case ONE_LINE_BLOCKS: return enum_names(OneLineBlocks);
 		case CASE_INDENT: return enum_names(CaseIndent);
+		case CASE_CONTINUATION: return enum_names(CaseContinuation);
 		case COMPILE_TIME_INDENT: return enum_names(CtIndent);
 		case CONTINUATION: return enum_names(Continuation);
 		case SPACING: return enum_names(SpacingMode);
@@ -382,6 +389,7 @@ fn String Config.value_text(&self, Key k)
 		case WHILE_STYLE: return enum_text(self.while_style);
 		case ONE_LINE_BLOCKS: return enum_text(self.one_line_blocks);
 		case CASE_INDENT: return enum_text(self.case_indent);
+		case CASE_CONTINUATION: return enum_text(self.case_continuation);
 		case COMPILE_TIME_INDENT: return enum_text(self.compile_time_indent);
 		case CONTINUATION: return enum_text(self.continuation);
 		case SPACING: return enum_text(self.spacing);

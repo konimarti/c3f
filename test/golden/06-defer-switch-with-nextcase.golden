@@ -12,6 +12,6 @@ fn void main()
 	defer switch (0)
 	{
 		case 0: defer 0;
-			nextcase 0;
+		        nextcase 0;
 	}
 }
