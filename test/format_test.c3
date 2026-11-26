@@ -1354,3 +1354,24 @@ fn void the_generated_table_spaces_shifts_and_keeps_products_in_a_literal_tight(
 	check("fn void f()\n{\n\tm = {\n\t\t1 - 2*y*y - 2*z*z,   2*x*y + 2*z*w,\n\t};\n\tch = a << 4;\n}\n",
 	      "fn void f()\n{\n\tm = {\n\t\t1 - 2*y*y - 2*z*z,   2*x*y + 2*z*w,\n\t};\n\tch = a << 4;\n}\n", &stdlib);
 }
+
+fn void wrapping_keeps_calls_and_ternaries_together() @test
+{
+	Config c = c3f::defaults();
+	assert(@ok(c.set("max_line_length", "80")));
+	assert(@ok(c.set("c3f_line_breaks", "wrap")));
+	assert(@ok(c.set("tab_width", "8")));
+	// before `&&` rather than between the arguments of a call
+	check("fn void f()\n{\n\tif (configuration.enabled && validate_the_input(configuration.input, configuration.limit))\n\t{\n\t\tx();\n\t}\n}\n",
+	      "fn void f()\n{\n\tif (configuration.enabled\n\t\t&& validate_the_input(configuration.input, configuration.limit))\n\t{\n\t\tx();\n\t}\n}\n", &c);
+	check("fn void f()\n{\n\ttotal = compute_first_part_of_it(alpha, beta) + compute_second(gamma, delta, epsilon);\n}\n",
+	      "fn void f()\n{\n\ttotal = compute_first_part_of_it(alpha, beta)\n\t\t+ compute_second(gamma, delta, epsilon);\n}\n", &c);
+	// after `=` or ',' rather than inside a ternary that then fits
+	check("fn void f()\n{\n\tString description_text = package.has_description ? package.description : \"(none)\";\n}\n",
+	      "fn void f()\n{\n\tString description_text =\n\t\tpackage.has_description ? package.description : \"(none)\";\n}\n", &c);
+	check("fn void f()\n{\n\tfoo(aaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbb, c ? ddddddddd : eeeeeeeeeeee);\n}\n",
+	      "fn void f()\n{\n\tfoo(aaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbb,\n\t\tc ? ddddddddd : eeeeeeeeeeee);\n}\n", &c);
+	// a ternary that has to break does so at '?' or ':', not inside its condition
+	check("fn void f()\n{\n\tx = first_condition_flag && second_condition_flag ? long_call_one(aaaa) : other(bb);\n}\n",
+	      "fn void f()\n{\n\tx = first_condition_flag && second_condition_flag ? long_call_one(aaaa)\n\t\t: other(bb);\n}\n", &c);
+}
